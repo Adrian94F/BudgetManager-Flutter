@@ -10,10 +10,10 @@ class IncomesScreen extends StatefulWidget {
   final Map<String, dynamic> data;
   final Future<void> Function() refreshParent;
 
-  const IncomesScreen({Key? key, required this.data, required this.refreshParent}) : super(key: key);
+  const IncomesScreen({super.key, required this.data, required this.refreshParent});
 
   @override
-  _IncomesScreenState createState() => _IncomesScreenState();
+  State<IncomesScreen> createState() => _IncomesScreenState();
 }
 
 class _IncomesScreenState extends State<IncomesScreen> {
@@ -199,6 +199,7 @@ class _IncomesScreenState extends State<IncomesScreen> {
                       };
 
                       await authService.delete("income/", requestData);
+                      if (!context.mounted) return;
                       Navigator.pop(context);
                       widget.refreshParent();
                     } catch (e) {

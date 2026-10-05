@@ -5,7 +5,7 @@ import 'package:budget_manager/l10n/app_localizations.dart';
 class ChartViewScreen extends StatelessWidget {
   final Map<String, dynamic> data;
 
-  const ChartViewScreen({Key? key, required this.data}) : super(key: key);
+  const ChartViewScreen({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {

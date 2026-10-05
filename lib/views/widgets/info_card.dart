@@ -3,17 +3,17 @@ import 'package:flutter/material.dart';
 import '../../tools/formatters.dart';
 
 class InfoCard extends StatelessWidget {
-  IconData? icon;
-  String title;
-  double? amount;
-  List<Widget> children = const [];
-  bool isOutlined = false;
-  bool isCurrency = true;
-  bool isInteger = false;
-  Color? color;
-  Color? textColor;
+  final IconData? icon;
+  final String title;
+  final double? amount;
+  final List<Widget> children;
+  final bool isOutlined;
+  final bool isCurrency;
+  final bool isInteger;
+  final Color? color;
+  final Color? textColor;
 
-  InfoCard({super.key,
+  const InfoCard({super.key,
     this.icon,
     required this.title,
     this.amount,

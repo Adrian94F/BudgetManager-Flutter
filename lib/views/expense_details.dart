@@ -203,7 +203,7 @@ class _ExpenseDetailsState extends State<ExpenseDetails> {
 
             // Category Dropdown
             DropdownButtonFormField<int>(
-              value: _categoryId,
+              initialValue: _categoryId,
               isExpanded: true,
               selectedItemBuilder: (BuildContext context) {
                 return widget.categories.map<Widget>((item) {

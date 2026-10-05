@@ -15,10 +15,10 @@ import 'widgets/fab_menu.dart';
 class HomeScreen extends StatefulWidget {
   final Future<void> Function(String) setThemeMode;
 
-  const HomeScreen({Key? key, required this.setThemeMode}) : super(key: key);
+  const HomeScreen({super.key, required this.setThemeMode});
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
@@ -47,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _logout(BuildContext context) async {
     await _authService.logout();
+    if (!context.mounted) return;
     Navigator.pushReplacementNamed(context, '/login');
   }
 
@@ -161,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           return PopScope(
             canPop: _previousIndex == null,
-            onPopInvoked: (bool didPop) {
+            onPopInvokedWithResult: (bool didPop, Object? result) {
               if (didPop) return;
               if (_previousIndex != null) {
                 setState(() {

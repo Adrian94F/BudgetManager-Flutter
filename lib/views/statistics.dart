@@ -3,10 +3,10 @@ import 'package:community_charts_flutter/community_charts_flutter.dart' as chart
 import '../services/auth_service.dart';
 
 class StatisticsScreen extends StatefulWidget {
-  const StatisticsScreen({Key? key}) : super(key: key);
+  const StatisticsScreen({super.key});
 
   @override
-  _StatisticsScreenState createState() => _StatisticsScreenState();
+  State<StatisticsScreen> createState() => _StatisticsScreenState();
 }
 
 class _StatisticsScreenState extends State<StatisticsScreen> {

@@ -12,10 +12,9 @@ class ExpensesListView extends StatefulWidget {
   final List<dynamic> categories;
   final Future<void> Function() refreshParent;
   final int monthId;
-  ExpensesFilter filter = ExpensesFilter();
+  final ExpensesFilter filter;
 
-  ExpensesListView({Key? key, required this.expenses, required this.categories, required this.filter, required this.monthId, required this.refreshParent}) : super(key: key);
-  ExpensesListView.filtered({Key? key, required this.expenses, required this.categories, required this.filter, required this.monthId, required this.refreshParent}) : super(key: key);
+  const ExpensesListView({super.key, required this.expenses, required this.categories, required this.filter, required this.monthId, required this.refreshParent});
 
   @override
   State<ExpensesListView> createState() => _ExpensesListViewState();
@@ -373,6 +372,7 @@ class _ExpensesListViewState extends State<ExpensesListView> {
                       };
 
                       await authService.delete("expense/", requestData);
+                      if (!context.mounted) return;
                       Navigator.pop(context);
                       widget.refreshParent();
                     } catch (e) {
@@ -390,11 +390,6 @@ class _ExpensesListViewState extends State<ExpensesListView> {
         );
       },
     );
-  }
-
-  void _showFilterDialog() {
-    // show dialog with category selector and date selector
-
   }
 }
 

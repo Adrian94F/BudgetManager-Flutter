@@ -13,7 +13,7 @@ class MonthDetailsScreen extends StatefulWidget {
   });
 
   @override
-  _MonthDetailsScreenState createState() => _MonthDetailsScreenState();
+  State<MonthDetailsScreen> createState() => _MonthDetailsScreenState();
 }
 
 class _MonthDetailsScreenState extends State<MonthDetailsScreen> {

@@ -1,10 +1,8 @@
 import 'package:budget_manager/views/widgets/custom_data_table.dart';
 import 'package:flutter/material.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
-import 'package:material_table_view/material_table_view.dart';
 
 import 'expenses_list.dart';
-import 'widgets/expenses_table_item_button.dart';
 
 class ExpensesTableView extends StatefulWidget {
   final List<dynamic> expenses;
@@ -16,7 +14,7 @@ class ExpensesTableView extends StatefulWidget {
   final ScrollCoords? scrollCoords;
 
   ExpensesTableView({
-    Key? key,
+    super.key,
     required this.expenses,
     required this.categories,
     required this.month,
@@ -24,24 +22,20 @@ class ExpensesTableView extends StatefulWidget {
     required this.openFilteredListCallback,
     required this.saveTableCoords,
     required this.scrollCoords,
-  }) : super(key: key) {
-    beginDate = DateTime.parse(month['start_date']);
-    endDate = endDate = DateTime.parse(month['end_date']).add(const Duration(days: 1));
-  }
+  })  : beginDate = DateTime.parse(month['start_date']),
+        endDate = DateTime.parse(month['end_date']).add(const Duration(days: 1));
 
-  late Map<DateTime, double> dateSums = {};
-  late Map<int, double> categorySums = {};
-  late Map<int, Map<DateTime, double>> categoryDateSums = {};
-  late DateTime beginDate;
-  late DateTime endDate;
+  final Map<DateTime, double> dateSums = {};
+  final Map<int, double> categorySums = {};
+  final Map<int, Map<DateTime, double>> categoryDateSums = {};
+  final DateTime beginDate;
+  final DateTime endDate;
 
   @override
-  _ExpensesTableViewState createState() => _ExpensesTableViewState();
+  State<ExpensesTableView> createState() => _ExpensesTableViewState();
 }
 
 class _ExpensesTableViewState extends State<ExpensesTableView> {
-  final TableViewController _tableViewController = TableViewController();
-  // final _columnWidth = 45.0;
   late Future<Map<String, List<dynamic>>> _calculationFuture;
 
   @override
@@ -73,12 +67,6 @@ class _ExpensesTableViewState extends State<ExpensesTableView> {
     if (today.isBefore(beginDate) || today.isAfter(endDate)) {
       return;
     }
-
-    final screenWidth = MediaQuery.of(context).size.width.toInt();
-    final columnsOffset = ((screenWidth - 150) / 45 * 0.6).floor();
-    final todayColumnIndex = today.difference(beginDate).inDays - columnsOffset;
-    // final scrollOffset = todayColumnIndex * _columnWidth;
-    // _scrollToXY(ScrollCoords(x: scrollOffset));
   }
 
   void _scrollToXY(ScrollCoords coords) {
@@ -105,7 +93,6 @@ class _ExpensesTableViewState extends State<ExpensesTableView> {
       date: date,
       category: categoryId,
     );
-    print("Showing filtered expenses");
     // final coordX = _tableViewController.horizontalScrollController.offset;
     // final coordY = _tableViewController.verticalScrollController.offset;
     // widget.saveTableCoords(ScrollCoords(x: coordX, y: coordY));
@@ -133,9 +120,9 @@ class _ExpensesTableViewState extends State<ExpensesTableView> {
     final colorScheme = Theme.of(context).colorScheme;
 
     if (isToday) {
-      return colorScheme.primaryContainer.withOpacity(0.3);
+      return colorScheme.primaryContainer.withValues(alpha: 0.3);
     } else if (isWeekend) {
-      return colorScheme.surfaceVariant.withOpacity(0.3);
+      return colorScheme.surfaceContainerHighest.withValues(alpha: 0.3);
     }
     return Colors.transparent;
   }
@@ -268,24 +255,19 @@ class _ExpensesTableViewState extends State<ExpensesTableView> {
               _showFilteredExpenses(date: date);
             }
           },
-          child: Container(
-            // decoration: BoxDecoration(
-            //   color: colorScheme.surfaceVariant.withOpacity(0.3),
-            // ),
-            child: Center(
-              child: data.text.isNotEmpty
-                  ? Text(
-                    data.text,
-                    overflow: TextOverflow.clip,
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  )
-                  : null,
-            ),
+          child: Center(
+            child: data.text.isNotEmpty
+                ? Text(
+                  data.text,
+                  overflow: TextOverflow.clip,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                )
+                : null,
           ),
         ),
       );
@@ -391,7 +373,6 @@ class _ExpensesTableViewState extends State<ExpensesTableView> {
         final date = DateUtils.dateOnly(widget.beginDate.add(Duration(days: i, hours: 1)));
         final dayAcronym = _getDayAcronym(date);
         final dateNum = date.day.toString();
-        final dateSum = widget.dateSums[date] ?? 0.0;
         return CellData(
           text: dateNum,
           secondaryText: dayAcronym,

@@ -7,7 +7,7 @@ class FadingText extends StatefulWidget {
   const FadingText(this.text, {super.key, this.style});
 
   @override
-  _FadingTextState createState() => _FadingTextState();
+  State<FadingText> createState() => _FadingTextState();
 }
 
 class _FadingTextState extends State<FadingText> {

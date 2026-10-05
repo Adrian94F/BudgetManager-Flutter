@@ -5,11 +5,10 @@ import 'package:budget_manager/l10n/app_localizations.dart';
 class AppSettingsScreen extends StatefulWidget {
   final Future<void> Function(String) setThemeMode;
 
-  const AppSettingsScreen({Key? key, required this.setThemeMode})
-      : super(key: key);
+  const AppSettingsScreen({super.key, required this.setThemeMode});
 
   @override
-  _AppSettingsScreenState createState() => _AppSettingsScreenState();
+  State<AppSettingsScreen> createState() => _AppSettingsScreenState();
 }
 
 class _AppSettingsScreenState extends State<AppSettingsScreen> {
@@ -42,6 +41,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     final newUrl = _serverController.text.trim();
     if (newUrl.isNotEmpty) {
       await _storage.write(key: 'server_url', value: newUrl);
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context)!.urlUpdated)),
       );

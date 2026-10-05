@@ -1,4 +1,3 @@
-import 'package:budget_manager/views/settings.dart';
 import 'package:flutter/material.dart';
 
 import 'package:budget_manager/l10n/app_localizations.dart';
@@ -11,9 +10,9 @@ enum FabType { full, expense, income }
 class FabMenu extends StatelessWidget {
   final Map<String, dynamic> loadedData;
   final VoidCallback onRefresh;
-  FabType fabType;
+  final FabType fabType;
 
-  FabMenu({
+  const FabMenu({
     super.key,
     required this.loadedData,
     required this.onRefresh,

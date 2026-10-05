@@ -1,6 +1,5 @@
 import 'package:budget_manager/views/widgets/info_card.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../tools/formatters.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 import '../views/widgets/month_burndown_chart.dart';
@@ -74,10 +73,10 @@ class Summary {
 class SummaryScreen extends StatefulWidget {
   final Map<String, dynamic> data;
 
-  const SummaryScreen({Key? key, required this.data}) : super(key: key);
+  const SummaryScreen({super.key, required this.data});
 
   @override
-  _SummaryScreenState createState() => _SummaryScreenState();
+  State<SummaryScreen> createState() => _SummaryScreenState();
 }
 
 class _SummaryScreenState extends State<SummaryScreen> {
@@ -204,7 +203,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
     final expenses = widget.data['expenses'] as List<dynamic>;
     final isVertical = orientation == Orientation.portrait;
 
-    return Container(
+    return SizedBox(
       height: isVertical ? 200 : 300,
       child: InkWell(
         onTap: () {
@@ -264,7 +263,6 @@ class _SummaryScreenState extends State<SummaryScreen> {
         title: AppLocalizations.of(context)!.balance.toUpperCase(),
         amount: balance,
         isOutlined: false,
-        children: children,
         color: balance >= 0
             ? isCurrent
               ? colorScheme.primaryContainer
@@ -278,7 +276,8 @@ class _SummaryScreenState extends State<SummaryScreen> {
               : brightness == Brightness.light
                 ? Colors.green.shade800
                 : Colors.green.shade100
-            : colorScheme.onErrorContainer
+            : colorScheme.onErrorContainer,
+        children: children,
     );
   }
 

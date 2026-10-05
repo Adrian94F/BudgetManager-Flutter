@@ -6,7 +6,7 @@ class BudgetSettings extends StatefulWidget {
 
 
   @override
-  _BudgetSettingsState createState() => _BudgetSettingsState();
+  State<BudgetSettings> createState() => _BudgetSettingsState();
 
 }
 

@@ -9,10 +9,11 @@ class SettingsScreen extends StatelessWidget {
   final AuthService _authService = AuthService();
   final Future<void> Function(String) setThemeMode;
 
-  SettingsScreen({Key? key, required this.setThemeMode}) : super(key: key);
+  SettingsScreen({super.key, required this.setThemeMode});
 
   Future<void> _logout(BuildContext context) async {
     await _authService.logout();
+    if (!context.mounted) return;
     Navigator.pushReplacementNamed(context, '/login');
   }
 

@@ -9,10 +9,10 @@ class MonthBurndownChart extends StatelessWidget {
   final List<dynamic> expenses;
   final DateTime startDate;
   final DateTime endDate;
-  bool isSimplified;
+  final bool isSimplified;
   final bool animate = true;
 
-  MonthBurndownChart({
+  const MonthBurndownChart({
     super.key,
     required this.incomes,
     required this.expenses,

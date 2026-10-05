@@ -97,22 +97,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.7"
-  cupertino_icons:
-    dependency: "direct main"
-    description:
-      name: cupertino_icons
-      sha256: ba631d1c7f7bef6b729a622b7b752645a2d076dba9976925b8f25725a30e1ee6
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.8"
-  data_table_2:
-    dependency: "direct main"
-    description:
-      name: data_table_2
-      sha256: cb31d465dcf1e1598a662d06d3d2c16c73700ae9e837a3d91588f1dda7519abc
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.7.2"
   fake_async:
     dependency: transitive
     description:
@@ -134,14 +118,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_advanced_switch:
-    dependency: "direct main"
-    description:
-      name: flutter_advanced_switch
-      sha256: e1147161a3dd9b708a71c65e76174d4d1a0a5908a571b8b38b65c79b142c52a0
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.1.0"
   flutter_launcher_icons:
     dependency: "direct dev"
     description:
@@ -325,14 +301,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.13.0"
-  material_table_view:
-    dependency: "direct main"
-    description:
-      name: material_table_view
-      sha256: d6c3c9aa03ab419c3abf4ee5042d721763f86ade66eaf186465ea25e9b250101
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.5.2"
   meta:
     dependency: transitive
     description:
@@ -442,14 +410,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  sliver_passthrough:
-    dependency: transitive
-    description:
-      name: sliver_passthrough
-      sha256: "8a69cacacf3558f7cf586e6078e5bf745d7830aa6162891b4876f7d910205437"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.0"
   source_span:
     dependency: transitive
     description:
