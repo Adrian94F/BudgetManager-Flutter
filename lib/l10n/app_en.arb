@@ -44,17 +44,13 @@
   "remove": "Remove",
   "add": "Add",
   "appSettings": "App settings",
+  "budgetSettings": "Budget settings",
   "logOut": "Log out",
-  "urlUpdated": "Server URL updated. Please log in again.",
-  "urlCannotBeEmpty": "Server URL cannot be empty.",
   "appereance": "Appeareance",
   "theme": "Theme",
   "lightTheme": "Light",
   "darkTheme": "Dark",
   "systemTheme": "System",
-  "connection": "Connection",
-  "serverUrl": "Server URL",
-  "saveServerUrl": "Save server URL",
   "filteredExpenses": "Filters",
   "expenseDetails": "Expense details",
   "addExpense": "Add expense",
@@ -91,5 +87,91 @@
   "shortSaturday": "S",
   "shortSunday": "S",
   "transactions": "Transactions",
-  "month": "Month"
+  "month": "Month",
+  "retry": "Retry",
+  "errorLoadingData": "Couldn't load data.",
+  "errorServerUnavailable": "Server is unavailable. Check your connection.",
+  "errorInvalidCredentials": "Wrong username or password.",
+  "sessionExpired": "Your session has expired. Please log in again.",
+  "noMonths": "No month yet. Create your first one to start tracking.",
+  "chartStart": "Start",
+  "undo": "Undo",
+  "expenseDeleted": "Expense deleted",
+  "incomeDeleted": "Income deleted",
+  "statusOnTrack": "On track",
+  "statusOverBudget": "Over budget",
+  "statusSaved": "Saved",
+  "maxDaily": "Max daily",
+  "daysLeftCount": "{count, plural, =1{1 day left} other{{count} days left}}",
+  "@daysLeftCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "plannedSavings": "Planned savings",
+  "actualBalance": "Actual balance",
+  "forDailyExpenses": "For daily expenses",
+  "plannedLine": "Plan",
+  "searchExpenses": "Search expenses",
+  "incomingExpenses": "Incoming expenses ({count})",
+  "@incomingExpenses": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "noExpenses": "No expenses in this month yet.",
+  "noResults": "Nothing found.",
+  "invalidAmount": "Enter a valid amount.",
+  "noCategories": "Add a category in Budget settings first.",
+  "noIncomes": "No incomes in this month yet.",
+  "noAccountYet": "No account yet?",
+  "register": "Create account",
+  "cannotOpenBrowser": "Couldn't open the browser.",
+  "account": "Account",
+  "changePassword": "Change password",
+  "oldPassword": "Current password",
+  "newPassword": "New password",
+  "confirmNewPassword": "Confirm new password",
+  "passwordRules": "At least 8 characters, not entirely numeric, not too similar to your personal information and not a commonly used password.",
+  "passwordsDoNotMatch": "The two passwords don't match.",
+  "passwordChanged": "Your password has been changed.",
+  "manageCategories": "Manage categories",
+  "newCategory": "New category",
+  "editCategory": "Edit category",
+  "categoryName": "Name",
+  "nameRequired": "Enter a name.",
+  "deleteCategory": "Delete category",
+  "deleteCategoryWarning": "This also deletes every expense in this category, in all months. This cannot be undone.",
+  "categoryExists": "A category with this name already exists.",
+  "reorderHint": "Drag the handle to change the order used in lists and in the table.",
+  "noCategoriesYet": "No categories yet.",
+  "language": "Language",
+  "languageSystem": "System default",
+  "currency": "Currency",
+  "currencyHint": "Used for every amount in the apps and on the website.",
+  "chooseCurrency": "Choose currency",
+  "currencyUpdated": "Currency changed",
+  "dynamicColor": "Dynamic colour",
+  "dynamicColorHint": "Use the colours of your wallpaper (Android 12 and newer).",
+  "editMonth": "Edit month",
+  "newMonthTitle": "New month",
+  "deleteMonth": "Delete month",
+  "deleteMonthHint": "Only a month without incomes and expenses can be deleted.",
+  "deleteMonthConfirm": "Delete this month? This cannot be undone.",
+  "plannedSavingsHint": "Set aside each month; counts only in the current month.",
+  "invalidDateRange": "The end date must not be before the start date.",
+  "expensesOutsideMonth": "{count} expenses are dated outside this month.",
+  "@expensesOutsideMonth": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

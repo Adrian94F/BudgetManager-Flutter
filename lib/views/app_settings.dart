@@ -1,135 +1,110 @@
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
-class AppSettingsScreen extends StatefulWidget {
-  final Future<void> Function(String) setThemeMode;
+import '../app/app_scope.dart';
 
-  const AppSettingsScreen({Key? key, required this.setThemeMode})
-      : super(key: key);
-
-  @override
-  _AppSettingsScreenState createState() => _AppSettingsScreenState();
-}
-
-class _AppSettingsScreenState extends State<AppSettingsScreen> {
-  final TextEditingController _serverController = TextEditingController();
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
-  String _currentTheme = "system";
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSettings();
-  }
-
-  Future<void> _loadSettings() async {
-    final theme = await _storage.read(key: "theme_mode") ?? "system";
-    setState(() {
-      _currentTheme = theme;
-    });
-
-    final serverUrl = await _storage.read(key: 'server_url');
-    _serverController.text = serverUrl ?? '';
-  }
-
-  Future<void> _saveTheme(String theme) async {
-    await _storage.write(key: "theme_mode", value: theme);
-    widget.setThemeMode(theme);
-  }
-
-  Future<void> _saveServerUrl(BuildContext context) async {
-    final newUrl = _serverController.text.trim();
-    if (newUrl.isNotEmpty) {
-      await _storage.write(key: 'server_url', value: newUrl);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.urlUpdated)),
-      );
-      Navigator.pushReplacementNamed(context, '/login');
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.urlCannotBeEmpty)),
-      );
-    }
-  }
+/// Theme, dynamic colour and language: what this device shows. Settings of
+/// the budget itself (the currency) live in `BudgetSettingsScreen`.
+class AppSettingsScreen extends StatelessWidget {
+  const AppSettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final settings = AppScope.of(context).settings;
+    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.appSettings),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children:
-            _appearenceSettings() + _connectionSettings(),
+      appBar: AppBar(title: Text(l10n.appSettings)),
+      body: ListenableBuilder(
+        listenable: settings,
+        builder: (context, _) => ListView(
+          padding: EdgeInsets.only(
+              top: 8, bottom: 8 + MediaQuery.paddingOf(context).bottom),
+          children: [
+            _SectionTitle(l10n.appereance),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: SegmentedButton<ThemeMode>(
+                segments: [
+                  ButtonSegment(
+                      value: ThemeMode.light,
+                      icon: const Icon(Icons.light_mode_outlined),
+                      label: Text(l10n.lightTheme)),
+                  ButtonSegment(
+                      value: ThemeMode.dark,
+                      icon: const Icon(Icons.dark_mode_outlined),
+                      label: Text(l10n.darkTheme)),
+                  ButtonSegment(
+                      value: ThemeMode.system,
+                      icon: const Icon(Icons.brightness_auto_outlined),
+                      label: Text(l10n.systemTheme)),
+                ],
+                selected: {settings.themeMode},
+                onSelectionChanged: (selection) =>
+                    settings.setThemeMode(selection.first),
+              ),
+            ),
+            if (isAndroid)
+              SwitchListTile(
+                secondary: const Icon(Icons.wallpaper_outlined),
+                title: Text(l10n.dynamicColor),
+                subtitle: Text(l10n.dynamicColorHint),
+                value: settings.useDynamicColor,
+                onChanged: settings.setDynamicColor,
+              ),
+            const SizedBox(height: 16),
+            _SectionTitle(l10n.language),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: SegmentedButton<String>(
+                segments: [
+                  ButtonSegment(
+                      value: 'system',
+                      icon: const Icon(Icons.language_outlined),
+                      label: Text(l10n.languageSystem)),
+                  const ButtonSegment(value: 'en', label: Text('English')),
+                  const ButtonSegment(value: 'pl', label: Text('Polski')),
+                ],
+                selected: {settings.locale?.languageCode ?? 'system'},
+                onSelectionChanged: (selection) {
+                  final value = selection.first;
+                  settings.setLocale(value == 'system' ? null : Locale(value));
+                },
+              ),
+            ),
+            const SizedBox(height: 24),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Text(
+                'Budget Manager',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
 
-  List<Widget> _appearenceSettings() {
-    return [
-      Text(
-        AppLocalizations.of(context)!.appereance,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-      ),
-      const SizedBox(height: 16),
-      ListTile(
-        title: Text(AppLocalizations.of(context)!.theme),
-        trailing: DropdownButton<String>(
-          value: _currentTheme,
-          items: [
-            DropdownMenuItem(
-              value: "light",
-              child: Text(AppLocalizations.of(context)!.lightTheme),
-            ),
-            DropdownMenuItem(
-              value: "dark",
-              child: Text(AppLocalizations.of(context)!.darkTheme),
-            ),
-            DropdownMenuItem(
-              value: "system",
-              child: Text(AppLocalizations.of(context)!.systemTheme),
-            ),
-          ],
-          onChanged: (value) {
-            if (value != null) {
-              setState(() {
-                _currentTheme = value;
-              });
-              _saveTheme(value);
-            }
-          },
-        ),
-      ),
-      const SizedBox(height: 32),
-    ];
-  }
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
 
-  List<Widget> _connectionSettings() {
-    return [
-      Text(
-        AppLocalizations.of(context)!.connection,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-      ),
-      const SizedBox(height: 16),
-      TextFormField(
-        controller: _serverController,
-        decoration: InputDecoration(
-          labelText: AppLocalizations.of(context)!.serverUrl,
-          border: const OutlineInputBorder(),
-        ),
-      ),
-      const SizedBox(height: 16),
-      ElevatedButton(
-        onPressed: () => _saveServerUrl(context),
-        child: Text(AppLocalizations.of(context)!.saveServerUrl),
-      ),
-      const SizedBox(height: 32),
-    ];
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Text(text,
+          style: theme.textTheme.titleSmall
+              ?.copyWith(color: theme.colorScheme.primary)),
+    );
   }
 }

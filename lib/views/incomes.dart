@@ -2,219 +2,185 @@ import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
-import '../services/auth_service.dart';
+import '../api/api.dart';
+import '../app/app_scope.dart';
+import '../models/models.dart';
+import '../tools/dates.dart';
 import '../tools/formatters.dart';
-import 'income_details.dart';
+import 'income_form.dart';
+import 'widgets/day_header.dart';
+import 'widgets/error_views.dart';
 
-class IncomesScreen extends StatefulWidget {
-  final Map<String, dynamic> data;
-  final Future<void> Function() refreshParent;
+/// The month's incomes grouped by day, newest first. An income the server
+/// sent without a date shows under the month's start date.
+class IncomesScreen extends StatelessWidget {
+  const IncomesScreen({super.key, required this.data});
 
-  const IncomesScreen({Key? key, required this.data, required this.refreshParent}) : super(key: key);
+  final MonthData data;
 
-  @override
-  _IncomesScreenState createState() => _IncomesScreenState();
-}
-
-class _IncomesScreenState extends State<IncomesScreen> {
-
-  Widget _incomeListItemTitle(dynamic income) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          income['date'] ?? "",
-          style: const TextStyle(color: Colors.grey, fontSize: 16.0),
-        ),
-        Text(
-          Formatters.currencyFormatter.format(income['value']),
-          textAlign: TextAlign.right,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
-        )
-      ],
-    );
-  }
-
-  Widget? _incomeListItemSubtitle(dynamic income) {
-    if ((income['comment'] == null || income['comment'].isEmpty) && income['is_salary'] == false) {
-      return null;
+  /// Deletes on the server and offers Undo, which re-creates the income in
+  /// the month it came from. Returns whether the row may be dismissed.
+  Future<bool> _delete(BuildContext context, Income income) async {
+    final l10n = AppLocalizations.of(context)!;
+    final services = AppScope.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final monthId = data.month!.id;
+    try {
+      await services.months.deleteIncome(income.id);
+    } on ApiException catch (e) {
+      messenger
+          .showSnackBar(SnackBar(content: Text(describeApiError(e, l10n))));
+      return false;
     }
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: [
-        if (income['is_salary'] == true)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 4.0, right: 8.0),
-                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.light
-                      ? Colors.grey.shade100
-                      : Colors.grey.shade800,
-                  borderRadius: BorderRadius.circular(4.0),
-                ),
-                child: Text(
-                  AppLocalizations.of(context)!.salary,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-        Flexible(
-          child: Text(
-            income['comment'],
-            style: const TextStyle(fontStyle: FontStyle.italic)
-          )
-        )
-      ],
-    );
+    messenger.showSnackBar(SnackBar(
+      content: Text(l10n.incomeDeleted),
+      action: SnackBarAction(
+        label: l10n.undo,
+        onPressed: () async {
+          try {
+            await services.api.createIncome(
+              monthId: monthId,
+              value: income.value,
+              date: income.date,
+              comment: income.comment ?? '',
+              isSalary: income.isSalary,
+            );
+            await services.months.refresh();
+          } on ApiException catch (e) {
+            messenger.showSnackBar(
+                SnackBar(content: Text(describeApiError(e, l10n))));
+          }
+        },
+      ),
+    ));
+    return true;
   }
 
   @override
   Widget build(BuildContext context) {
-    final incomes = widget.data['incomes'] as List<dynamic>;
-    incomes.sort((b, a) => DateTime.parse(b['date']).compareTo(DateTime.parse(a['date'])));
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).toString();
+    final theme = Theme.of(context);
+    final today = Dates.today();
 
-    return ListView.builder(
-      itemCount: incomes.length,
-      padding: const EdgeInsets.only(bottom: 80),
-      itemBuilder: (context, index) {
-        final income = incomes[index];
+    final incomes = [...data.incomes]..sort((a, b) {
+        final byDate = b.date.compareTo(a.date);
+        return byDate != 0 ? byDate : b.id.compareTo(a.id);
+      });
 
-        return Slidable(
-            key: Key(income['id'].toString()),
-            endActionPane: ActionPane(
-              motion: const ScrollMotion(),
-              children: [
-                SlidableAction(
-                  onPressed: (context) {
-                    final incomeCopy = Map<String, dynamic>.from(income);
-                    incomeCopy.remove('id');
-                    _showIncomeDetailsDialog(incomeCopy);
-                  },
-                  foregroundColor: Colors.indigo,
-                  backgroundColor: Theme.of(context).brightness == Brightness.light
-                      ? Colors.white
-                      : Colors.grey.shade900,
-                  icon: Icons.copy_rounded,
-                  label: AppLocalizations.of(context)!.copy,
-                ),
-                SlidableAction(
-                  onPressed: (context) {
-                    _showIncomeRemovalDialog(income);
-                  },
-                  foregroundColor: Colors.red,
-                  backgroundColor: Theme.of(context).brightness == Brightness.light
-                      ? Colors.white
-                      : Colors.grey.shade900,
-                  icon: Icons.delete,
-                  label: AppLocalizations.of(context)!.remove,
-                ),
-              ],
+    if (incomes.isEmpty) {
+      return ListView(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(48.0),
+            child: Text(
+              l10n.noIncomes,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
-            child: Builder(
-                builder: (context) => InkWell(
-                  child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 0.0),
-                      title: _incomeListItemTitle(income),
-                      subtitle: _incomeListItemSubtitle(income)
-                  ),
-                  onTap: () {
-                    final controller = Slidable.of(context)!;
-                    final isClosed = controller.actionPaneType.value == ActionPaneType.none;
-                    if (isClosed) {
-                      _showIncomeDetailsDialog(income);
-                    } else {
-                      controller.close();
-                    }
-                  },
-                )
-            )
-        );
-      },
-    );
-  }
+          ),
+        ],
+      );
+    }
 
-  void _showIncomeDetailsDialog(Map<String, dynamic>? income) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => IncomeDetails(
+    final items = <Widget>[];
+    DateTime? lastDay;
+    for (final income in incomes) {
+      if (lastDay == null || !Dates.isSameDay(lastDay, income.date)) {
+        lastDay = income.date;
+        items.add(DayHeader(label: dayLabel(income.date, today, l10n, locale)));
+      }
+      items.add(_IncomeTile(
+        key: ValueKey(income.id),
         income: income,
-        monthId: widget.data['month']['id'],
-        preferredDate: income != null ? DateTime.parse(income['date']) : DateTime.now(),
-      ))
-    ).then(
-      (value) => setState(() {
-        widget.refreshParent();
-      })
-    );
+        onEdit: () => IncomeFormScreen.open(context, income: income),
+        onCopy: () => IncomeFormScreen.open(context, template: income),
+        onDelete: () => _delete(context, income),
+      ));
+    }
+    return ListView(
+        padding:
+            EdgeInsets.only(bottom: 88 + MediaQuery.paddingOf(context).bottom),
+        children: items);
   }
+}
 
-  void _showIncomeRemovalDialog(Map<String, dynamic> income) {
-    final title = AppLocalizations.of(context)!.alert;
+class _IncomeTile extends StatelessWidget {
+  const _IncomeTile({
+    super.key,
+    required this.income,
+    required this.onEdit,
+    required this.onCopy,
+    required this.onDelete,
+  });
 
-    bool isLoading = false;
-    String? errorMessage;
+  final Income income;
+  final VoidCallback onEdit;
+  final VoidCallback onCopy;
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text(title),
-              content: isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Text(errorMessage!, style: const TextStyle(color: Colors.red)),
-                    ),
-                  Text(AppLocalizations.of(context)!.incomeRemoval)
-                ],
+  /// Deletes the income; returns whether the row may go.
+  final Future<bool> Function() onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final comment = income.comment;
+
+    return Slidable(
+      key: key,
+      endActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        extentRatio: 0.5,
+        dismissible:
+            DismissiblePane(confirmDismiss: onDelete, onDismissed: () {}),
+        children: [
+          SlidableAction(
+            onPressed: (_) => onCopy(),
+            backgroundColor: scheme.secondaryContainer,
+            foregroundColor: scheme.onSecondaryContainer,
+            icon: Icons.content_copy_rounded,
+            label: l10n.copy,
+          ),
+          SlidableAction(
+            onPressed: (_) => onDelete(),
+            backgroundColor: scheme.errorContainer,
+            foregroundColor: scheme.onErrorContainer,
+            icon: Icons.delete_outline_rounded,
+            label: l10n.remove,
+          ),
+        ],
+      ),
+      child: ListTile(
+        onTap: onEdit,
+        leading: Icon(
+          income.isSalary ? Icons.work_outline_rounded : Icons.savings_outlined,
+          color: income.isSalary ? scheme.primary : scheme.onSurfaceVariant,
+        ),
+        title: Row(
+          children: [
+            Expanded(
+                child: Text(income.isSalary ? l10n.salary : l10n.otherIncome)),
+            const SizedBox(width: 12),
+            Text(
+              Formatters.moneyOf(context, income.value),
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        subtitle: comment == null || comment.isEmpty
+            ? null
+            : Text(
+                comment,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
               ),
-              actions: isLoading
-                  ? []
-                  : [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(AppLocalizations.of(context)!.cancel),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    setState(() {
-                      isLoading = true;
-                      errorMessage = null;
-                    });
-
-                    try {
-                      final authService = AuthService();
-                      final requestData = {
-                        'id': income['id']
-                      };
-
-                      await authService.delete("income/", requestData);
-                      Navigator.pop(context);
-                      widget.refreshParent();
-                    } catch (e) {
-                      setState(() {
-                        isLoading = false;
-                        errorMessage = AppLocalizations.of(context)!.errorSavingData;
-                      });
-                    }
-                  },
-                  child: Text(AppLocalizations.of(context)!.remove),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      ),
     );
   }
 }

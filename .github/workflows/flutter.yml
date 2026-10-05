@@ -1,0 +1,62 @@
+name: Flutter
+
+on:
+  push:
+  pull_request:
+
+# A new push to a branch cancels the run still going for its previous commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Format, analyze, test
+    # Every push already runs on its own branch, so a pull request only needs a
+    # run of its own when it comes from a fork.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.fork
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          # Keep in step with the Flutter SDK used locally; bump it together
+          # with pubspec.lock.
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+
+      - name: Get dependencies (pubspec.lock must match pubspec.yaml)
+        run: flutter pub get --enforce-lockfile
+
+      - run: flutter gen-l10n
+
+      - name: Formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - run: flutter analyze
+
+      - run: flutter test
+
+  build-android:
+    name: Build debug APK
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.fork
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+
+      - run: flutter pub get --enforce-lockfile
+      - run: flutter gen-l10n
+      - run: flutter build apk --debug

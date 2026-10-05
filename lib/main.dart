@@ -1,98 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:budget_manager/views/login.dart';
-import 'package:budget_manager/views/home.dart';
-import 'package:budget_manager/services/auth_service.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:budget_manager/l10n/app_localizations.dart';
+import 'package:flutter/services.dart';
 
-void main() => runApp(const MyApp());
+import 'app/app.dart';
+import 'app/app_scope.dart';
+import 'app/dynamic_colors.dart';
 
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
-
-  @override
-  _MyAppState createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  final _authService = AuthService();
-  final _storage = const FlutterSecureStorage();
-  ThemeMode _themeMode = ThemeMode.system;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadThemeMode();
-  }
-
-  Future<void> _loadThemeMode() async {
-    final theme = await _storage.read(key: "theme_mode") ?? "system";
-    setState(() {
-      _themeMode = _getThemeMode(theme);
-    });
-  }
-
-  ThemeMode _getThemeMode(String mode) {
-    switch (mode) {
-      case "light":
-        return ThemeMode.light;
-      case "dark":
-        return ThemeMode.dark;
-      default:
-        return ThemeMode.system;
-    }
-  }
-
-  Future<void> _setThemeMode(String mode) async {
-    await _storage.write(key: "theme_mode", value: mode);
-    setState(() {
-      _themeMode = _getThemeMode(mode);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [
-        Locale('en'),
-        Locale('pl'),
-      ],
-      initialRoute: '/',
-      routes: {
-        '/': (context) => FutureBuilder<bool>(
-          future: _authService.isAuthenticated(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (snapshot.data == true) {
-              return HomeScreen(setThemeMode: _setThemeMode);
-            } else {
-              return const LoginScreen();
-            }
-          },
-        ),
-        '/login': (context) => const LoginScreen(),
-        '/home': (context) => HomeScreen(setThemeMode: _setThemeMode),
-      },
-      theme: ThemeData(
-        colorSchemeSeed: Colors.indigo,
-        useMaterial3: true,
-        brightness: Brightness.light,
-      ),
-      darkTheme: ThemeData(
-        colorSchemeSeed: Colors.indigo,
-        useMaterial3: true,
-        brightness: Brightness.dark,
-      ),
-      themeMode: _themeMode,
-    );
-  }
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Draw behind both system bars on every Android version (API 35+ does so
+  // by default) and keep the bars transparent; the screens handle the insets.
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarDividerColor: Colors.transparent,
+    systemNavigationBarContrastEnforced: false,
+  ));
+  final services = AppServices.create();
+  // Settings, the stored session and the system colour are read before the
+  // first frame, so the native splash screen stays up instead of an in-app
+  // spinner.
+  await Future.wait([
+    services.settings.load(),
+    services.auth.initialize(),
+    loadDynamicSeedColor().then((seed) => services.dynamicSeedColor = seed),
+  ]);
+  runApp(BudgetManagerApp(services: services));
 }

@@ -1,299 +1,318 @@
-import 'package:budget_manager/views/widgets/info_card.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../tools/formatters.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
-import '../views/widgets/month_burndown_chart.dart';
-import '../views/chart_view.dart';
 
-class Summary {
-  final Map<String, dynamic> data;
+import '../app/app_scope.dart';
+import '../app/theme.dart';
+import '../domain/domain.dart';
+import '../tools/formatters.dart';
+import 'chart_view.dart';
+import 'widgets/info_card.dart';
+import 'widgets/month_burndown_chart.dart';
 
-  late DateTime startDate;
-  late DateTime endDate;
-  late double salarySum;
-  late double otherIncomesSum;
-  late double incomesSum;
-  late double monthlyExpensesSum;
-  late double regularExpensesSum;
-  late double dailyExpensesBeforeTodaySum;
-  late double todayExpensesSum;
-  late double expensesSum;
-  late double balance;
+/// The month's figures: burndown, balance, expenses and incomes. The numbers
+/// come from [MonthSummary], which applies the same rules as the server and
+/// the iOS app.
+class SummaryScreen extends StatelessWidget {
+  const SummaryScreen({super.key, this.onShowExpenses, this.onShowIncomes});
 
-  Summary({required this.data}) {
-    _calculate();
-  }
+  final VoidCallback? onShowExpenses;
+  final VoidCallback? onShowIncomes;
 
-  void _calculate() {
-    startDate = DateTime.parse(data['month']['start_date']);
-    endDate = DateTime.parse(data['month']['end_date']);
-
-    var incomes = data['incomes'] as List<dynamic>;
-    salarySum = 0.0;
-    otherIncomesSum = 0.0;
-    for (var income in incomes) {
-      var value = income['value'];
-      if (income['is_salary'] == true) {
-        salarySum += value;
-      } else {
-        otherIncomesSum += value;
-      }
-    }
-    incomesSum = salarySum + otherIncomesSum;
-
-    var expenses = data['expenses'] as List<dynamic>;
-    monthlyExpensesSum = 0.0;
-    regularExpensesSum = 0.0;
-    dailyExpensesBeforeTodaySum = 0.0;
-    todayExpensesSum = 0.0;
-    var today = DateTime.parse(
-        "${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}");
-    for (var expense in expenses) {
-      var value = expense['value'];
-      if (expense['is_monthly'] == true) {
-        monthlyExpensesSum += value;
-      } else {
-        regularExpensesSum += value;
-        var expDate = DateTime.parse(expense['date']);
-        if (expDate.isBefore(today)) {
-          dailyExpensesBeforeTodaySum += value;
-        }
-        if (expDate.year == today.year &&
-            expDate.month == today.month &&
-            expDate.day == today.day) {
-          todayExpensesSum += value;
-        }
-      }
-    }
-    expensesSum = monthlyExpensesSum + regularExpensesSum;
-    balance = incomesSum - expensesSum;
-  }
-}
-
-class SummaryScreen extends StatefulWidget {
-  final Map<String, dynamic> data;
-
-  const SummaryScreen({Key? key, required this.data}) : super(key: key);
-
-  @override
-  _SummaryScreenState createState() => _SummaryScreenState();
-}
-
-class _SummaryScreenState extends State<SummaryScreen> {
   @override
   Widget build(BuildContext context) {
-    final summary = Summary(data: widget.data);
+    final months = AppScope.of(context).months;
+    if (months.month == null) return const SizedBox.shrink();
+    final summary = months.summary;
+
     return OrientationBuilder(
       builder: (context, orientation) {
+        final chart = _buildChartCard(context, months.burndown, orientation);
+        final cards = [
+          _HeroBalance(summary: summary),
+          const SizedBox(height: 16),
+          _buildExpensesCard(context, summary),
+          const SizedBox(height: 16),
+          _buildIncomesCard(context, summary),
+        ];
         if (orientation == Orientation.landscape) {
+          // The chart takes the whole left column; only the cards scroll, in
+          // a list of their own (not the shell's primary controller). Both
+          // keep clear of the system navigation bar at the bottom.
+          final bottomInset = MediaQuery.paddingOf(context).bottom;
           return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-                  children: [
-                    _buildBurndownChartCard(context, orientation: orientation),
-                  ],
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(8, 8, 8, 16 + bottomInset),
+                  child: chart,
                 ),
               ),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.only(right: 32, top: 8.0, bottom: 8.0),
-                  children: [
-                    _buildBalanceCard(context, summary),
-                    const SizedBox(height: 16),
-                    _buildExpensesCard(
-                        context,
-                        summary.regularExpensesSum,
-                        summary.monthlyExpensesSum,
-                        summary.expensesSum),
-                    const SizedBox(height: 16),
-                    _buildIncomeCard(
-                        context,
-                        summary.salarySum,
-                        summary.otherIncomesSum,
-                        summary.incomesSum),
-                    const SizedBox(height: 16),
-                  ],
+                  primary: false,
+                  padding: EdgeInsets.only(
+                      right: 32, top: 8.0, bottom: 8.0 + bottomInset),
+                  children: [...cards, const SizedBox(height: 16)],
                 ),
               ),
-            ],
-          );
-        } else {
-          return ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            children: [
-              _buildBurndownChartCard(context, orientation: orientation),
-              const SizedBox(height: 16),
-              _buildBalanceCard(context, summary),
-              const SizedBox(height: 16),
-              _buildExpensesCard(
-                  context,
-                  summary.regularExpensesSum,
-                  summary.monthlyExpensesSum,
-                  summary.expensesSum),
-              const SizedBox(height: 16),
-              _buildIncomeCard(
-                  context,
-                  summary.salarySum,
-                  summary.otherIncomesSum,
-                  summary.incomesSum),
-              const SizedBox(height: 70),
             ],
           );
         }
+        return ListView(
+          padding: EdgeInsets.fromLTRB(
+              16, 8, 16, 78 + MediaQuery.paddingOf(context).bottom),
+          children: [chart, const SizedBox(height: 16), ...cards],
+        );
       },
     );
   }
 
-  Widget _buildIncomeCard(BuildContext context, double salarySum, double otherIncomesSum, double total) {
-    String title = AppLocalizations.of(context)!.incomes;
-    double amount = total;
-    List<Widget> children = [];
-
-    if (salarySum > 0 && otherIncomesSum == 0) {
-      title = AppLocalizations.of(context)!.salary;
-      amount = salarySum;
-    } else if (salarySum == 0 && otherIncomesSum > 0) {
-      title = AppLocalizations.of(context)!.otherIncome;
-      amount = otherIncomesSum;
-    } else if (salarySum > 0 && otherIncomesSum > 0) {
-      children.add(_buildDetailRow(AppLocalizations.of(context)!.salary, salarySum));
-      children.add(_buildDetailRow(AppLocalizations.of(context)!.otherIncome, otherIncomesSum));
-    }
-
-    return InfoCard(
-      icon: Icons.arrow_upward_rounded,
-      title: title,
-      amount: amount,
-      isOutlined: true,
-      children: children
+  /// Portrait: a strip of fixed height above the cards. Landscape: the card
+  /// fills whatever height the column gives it (the chart paints to any size).
+  Widget _buildChartCard(
+      BuildContext context, BurndownSeries series, Orientation orientation) {
+    final card = InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ChartViewScreen()),
+      ),
+      child: AbsorbPointer(
+        child: Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: MonthBurndownChart(series: series, isSimplified: true),
+        ),
+      ),
     );
+    return orientation == Orientation.portrait
+        ? SizedBox(height: 200, child: card)
+        : card;
   }
 
-  Widget _buildExpensesCard(BuildContext context, double regularSum, double monthlySum, double total) {
-    String title = AppLocalizations.of(context)!.expenses;
-    double amount = total;
-    List<Widget> children = [];
-
-    if (regularSum > 0 && monthlySum == 0) {
-      title = AppLocalizations.of(context)!.dailyExpenses;
-      amount = regularSum;
-    } else if (regularSum == 0 && monthlySum > 0) {
-      title = AppLocalizations.of(context)!.recurrentExpenses;
-      amount = monthlySum;
-    } else if (regularSum > 0 && monthlySum > 0) {
-      children.add(_buildDetailRow(AppLocalizations.of(context)!.dailyExpenses, regularSum));
-      children.add(_buildDetailRow(AppLocalizations.of(context)!.recurrentExpenses, monthlySum));
-    }
-
+  Widget _buildExpensesCard(BuildContext context, MonthSummary summary) {
+    final l10n = AppLocalizations.of(context)!;
     return InfoCard(
       icon: Icons.arrow_downward_rounded,
-      title: title,
-      amount: amount,
+      title: l10n.expenses,
+      amount: summary.allExpenses,
       isOutlined: true,
-      children: children
+      onTap: onShowExpenses,
+      children: summary.allExpenses == 0
+          ? const []
+          : [
+              detailRow(l10n.dailyExpenses,
+                  Formatters.moneyOf(context, summary.dailyExpenses)),
+              detailRow(l10n.recurrentExpenses,
+                  Formatters.moneyOf(context, summary.monthlyExpenses)),
+            ],
     );
   }
 
-  Widget _buildBurndownChartCard(BuildContext context, {Orientation orientation = Orientation.portrait}) {
-    final startDate = DateTime.parse(widget.data['month']['start_date']);
-    final endDate = DateTime.parse(widget.data['month']['end_date']);
-    final incomes = widget.data['incomes'] as List<dynamic>;
-    final expenses = widget.data['expenses'] as List<dynamic>;
-    final isVertical = orientation == Orientation.portrait;
-
-    return Container(
-      height: isVertical ? 200 : 300,
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ChartViewScreen(data: widget.data),
-            ),
-          );
-        },
-        child: AbsorbPointer(
-          child: Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: MonthBurndownChart(
-                incomes: incomes,
-                expenses: expenses,
-                startDate: startDate,
-                endDate: endDate,
-                isSimplified: true
-              ),
-            ),
-          ),
-      )
-    );
-  }
-
-  Widget _buildBalanceCard(BuildContext context, Summary summary) {
+  Widget _buildIncomesCard(BuildContext context, MonthSummary summary) {
     final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-    final brightness = Theme.of(context).brightness;
-
-    final balance = summary.balance;
-    final daysLeft = summary.endDate.difference(DateTime.now()).inDays + 1;
-    final balanceBeforeToday = summary.incomesSum - summary.monthlyExpensesSum - summary.dailyExpensesBeforeTodaySum;
-    final maxDailyExpenses = (daysLeft > 0) ? balanceBeforeToday / daysLeft : 0.0;
-    final todayExpensesPercent = (maxDailyExpenses > 0) ? (summary.todayExpensesSum / maxDailyExpenses * 100) : 0.0;
-    String spentTodayValue = Formatters.currencyFormatter.format(summary.todayExpensesSum);
-    if (balanceBeforeToday > 0 && maxDailyExpenses > 0) {
-      spentTodayValue += " (${todayExpensesPercent.round()}%)";
-    }
-
-    final children = <Widget>[];
-    final isCurrent = DateTime.now().isAfter(summary.startDate) &&
-        DateTime.now().isBefore(summary.endDate.add(const Duration(days: 1)));
-    if (isCurrent) {
-      if (balanceBeforeToday > 0) {
-        children.add(_buildDetailRow(l10n.maxDailyExpense, maxDailyExpenses,
-            valueColor: colorScheme.onPrimaryContainer));
-      }
-      children.add(_buildDetailRow(l10n.spentToday, spentTodayValue,
-          isCurrency: false, valueColor: colorScheme.onPrimaryContainer));
-      children.add(_buildDetailRow(l10n.daysLeft, daysLeft.toString(),
-          isCurrency: false, valueColor: colorScheme.onPrimaryContainer));
-    }
-
     return InfoCard(
-        title: AppLocalizations.of(context)!.balance.toUpperCase(),
-        amount: balance,
-        isOutlined: false,
-        children: children,
-        color: balance >= 0
-            ? isCurrent
-              ? colorScheme.primaryContainer
-              : brightness == Brightness.light
-                ? Colors.green.shade100
-                : Colors.green.shade900
-            : colorScheme.errorContainer,
-        textColor: balance >= 0
-            ? isCurrent
-              ? colorScheme.onPrimaryContainer
-              : brightness == Brightness.light
-                ? Colors.green.shade800
-                : Colors.green.shade100
-            : colorScheme.onErrorContainer
+      icon: Icons.arrow_upward_rounded,
+      title: l10n.incomes,
+      amount: summary.allIncomes,
+      isOutlined: true,
+      onTap: onShowIncomes,
+      children: summary.allIncomes == 0
+          ? const []
+          : [
+              detailRow(l10n.forDailyExpenses,
+                  Formatters.moneyOf(context, summary.incomesForDailyExpenses)),
+              detailRow(
+                  l10n.salary, Formatters.moneyOf(context, summary.salaries)),
+              detailRow(l10n.otherIncome,
+                  Formatters.moneyOf(context, summary.otherIncomes)),
+            ],
     );
   }
 
-  Widget _buildDetailRow(String name, dynamic value, {bool isCurrency = true, Color? valueColor}) {
+  static Widget detailRow(String name, String value, {Color? valueColor}) {
     return ListTile(
       dense: true,
       visualDensity: const VisualDensity(horizontal: 0, vertical: -4),
       title: Text(name),
       trailing: Text(
-        isCurrency ? Formatters.currencyFormatter.format(value) : value.toString(),
+        value,
         style: TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
-          color: valueColor
+            fontWeight: FontWeight.w500, fontSize: 14, color: valueColor),
+      ),
+    );
+  }
+}
+
+/// The headline: balance after planned savings in display type, a status
+/// pill (on track, over budget, or saved for a closed month), the savings
+/// detail when it applies, and for the current month a meter of today's
+/// spending against the daily allowance.
+class _HeroBalance extends StatelessWidget {
+  const _HeroBalance({required this.summary});
+
+  final MonthSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final budgetColors = BudgetColors.of(context);
+    String money(double amount) => Formatters.moneyOf(context, amount);
+
+    final (background, foreground, statusIcon, statusText) =
+        switch ((summary.balance < 0, summary.isActual)) {
+      (true, _) => (
+          scheme.errorContainer,
+          scheme.onErrorContainer,
+          Icons.trending_down_rounded,
+          l10n.statusOverBudget
         ),
+      (false, true) => (
+          scheme.primaryContainer,
+          scheme.onPrimaryContainer,
+          Icons.check_circle_outline_rounded,
+          l10n.statusOnTrack
+        ),
+      (false, false) => (
+          budgetColors.successContainer,
+          budgetColors.onSuccessContainer,
+          Icons.savings_outlined,
+          l10n.statusSaved
+        ),
+    };
+    final secondary = foreground.withValues(alpha: 0.8);
+
+    final maxDaily = summary.maxDaily;
+    final hasAllowance = summary.isActual && maxDaily != null && maxDaily > 0;
+    final overDaily = hasAllowance && summary.todaySpendings > maxDaily;
+    final progress = hasAllowance
+        ? (summary.todaySpendings / maxDaily).clamp(0.0, 1.0)
+        : 0.0;
+    var spentToday = money(summary.todaySpendings);
+    if (summary.todayPercent != null) {
+      spentToday += ' (${summary.todayPercent!.round()}%)';
+    }
+
+    return Card.filled(
+      color: background,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.balance.toUpperCase(),
+                    style: theme.textTheme.labelLarge
+                        ?.copyWith(color: foreground, letterSpacing: 0.8),
+                  ),
+                ),
+                _StatusPill(
+                    icon: statusIcon, text: statusText, color: foreground),
+              ],
+            ),
+            const SizedBox(height: 6),
+            // A changed balance fades and rises in, instead of just snapping.
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 350),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              layoutBuilder: (current, previous) => Stack(
+                alignment: Alignment.centerLeft,
+                children: [...previous, if (current != null) current],
+              ),
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween(begin: const Offset(0, 0.2), end: Offset.zero)
+                      .animate(animation),
+                  child: child,
+                ),
+              ),
+              child: Text(
+                money(summary.balance),
+                key: ValueKey(summary.balance),
+                style: theme.textTheme.displaySmall?.copyWith(
+                    color: foreground,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5),
+              ),
+            ),
+            if (summary.plannedSavings > 0) ...[
+              const SizedBox(height: 4),
+              Text(
+                '${l10n.actualBalance} ${money(summary.actualBalance)} · ${l10n.plannedSavings} ${money(summary.plannedSavings)}',
+                style: theme.textTheme.bodySmall?.copyWith(color: secondary),
+              ),
+            ],
+            if (summary.isActual) ...[
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                      child: Text(l10n.spentToday,
+                          style: theme.textTheme.labelLarge
+                              ?.copyWith(color: foreground))),
+                  Text(spentToday,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                          color: foreground, fontWeight: FontWeight.w600)),
+                ],
+              ),
+              if (hasAllowance) ...[
+                const SizedBox(height: 8),
+                LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 8,
+                  color: overDaily ? scheme.error : scheme.primary,
+                  backgroundColor: foreground.withValues(alpha: 0.12),
+                ),
+              ],
+              const SizedBox(height: 8),
+              Text(
+                [
+                  if (hasAllowance) '${l10n.maxDaily} ${money(maxDaily)}',
+                  l10n.daysLeftCount(summary.daysLeft),
+                ].join(' · '),
+                style: theme.textTheme.bodySmall?.copyWith(color: secondary),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill(
+      {required this.icon, required this.text, required this.color});
+
+  final IconData icon;
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(text,
+              style: theme.textTheme.labelMedium
+                  ?.copyWith(color: color, fontWeight: FontWeight.w600)),
+        ],
       ),
     );
   }

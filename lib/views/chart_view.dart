@@ -1,35 +1,43 @@
 import 'package:flutter/material.dart';
-import '../views/widgets/month_burndown_chart.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
-class ChartViewScreen extends StatelessWidget {
-  final Map<String, dynamic> data;
+import '../app/app_scope.dart';
+import 'widgets/month_burndown_chart.dart';
 
-  const ChartViewScreen({Key? key, required this.data}) : super(key: key);
+/// Full-screen burndown with the daily and recurring expense bars and a legend.
+class ChartViewScreen extends StatelessWidget {
+  const ChartViewScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final startDate = DateTime.parse(data['month']['start_date']);
-    final endDate = DateTime.parse(data['month']['end_date']);
-    final incomes = data['incomes'] as List<dynamic>;
-    final expenses = data['expenses'] as List<dynamic>;
-
+    final l10n = AppLocalizations.of(context)!;
+    final months = AppScope.of(context).months;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          AppLocalizations.of(context)!.burndownChart,
-        ),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: Text(l10n.burndownChart)),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: MonthBurndownChart(
-            incomes: incomes,
-            expenses: expenses,
-            startDate: startDate,
-            endDate: endDate,
-          ),
+        child: ListenableBuilder(
+          listenable: months,
+          builder: (context, _) {
+            final series = months.burndown;
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  Expanded(child: MonthBurndownChart(series: series)),
+                  const SizedBox(height: 12),
+                  BurndownLegend(
+                    series: series,
+                    labels: (
+                      balance: l10n.balance,
+                      plan: l10n.plannedLine,
+                      daily: l10n.dailyExpenses,
+                      recurring: l10n.recurrentExpenses,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );

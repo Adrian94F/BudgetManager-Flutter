@@ -1,59 +1,52 @@
-import 'package:budget_manager/views/budget_settings.dart';
 import 'package:flutter/material.dart';
-import 'package:budget_manager/services/auth_service.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
+import '../app/app_scope.dart';
 import 'app_settings.dart';
+import 'budget_settings.dart';
+import 'change_password_screen.dart';
 
+/// Settings, opened from the top bar: app settings, budget settings
+/// (currency, categories), password and sign-out.
 class SettingsScreen extends StatelessWidget {
-  final AuthService _authService = AuthService();
-  final Future<void> Function(String) setThemeMode;
-
-  SettingsScreen({Key? key, required this.setThemeMode}) : super(key: key);
-
-  Future<void> _logout(BuildContext context) async {
-    await _authService.logout();
-    Navigator.pushReplacementNamed(context, '/login');
-  }
+  const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    void push(Widget screen) =>
+        Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: Text(AppLocalizations.of(context)!.appSettings),
-              trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => AppSettingsScreen(setThemeMode: setThemeMode,)),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: Text(AppLocalizations.of(context)!.budgetSettings),
-              trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const BudgetSettings()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: Text(AppLocalizations.of(context)!.logOut),
-              onTap: () => _logout(context),
-            ),
-          ],
-        ),
+      appBar: AppBar(title: Text(l10n.settings)),
+      body: ListView(
+        padding: EdgeInsets.only(
+            top: 8, bottom: 8 + MediaQuery.paddingOf(context).bottom),
+        children: [
+          ListTile(
+            leading: const Icon(Icons.palette_outlined),
+            title: Text(l10n.appSettings),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => push(const AppSettingsScreen()),
+          ),
+          ListTile(
+            leading: const Icon(Icons.account_balance_wallet_outlined),
+            title: Text(l10n.budgetSettings),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => push(const BudgetSettingsScreen()),
+          ),
+          ListTile(
+            leading: const Icon(Icons.key_outlined),
+            title: Text(l10n.changePassword),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => push(const ChangePasswordScreen()),
+          ),
+          const Divider(indent: 16, endIndent: 16),
+          ListTile(
+            leading: const Icon(Icons.logout_rounded),
+            title: Text(l10n.logOut),
+            onTap: () => AppScope.of(context).auth.logout(),
+          ),
+        ],
       ),
     );
   }

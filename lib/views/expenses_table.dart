@@ -1,484 +1,292 @@
-import 'package:budget_manager/views/widgets/custom_data_table.dart';
 import 'package:flutter/material.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
-import 'package:material_table_view/material_table_view.dart';
 
+import '../domain/domain.dart';
+import '../models/models.dart';
+import '../tools/dates.dart';
 import 'expenses_list.dart';
-import 'widgets/expenses_table_item_button.dart';
+import 'widgets/category_style.dart';
+import 'widgets/custom_data_table.dart';
 
-class ExpensesTableView extends StatefulWidget {
-  final List<dynamic> expenses;
-  final List<dynamic> categories;
-  final Map<String, dynamic> month;
-  final Future<void> Function() refreshParent;
-  final void Function(ExpensesFilter filter) openFilteredListCallback;
-  final void Function(ScrollCoords coords) saveTableCoords;
-  final ScrollCoords? scrollCoords;
+/// Category × day grid of the month's expenses with a sum row and column.
+/// Tapping a cell, a day or a category opens the filtered expenses list.
+class ExpensesTableView extends StatelessWidget {
+  const ExpensesTableView(
+      {super.key, required this.data, required this.onOpenFiltered});
 
-  ExpensesTableView({
-    Key? key,
-    required this.expenses,
-    required this.categories,
-    required this.month,
-    required this.refreshParent,
-    required this.openFilteredListCallback,
-    required this.saveTableCoords,
-    required this.scrollCoords,
-  }) : super(key: key) {
-    beginDate = DateTime.parse(month['start_date']);
-    endDate = endDate = DateTime.parse(month['end_date']).add(const Duration(days: 1));
-  }
+  final MonthData data;
+  final void Function(ExpensesFilter filter) onOpenFiltered;
 
-  late Map<DateTime, double> dateSums = {};
-  late Map<int, double> categorySums = {};
-  late Map<int, Map<DateTime, double>> categoryDateSums = {};
-  late DateTime beginDate;
-  late DateTime endDate;
-
-  @override
-  _ExpensesTableViewState createState() => _ExpensesTableViewState();
-}
-
-class _ExpensesTableViewState extends State<ExpensesTableView> {
-  final TableViewController _tableViewController = TableViewController();
-  // final _columnWidth = 45.0;
-  late Future<Map<String, List<dynamic>>> _calculationFuture;
-
-  @override
-  void didUpdateWidget(covariant ExpensesTableView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Recalculate if the data has changed
-    _calculationFuture = _prepareTableData();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.scrollCoords != null) {
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _scrollToXY(widget.scrollCoords!)
-      );
-    } else {
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _scrollToToday());
-    }
-    _calculationFuture = _prepareTableData();
-  }
-
-  void _scrollToToday() {
-    DateTime today = DateTime.now();
-    DateTime beginDate = DateTime.parse(widget.month['start_date']);
-    DateTime endDate = DateTime.parse(widget.month['end_date']).add(const Duration(days: 1));
-
-    if (today.isBefore(beginDate) || today.isAfter(endDate)) {
-      return;
-    }
-
-    final screenWidth = MediaQuery.of(context).size.width.toInt();
-    final columnsOffset = ((screenWidth - 150) / 45 * 0.6).floor();
-    final todayColumnIndex = today.difference(beginDate).inDays - columnsOffset;
-    // final scrollOffset = todayColumnIndex * _columnWidth;
-    // _scrollToXY(ScrollCoords(x: scrollOffset));
-  }
-
-  void _scrollToXY(ScrollCoords coords) {
-    /*WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (coords.x != null) {
-        _tableViewController.horizontalScrollController.animateTo(
-          coords.x!,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-        );
-      }
-      if (coords.y != null) {
-      _tableViewController.verticalScrollController.animateTo(
-        coords.y!,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
-      }
-    });*/
-  }
-
-  void _showFilteredExpenses({int? categoryId, DateTime? date}) {
-    final filter = ExpensesFilter(
-      date: date,
-      category: categoryId,
-    );
-    print("Showing filtered expenses");
-    // final coordX = _tableViewController.horizontalScrollController.offset;
-    // final coordY = _tableViewController.verticalScrollController.offset;
-    // widget.saveTableCoords(ScrollCoords(x: coordX, y: coordY));
-
-    /*Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => FilteredExpensesList(
-          expenses: widget.expenses,
-          categories: widget.categories,
-          filter: filter,
-          monthId: widget.month['id'],
-          refreshParent: widget.refreshParent,
-        ),
-      ),
-    );*/
-
-    widget.openFilteredListCallback(filter);
-  }
-
-  Color getCellBackgroundColor(BuildContext context, DateTime date) {
-    var now = DateTime.now();
-    var isToday = date.isAtSameMomentAs(DateTime(now.year, now.month, now.day));
-    var isWeekend = date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    if (isToday) {
-      return colorScheme.primaryContainer.withOpacity(0.3);
-    } else if (isWeekend) {
-      return colorScheme.surfaceVariant.withOpacity(0.3);
-    }
-    return Colors.transparent;
-  }
-
-  String _getDayAcronym(DateTime date) {
-    final dayAcronyms = [
-      AppLocalizations.of(context)!.shortMonday,
-      AppLocalizations.of(context)!.shortTuesday,
-      AppLocalizations.of(context)!.shortWednesday,
-      AppLocalizations.of(context)!.shortThursday,
-      AppLocalizations.of(context)!.shortFriday,
-      AppLocalizations.of(context)!.shortSaturday,
-      AppLocalizations.of(context)!.shortSunday
-    ];
-    return dayAcronyms[date.weekday - 1];
-  }
-
-  Widget _cellBuilder(CellData? data) {
-    if (data == null) {
-      return Container();
-    }
-
-    final category = data.categoryId;
-    final date = data.date;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    final isColumnHeader = date == null;
-    final isRowHeader = category == null;
-
-    // Header row with dates
-    if (isRowHeader && date != null && data.isSum != true) {
-      final now = DateTime.now();
-      final isToday = date.isAtSameMomentAs(DateTime(now.year, now.month, now.day));
-      final isWeekend = date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
-
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _showFilteredExpenses(date: date),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isToday
-                  ? colorScheme.primaryContainer
-                  : colorScheme.surface,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  data.secondaryText ?? '',
-                  overflow: TextOverflow.clip,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isWeekend ? FontWeight.w600 : FontWeight.w500,
-                    color: isToday
-                        ? colorScheme.onPrimaryContainer
-                        : (isWeekend ? colorScheme.primary : colorScheme.onSurfaceVariant),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: isToday ? colorScheme.primary : Colors.transparent,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      data.text,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
-                        color: isToday
-                            ? colorScheme.onPrimary
-                            : (isWeekend ? colorScheme.primary : colorScheme.onSurface),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Categories column
-    if (isColumnHeader && data.isSum != true) {
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _showFilteredExpenses(categoryId: category),
-          child: Container(
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  data.text,
-                  overflow: TextOverflow.clip,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 10,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Category or date sum cell
-    if (data.isSum == true) {
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap:() {
-            if (category != null) {
-              _showFilteredExpenses(categoryId: category);
-            } else if (date != null) {
-              _showFilteredExpenses(date: date);
-            }
-          },
-          child: Container(
-            // decoration: BoxDecoration(
-            //   color: colorScheme.surfaceVariant.withOpacity(0.3),
-            // ),
-            child: Center(
-              child: data.text.isNotEmpty
-                  ? Text(
-                    data.text,
-                    overflow: TextOverflow.clip,
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  )
-                  : null,
-            ),
-          ),
-        ),
-      );
-    }
-
-    final bgColor = getCellBackgroundColor(context, date!);
-    final hasExpense = data.text.isNotEmpty;
-
-    // category + date sum cell
-    return Material(
-      color: bgColor,
-      child: InkWell(
-        onTap: () => _showFilteredExpenses(categoryId: category, date: date),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-          ),
-          child: Center(
-            child: hasExpense
-                ? Text(
-                    data.text,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: colorScheme.onSurface,
-                    ),
-                  )
-                : null,
-          ),
-        ),
-      ),
-    );
-  }
-
-  String formatNumber(double number) {
-    return number != 0.0
-        ? number < 1000
-          ? number.round().toString()
-          : "${(number.round() / 1000.0).toStringAsFixed(0)}k"
-        : '';
-  }
-
-  void calculateSums() {
-    for (var expense in widget.expenses) {
-      var category = expense['category'];
-      DateTime date = DateTime.parse(expense['date']);
-      double value = (expense['value'] as num).toDouble();
-
-      widget.dateSums[date] = (widget.dateSums[date] ?? 0.0) + value;
-      widget.categorySums[category] = (widget.categorySums[category] ?? 0.0) + value;
-      widget.categoryDateSums[category] = widget.categoryDateSums[category] ?? {};
-      widget.categoryDateSums[category]![date] = (widget.categoryDateSums[category]![date] ?? 0.0) + value;
-    }
-  }
-
-  List<List<CellData>> createRowsCells() {
-    // Create the main data grid with CellData objects
-    return widget.categories.map((category) {
-      final int categoryId = category['id'];
-      return List.generate(widget.endDate.difference(widget.beginDate).inDays, (dayIndex) {
-        var date = DateUtils.dateOnly(widget.beginDate.add(Duration(days: dayIndex, hours: 1))); // Add 1 hour for daytime change
-        final sum = widget.categoryDateSums[categoryId]?[date] ?? 0.0;
-        return CellData(
-          text: formatNumber(sum),
-          categoryId: categoryId,
-          date: date,
-        );
-      });
-    }).toList();
-  }
-
-  List<CellData> createFixedColCells() {
-    // Create the fixed column headers (Category names) with CellData
-    return widget.categories.map((c) {
-      return CellData(
-        text: c['name'].toString(),
-        secondaryText: null,
-        categoryId: c['id'],
-        date: null,
-      );
-    }).toList();
-  }
-
-  List<CellData> createFixedColCellsSums() {
-    // Create sum column for categories
-    return widget.categories.map((c) {
-      final categorySum = widget.categorySums[c['id']] ?? 0.0;
-      return CellData(
-        text: formatNumber(categorySum),
-        categoryId: c['id'],
-        date: null,
-        isSum: true,
-        sum: categorySum,
-      );
-    }).toList();
-  }
-
-  List<CellData> createFixedRowCells() {
-    // Create the fixed row headers (Dates with day acronyms) with CellData
-    return List.generate(
-      widget.endDate.difference(widget.beginDate).inDays,
-          (i) {
-        final date = DateUtils.dateOnly(widget.beginDate.add(Duration(days: i, hours: 1)));
-        final dayAcronym = _getDayAcronym(date);
-        final dateNum = date.day.toString();
-        final dateSum = widget.dateSums[date] ?? 0.0;
-        return CellData(
-          text: dateNum,
-          secondaryText: dayAcronym,
-          categoryId: null,
-          date: date,
-        );
-      },
-    );
-  }
-
-  List<CellData> createFixedRowCellsSums() {
-    // Create fixed bottom row with date sums
-    return List.generate(widget.endDate.difference(widget.beginDate).inDays, (dayIndex) {
-      final date = widget.beginDate.add(Duration(days: dayIndex));
-      final sum = widget.dateSums[date] ?? 0.0;
-      return CellData(
-        text: formatNumber(sum),
-        date: date,
-        isSum: true,
-        sum: sum,
-      );
-    });
-  }
-
-  Future<Map<String, List<dynamic>>> _prepareTableData() async {
-    return Future(() {
-      calculateSums();
-      return {
-        'rowsCells': [createRowsCells()],
-        'fixedColCells': [createFixedColCells()],
-        'fixedRightColCells': [createFixedColCellsSums()],
-        'fixedRowCells': [createFixedRowCells()],
-        'fixedBottomRowCells': [createFixedRowCellsSums()],
-      };
-    });
+  /// Whole amounts; thousands only when the number would not fit a cell.
+  static String formatNumber(double number) {
+    if (number == 0) return '';
+    if (number.abs() < 100000) return number.round().toString();
+    return '${(number / 1000).round()}k';
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.expenses.isEmpty || widget.categories.isEmpty) {
-      return const Center(child: Text("No data available"));
+    final l10n = AppLocalizations.of(context)!;
+    final month = data.month!;
+    if (data.categories.isEmpty) return _Message(text: l10n.noCategories);
+    if (data.expenses.isEmpty) return _Message(text: l10n.noExpenses);
+
+    final table = ExpenseTable.build(month, data.categories, data.expenses);
+    final dayLetters = [
+      l10n.shortMonday,
+      l10n.shortTuesday,
+      l10n.shortWednesday,
+      l10n.shortThursday,
+      l10n.shortFriday,
+      l10n.shortSaturday,
+      l10n.shortSunday,
+    ];
+
+    final grid = CustomDataTable<CellData>(
+      rowsCells: [
+        for (final category in table.categories)
+          [
+            for (final day in table.days)
+              CellData(
+                  text: formatNumber(table.cell(category.id, day)),
+                  categoryId: category.id,
+                  date: day),
+          ],
+      ],
+      fixedColCells: [
+        for (final category in table.categories)
+          CellData(text: category.name, categoryId: category.id),
+      ],
+      fixedRightColCells: [
+        for (final category in table.categories)
+          CellData(
+              text: formatNumber(table.categoryTotal(category.id)),
+              categoryId: category.id,
+              isSum: true),
+      ],
+      fixedRowCells: [
+        for (final day in table.days)
+          CellData(
+              text: '${day.day}',
+              secondaryText: dayLetters[day.weekday - 1],
+              date: day),
+      ],
+      fixedBottomRowCells: [
+        for (final day in table.days)
+          CellData(
+              text: formatNumber(table.total(day)), date: day, isSum: true),
+      ],
+      cellBuilder: (cell) => _buildCell(context, cell),
+    );
+
+    if (table.outOfRangeCount == 0) return grid;
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        Material(
+          color: scheme.tertiaryContainer,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline_rounded,
+                    color: scheme.onTertiaryContainer, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n.expensesOutsideMonth(table.outOfRangeCount),
+                    style: TextStyle(color: scheme.onTertiaryContainer),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Expanded(child: grid),
+      ],
+    );
+  }
+
+  Widget _buildCell(BuildContext context, CellData? cell) {
+    if (cell == null) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    final category = cell.categoryId;
+    final day = cell.date;
+
+    // Header row: day number with its weekday letter; today gets a filled circle.
+    if (category == null && day != null && !cell.isSum) {
+      final isToday = Dates.isSameDay(day, DateTime.now());
+      final isWeekend = Dates.isWeekend(day);
+      final accent = isWeekend ? scheme.primary : scheme.onSurfaceVariant;
+      return Material(
+        color: isToday ? scheme.primaryContainer : scheme.surface,
+        child: InkWell(
+          onTap: () => onOpenFiltered(ExpensesFilter(date: day)),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                cell.secondaryText ?? '',
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isWeekend ? FontWeight.w600 : FontWeight.w500,
+                  color: isToday ? scheme.onPrimaryContainer : accent,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: isToday ? scheme.primary : Colors.transparent,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    cell.text,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
+                      color: isToday
+                          ? scheme.onPrimary
+                          : (isWeekend ? scheme.primary : scheme.onSurface),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
-    return FutureBuilder<Map<String, List<dynamic>>>(
-      future: _calculationFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        } else if (snapshot.hasData) {
-          final data = snapshot.data!;
-          return CustomDataTable<CellData>(
-            rowsCells: data['rowsCells']![0],
-            fixedColCells: data['fixedColCells']![0],
-            fixedRightColCells: data['fixedRightColCells']![0],
-            fixedRowCells: data['fixedRowCells']![0],
-            fixedBottomRowCells: data['fixedBottomRowCells']![0],
-            cellBuilder: _cellBuilder,
-          );
-        }
-        return const Center(child: Text("No data to display."));
-      },
+    // Category column.
+    if (day == null && category != null && !cell.isSum) {
+      return Material(
+        color: scheme.surface,
+        child: InkWell(
+          onTap: () => onOpenFiltered(ExpensesFilter(category: category)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                      color: CategoryStyle.of(context, cell.text).accent,
+                      shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    cell.text,
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 10,
+                        color: scheme.onSurface),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Sum cells: a category's total, or a day's total.
+    if (cell.isSum) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () =>
+              onOpenFiltered(ExpensesFilter(category: category, date: day)),
+          child: Center(
+            child: cell.text.isEmpty
+                ? null
+                : Text(
+                    cell.text,
+                    maxLines: 1,
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurfaceVariant),
+                  ),
+          ),
+        ),
+      );
+    }
+
+    // Category × day cell.
+    final Color background;
+    if (Dates.isSameDay(day!, DateTime.now())) {
+      background = scheme.primaryContainer.withValues(alpha: 0.3);
+    } else if (Dates.isWeekend(day)) {
+      background = scheme.surfaceContainerHighest.withValues(alpha: 0.3);
+    } else {
+      background = Colors.transparent;
+    }
+    return Material(
+      color: background,
+      child: InkWell(
+        onTap: () =>
+            onOpenFiltered(ExpensesFilter(category: category, date: day)),
+        child: Center(
+          child: cell.text.isEmpty
+              ? null
+              : Text(
+                  cell.text,
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: scheme.onSurface),
+                ),
+        ),
+      ),
     );
   }
 }
 
-class CellData {
-  late String text;
-  late String? secondaryText;
-  late DateTime? date;
-  late int? categoryId;
-  late bool? isSum;
-  late double? sum;
+class _Message extends StatelessWidget {
+  const _Message({required this.text});
 
-  CellData({
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(48.0),
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyLarge
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One cell of the grid: a header (day or category), a sum, or a value.
+class CellData {
+  const CellData({
     required this.text,
     this.secondaryText,
     this.date,
     this.categoryId,
-    this.isSum,
-    this.sum,
+    this.isSum = false,
   });
-}
 
-class ScrollCoords {
-  late double? x;
-  late double? y;
-  ScrollCoords({this.x, this.y});
+  final String text;
+  final String? secondaryText;
+  final DateTime? date;
+  final int? categoryId;
+  final bool isSum;
 }

@@ -1,506 +1,682 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/rendering.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
-import 'package:intl/intl.dart';
-import 'package:jiffy/jiffy.dart';
 
-import '../services/auth_service.dart';
+import '../api/api.dart';
+import '../app/app_scope.dart';
+import '../models/models.dart';
+import '../state/month_controller.dart';
+import 'expense_search.dart';
 import 'expenses_list.dart';
 import 'expenses_table.dart';
 import 'incomes.dart';
+import 'month_details.dart';
+import 'month_picker_sheet.dart';
 import 'settings.dart';
 import 'summary.dart';
+import 'widgets/error_views.dart';
 import 'widgets/fab_menu.dart';
+import 'widgets/month_app_bar.dart';
+import 'widgets/month_swipe.dart';
+import 'widgets/month_switcher.dart';
+import 'widgets/rail_action.dart';
 
+/// The signed-in shell: a collapsing top bar with the month's title, the
+/// month picker and Settings, and three tabs below (Summary, Expenses as a
+/// list or a table, Incomes).
 class HomeScreen extends StatefulWidget {
-  final Future<void> Function(String) setThemeMode;
-
-  const HomeScreen({Key? key, required this.setThemeMode}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  final _authService = AuthService();
-  final _storage = const FlutterSecureStorage();
+class _Tab {
+  const _Tab(this.screen, this.fab);
 
-  var _currentIndex = 0;
-  int? _previousIndex;
-  var _monthRelated = true;
-  final _monthRelatedViews = 4;
+  final Widget screen;
+  final Widget? fab;
+}
 
-  final List<ScreenData> _screens = [
-    ScreenData(title: "Hello!"),
-    ScreenData(title: "Expenses list"),
-    ScreenData(title: "Expenses table"),
-    ScreenData(title: "Incomes"),
-    // ScreenData(title: "Statistics"),
-    ScreenData(title: "Settings"),
-  ];
+enum _ExpensesView { list, table }
 
-  late Future<Map<String, dynamic>> _data;
-  Map<String, dynamic> _loadedData = {};
-  ExpensesFilter _filter = ExpensesFilter();
-  ScrollCoords? _savedCoords;
-  int? _currentMonthId;
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  static const _summaryTab = 0;
+  static const _expensesTab = 1;
+  static const _incomesTab = 2;
 
-  Future<void> _logout(BuildContext context) async {
-    await _authService.logout();
-    Navigator.pushReplacementNamed(context, '/login');
-  }
+  var _currentIndex = _summaryTab;
+  _ExpensesView _expensesView = _ExpensesView.list;
+  ExpensesFilter _filter = const ExpensesFilter();
+  bool _wasInBackground = false;
 
-  Future<void> _loadUserName() async {
-    String? login = await _storage.read(key: "login");
-    if (login != null) {
-      setState(() {
-        _screens[0].title = AppLocalizations.of(context)!.summaryTitle(login);
-        _screens[1].title = AppLocalizations.of(context)!.expensesList;
-        _screens[2].title = AppLocalizations.of(context)!.expensesTable;
-        _screens[3].title = AppLocalizations.of(context)!.incomes;
-        // _screens[4].title = AppLocalizations.of(context)!.statistics;
-        _screens[4].title = AppLocalizations.of(context)!.settings;
-      });
-    }
-  }
+  /// The month last shown, to tell which way in time a change of month
+  /// goes; the title and the content then slide that way.
+  Month? _shownMonth;
+  var _switchDirection = MonthSwitchDirection.none;
 
-  void _setScreensAndFABs() {
-    final expenses = _loadedData['expenses'] as List<dynamic>;
-    final categories = _loadedData['categories'] as List<dynamic>;
-    final month = _loadedData['month'] as Map<String, dynamic>;
+  /// How far the month is pulled sideways while the user drags it on the
+  /// Summary; the title in the bar follows it.
+  final _monthShift = ValueNotifier<double>(0);
 
-    _screens[0].screen = SummaryScreen(
-        data: _loadedData
-    );
-    _screens[0].fab = FabMenu(
-      loadedData: _loadedData,
-      onRefresh: _handleRefresh,
-    );
+  /// Drives the header and the tab's list together (see `NestedScrollView`).
+  final _scrollController = ScrollController();
+  final _refreshKey = GlobalKey<RefreshIndicatorState>();
 
-    _screens[1].screen = ExpensesListView(
-        expenses: expenses,
-        categories: categories,
-        filter: _filter,
-        monthId: month['id'],
-        refreshParent: _handleRefresh
-    );
-    _screens[1].fab = FabMenu(
-      loadedData: _loadedData,
-      onRefresh: _handleRefresh,
-      fabType: FabType.expense,
-    );
+  /// Where the header stood before the table collapsed it; restored when
+  /// another view takes over.
+  double _headerOffsetBeforeTable = 0;
 
-    _screens[2].screen = ExpensesTableView(
-      expenses: expenses,
-      categories: categories,
-      month: month,
-      refreshParent: _handleRefresh,
-      openFilteredListCallback: openFilteredExpensesList,
-      saveTableCoords: saveTableCoords,
-      scrollCoords: _savedCoords,
-    );
-
-    _screens[3].screen = IncomesScreen(
-        data: _loadedData,
-        refreshParent: _handleRefresh
-    );
-    _screens[3].fab = FabMenu(
-      loadedData: _loadedData,
-      onRefresh: _handleRefresh,
-      fabType: FabType.income,
-    );
-
-    _screens[4].screen = SettingsScreen(
-        setThemeMode: widget.setThemeMode
-    );
-  }
-
-  void openFilteredExpensesList(ExpensesFilter filter) {
-    // print("Opening filtered expenses list with filter: $filter");
-    setState(() {
-      _filter = filter;
-      _setScreensAndFABs();
-      _previousIndex = _currentIndex;
-      _currentIndex = 1;
-    });
-  }
-
-  void saveTableCoords(ScrollCoords coords) {
-    setState(() {
-      _savedCoords = coords;
-    });
-  }
-
-  void _fetchData() {
-      _data = _authService.get("month/${_currentMonthId == null ? '' : '?month_id=$_currentMonthId'}");
-  }
+  MonthController get _months => AppScope.of(context).months;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadUserName();
+    WidgetsBinding.instance.addObserver(this);
+    if (!_months.hasData && !_months.isBusy) {
+      _months.load();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _scrollController.dispose();
+    _monthShift.dispose();
+    super.dispose();
+  }
+
+  /// Figures such as "spent today" go stale when the app sat in the
+  /// background overnight, so the month is reloaded on return, after the
+  /// session was refreshed. A brief inactive state (a dialog, the
+  /// notification shade) does not count.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _wasInBackground = true;
+    } else if (state == AppLifecycleState.resumed && _wasInBackground) {
+      _wasInBackground = false;
+      _refreshAfterBackground();
+    }
+  }
+
+  Future<void> _refreshAfterBackground() async {
+    final services = AppScope.of(context);
+    try {
+      if (await services.api.ensureSession()) await services.months.refresh();
+    } on ApiException {
+      // A rejected session already signed the user out through the client.
+    }
+  }
+
+  bool get _isTableShown =>
+      _currentIndex == _expensesTab && _expensesView == _ExpensesView.table;
+
+  /// Applies a change of tab or view and keeps the header in step with it.
+  void _updateView(VoidCallback change) {
+    final wasTable = _isTableShown;
+    setState(change);
+    _syncHeaderWithTable(wasTable: wasTable);
+  }
+
+  /// The table has its own scroll controllers and never moves the header,
+  /// so the header collapses while the table shows (more rows on screen) and
+  /// comes back to where it stood once another view takes over.
+  void _syncHeaderWithTable({required bool wasTable}) {
+    final isTable = _isTableShown;
+    if (isTable == wasTable || !_scrollController.hasClients) return;
+    if (isTable) {
+      _headerOffsetBeforeTable = _scrollController.offset;
+      _animateHeader(_scrollController.position.maxScrollExtent);
+    } else {
+      _animateHeader(_headerOffsetBeforeTable);
+    }
+  }
+
+  void _animateHeader(double offset) {
+    _scrollController.animateTo(offset,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic);
+  }
+
+  /// From a table cell: the list narrowed to that day and/or category.
+  /// Back returns to the table.
+  void _openFilteredExpensesList(ExpensesFilter filter) {
+    _updateView(() {
+      _filter = filter;
+      _expensesView = _ExpensesView.list;
     });
-    _fetchData();
+  }
+
+  void _clearFilter() {
+    _updateView(() {
+      _filter = const ExpensesFilter();
+      _expensesView = _ExpensesView.table;
+    });
+  }
+
+  Future<void> _refreshHard() {
+    setState(() => _filter = const ExpensesFilter());
+    return _months.refresh();
+  }
+
+  void _selectMonth(int monthId) {
+    setState(() => _filter = const ExpensesFilter());
+    _months.selectMonth(monthId);
+  }
+
+  /// Notes the month about to be shown and which way in time it lies from
+  /// the previous one, for [MonthSwitcher]. Called from build, with the
+  /// data the controller holds now; a rebuild with the same month changes
+  /// nothing.
+  void _trackMonth(Month? month) {
+    final previous = _shownMonth;
+    if (month?.id == previous?.id) return;
+    _switchDirection = previous == null || month == null
+        ? MonthSwitchDirection.none
+        : month.startDate.isAfter(previous.startDate)
+            ? MonthSwitchDirection.forward
+            : MonthSwitchDirection.backward;
+    _shownMonth = month;
+  }
+
+  void _selectTab(int index) {
+    _updateView(() {
+      _filter = const ExpensesFilter();
+      _currentIndex = index;
+    });
+  }
+
+  /// A tap on the selected destination goes back to the top and reloads,
+  /// as Android apps do; any other destination just switches the tab.
+  Future<void> _onDestinationSelected(int index) async {
+    if (index != _currentIndex) {
+      _selectTab(index);
+      return;
+    }
+    // The table keeps the header collapsed and scrolls on its own.
+    if (_scrollController.hasClients && !_isTableShown) {
+      // The nested controller brings both the header and the list to the top.
+      await _scrollController.animateTo(0,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic);
+    }
+    await _refreshKey.currentState?.show();
+  }
+
+  void _showExpenses(_ExpensesView view) {
+    _updateView(() {
+      _filter = const ExpensesFilter();
+      _currentIndex = _expensesTab;
+      _expensesView = view;
+    });
+  }
+
+  /// The swipe on the Summary: one month back or forward, as on a calendar.
+  void _onMonthSwipe(MonthSwitchDirection direction) {
+    final target = direction == MonthSwitchDirection.backward
+        ? _months.previousMonth
+        : _months.nextMonth;
+    if (target != null) _selectMonth(target.id);
+  }
+
+  void _createMonth() {
+    MonthDetailsScreen.openCreate(context);
+  }
+
+  void _showMonthPicker(MonthData data) {
+    MonthPickerSheet.show(
+      context,
+      months: data.months,
+      selectedId: data.month?.id,
+      onSelect: _selectMonth,
+      onCreate: _createMonth,
+    );
+  }
+
+  void _openSettings() {
+    Navigator.push(
+        context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _data,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting || snapshot.hasError) {
-          if (snapshot.hasError) {
-            _logout(context);
+    final months = _months;
+    return ListenableBuilder(
+      listenable: months,
+      builder: (context, _) {
+        final data = months.data;
+        if (data == null) {
+          // Whatever comes next is a fresh start, not a move from a month.
+          _shownMonth = null;
+          final error = months.error;
+          if (error != null && !months.isLoading) {
+            return ErrorScreen(
+              error: error,
+              onRetry: months.refresh,
+              onLogout: AppScope.of(context).auth.logout,
+            );
           }
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        } else {
-          _loadedData = snapshot.data!;
-
-          return PopScope(
-            canPop: _previousIndex == null,
-            onPopInvoked: (bool didPop) {
-              if (didPop) return;
-              if (_previousIndex != null) {
-                setState(() {
-                  _currentIndex = _previousIndex!;
-                  _previousIndex = null;
-                });
-              }
-            },
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return _buildBody(constraints);
-              },
-            ),
-          );
+              body: Center(child: CircularProgressIndicator()));
         }
+        return PopScope(
+          canPop: !_filter.isActive,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop && _filter.isActive) _clearFilter();
+          },
+          child: LayoutBuilder(
+            builder: (context, constraints) =>
+                _buildScaffold(context, constraints, months, data),
+          ),
+        );
       },
     );
   }
 
-  Widget _buildBody(BoxConstraints constraints) {
-    var months = _loadedData['months'] as List<dynamic>;
-    _setScreensAndFABs();
+  Widget _buildScaffold(BuildContext context, BoxConstraints constraints,
+      MonthController months, MonthData data) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).toString();
+    final month = data.month;
+    _trackMonth(month);
+    // Medium width and up gets a rail, which also takes the month picker and
+    // Settings; a compact height (a phone in landscape) gets a one-line bar
+    // instead of the large collapsing title.
+    final useRail = constraints.maxWidth >= 600;
+    final compactHeader = constraints.maxHeight < 480;
+    final onExpenses =
+        month != null && _currentIndex == _expensesTab && !_filter.isActive;
+    // The List / Table switch sits in the bar when the window is wide enough
+    // for it next to the title; on a phone it stays below the bar.
+    final switchInBar = onExpenses && useRail;
+    final showSearch = onExpenses && _expensesView == _ExpensesView.list;
+    final tabs =
+        month == null ? null : _buildTabs(data, showSwitch: !switchInBar);
+    final content = tabs != null
+        ? tabs[_currentIndex].screen
+        : NoMonthView(message: data.message, onCreate: _createMonth);
+    final fab = tabs?[_currentIndex].fab;
+    final actionsWidth = (switchInBar ? 220.0 : 0.0) +
+        (showSearch ? 48.0 : 0.0) +
+        (useRail ? 0.0 : 96.0) +
+        4.0;
 
-    var message = _loadedData['message'];
-    var homeScreenChild = message == null
-        ? _screens[_currentIndex].screen!
-        : Center(
-          child: Text(
-            message,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          )
-        );
-
-    var currentStartDate = DateTime.parse(_loadedData['month']['start_date']);
-    var currentEndDate = DateTime.parse(_loadedData['month']['end_date']);
-    var monthDates = currentStartDate.year == currentEndDate.year
-        ? "${DateFormat("d.MM").format(currentStartDate)}-${DateFormat("d.MM.yyyy").format(currentEndDate)}"
-        : "${DateFormat("d.MM.yyyy").format(currentStartDate)}-${DateFormat("d.MM.yyyy").format(currentEndDate)}";
-
-    final body = RefreshIndicator(
-      onRefresh: _handleRefreshHard,
-      child: homeScreenChild is Center
-          ? ListView(
-        children: [homeScreenChild],
-      )
-          : homeScreenChild,
+    // The header collapses as the tab's list scrolls under it; a tab with its
+    // own scroll controllers (the table) simply keeps the header expanded.
+    // The refresh indicator sits in the body: the pull happens on the tab's
+    // list, whose notifications an indicator around the whole view would
+    // not see (it only listens at depth 0).
+    // The absorber takes the pinned toolbar out of the outer scroll range, so
+    // a collapsed header stops at the toolbar instead of sliding the body
+    // under it; _OverlapPadding keeps the body's top below the toolbar.
+    final body = NestedScrollView(
+      controller: _scrollController,
+      headerSliverBuilder: (context, _) => [
+        SliverOverlapAbsorber(
+          handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+          sliver: MonthSliverAppBar(
+            title: month?.title(locale) ?? 'Budget Manager',
+            subtitle: month?.rangeTitle(locale),
+            monthKey: month?.id,
+            switchDirection: _switchDirection,
+            titleShift: _monthShift,
+            onTitleTap: month == null ? null : () => _showMonthPicker(data),
+            leading: _filter.isActive
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back), onPressed: _clearFilter)
+                : null,
+            actions: [
+              if (showSearch) ExpenseSearchButton(data: data),
+              if (switchInBar)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, right: 8),
+                  child: _ExpensesViewSwitch(
+                      view: _expensesView,
+                      onChanged: _showExpenses,
+                      dense: true),
+                ),
+              if (!useRail) ...[
+                _monthPickerButton(l10n, data),
+                _settingsButton(l10n),
+              ],
+              const SizedBox(width: 4),
+            ],
+            actionsWidth: actionsWidth,
+            showProgress: months.isRefreshing,
+            compact: compactHeader,
+          ),
+        ),
+        if (months.error != null)
+          SliverToBoxAdapter(
+              child:
+                  ErrorBanner(error: months.error!, onRetry: months.refresh)),
+      ],
+      body: Builder(
+        builder: (context) => _OverlapPadding(
+          handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+          child: RefreshIndicator(
+            key: _refreshKey,
+            onRefresh: _refreshHard,
+            // The tab slides to the new month together with the title.
+            child: MonthSwitcher(
+              monthKey: month?.id,
+              direction: _switchDirection,
+              child: content,
+            ),
+          ),
+        ),
+      ),
     );
 
-    if (constraints.maxWidth >= 600) {
+    if (useRail) {
       return Row(
         children: [
-          _navigationRail(),
-          Expanded(
-            child: Scaffold(
-              appBar: AppBar(
-                title: Text(
-                  _currentIndex < 4 ? monthDates : _screens[_currentIndex].title!,
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                forceMaterialTransparency: true,
-                actions: _monthMenu(context, _monthRelated, months),
-                leading: _previousIndex != null
-                    ? IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () {
-                    setState(() {
-                      _currentIndex = _previousIndex!;
-                      _previousIndex = null;  // Clear the previous index
-                    });
-                  },
-                )
-                    : null,
-              ),
-              body: body,
-            ),
-          ),
+          _navigationRail(l10n, fab, data,
+              height: constraints.maxHeight -
+                  MediaQuery.paddingOf(context).vertical),
+          Expanded(child: Scaffold(body: body)),
         ],
       );
-    } else {
-      return Scaffold(
-        body: RefreshIndicator(
-          onRefresh: _handleRefreshHard,
-          child: homeScreenChild is Center
-              ? ListView(
-            children: [homeScreenChild],
-          )
-              : homeScreenChild,
-        ),
-        appBar: AppBar(
-          title: Text(
-            _currentIndex < 4
-                ? monthDates
-                : _screens[_currentIndex].title!,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          forceMaterialTransparency: true,
-          actions: _monthMenu(context, _monthRelated, months),
-          leading: _previousIndex != null
-              ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () {
-                  setState(() {
-                    _currentIndex = _previousIndex!;
-                    _previousIndex = null;  // Clear the previous index
-                  });
-                },
-              )
-              : null,
-        ),
-        bottomNavigationBar: _bottomNavigation(),
-        floatingActionButton: _screens[_currentIndex].fab,
-      );
     }
-  }
-
-  Future<void> _handleRefresh() async {
-    setState(() {
-      _fetchData();
-    });
-  }
-
-  Future<void> _handleRefreshHard() async {
-    setState(() {
-      _filter = ExpensesFilter();
-      _savedCoords = null;
-      _fetchData();
-    });
-  }
-
-  NavigationRail _navigationRail() {
-    return NavigationRail(
-      selectedIndex: _currentIndex,
-      onDestinationSelected: (index) {
-        setState(() {
-          _filter = ExpensesFilter();
-          _monthRelated = index < _monthRelatedViews;
-          _previousIndex = null;
-          _currentIndex = index;
-        });
-      },
-      groupAlignment: 0,
-      leading: _screens[_currentIndex].fab ?? SizedBox.square(dimension: 56),
-      labelType: NavigationRailLabelType.selected,
-      destinations: [
-        NavigationRailDestination(
-          icon: const Icon(Icons.home),
-          label: Text(AppLocalizations.of(context)!.summary),
-        ),
-        NavigationRailDestination(
-          icon: const Icon(Icons.table_rows),
-          label: Text(AppLocalizations.of(context)!.expensesListShort),
-        ),
-        NavigationRailDestination(
-          icon: const Icon(Icons.grid_view_sharp),
-          label: Text(AppLocalizations.of(context)!.expensesTableShort),
-        ),
-        NavigationRailDestination(
-          icon: const Icon(Icons.download),
-          label: Text(AppLocalizations.of(context)!.incomes),
-        ),
-        NavigationRailDestination(
-          icon: const Icon(Icons.settings_rounded),
-          label: Text(AppLocalizations.of(context)!.settings),
-        ),
-      ],
+    return Scaffold(
+      body: body,
+      bottomNavigationBar: _bottomNavigation(l10n),
+      floatingActionButton: fab,
     );
   }
 
-  NavigationBar _bottomNavigation() {
-    return NavigationBar(
-      selectedIndex: _currentIndex,
-      onDestinationSelected: (index) {
-        setState(() {
-          _filter = ExpensesFilter();
-          _monthRelated = index < _monthRelatedViews;
-          _previousIndex = null;
-          _currentIndex = index;
-        });
-      },
-      labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
-      destinations: [
-        NavigationDestination(
-          icon: const Icon(Icons.home),
-          label: AppLocalizations.of(context)!.summary,
-        ),
-        NavigationDestination(
-          icon: const Icon(Icons.table_rows),
-          label: AppLocalizations.of(context)!.expensesListShort,
-        ),
-        NavigationDestination(
-          icon: const Icon(Icons.grid_view_sharp),
-          label: AppLocalizations.of(context)!.expensesTableShort,
-        ),
-        NavigationDestination(
-          icon: const Icon(Icons.download),
-          label: AppLocalizations.of(context)!.incomes,
-        ),
-        // NavigationDestination(
-        //   icon: const Icon(Icons.bar_chart_rounded),
-        //   label: AppLocalizations.of(context)!.statistics,
-        // ),
-        NavigationDestination(
-          icon: const Icon(Icons.settings_rounded),
-          label: AppLocalizations.of(context)!.settings,
-        ),
-      ],
-    );
-  }
-
-  void _selectMonth(int monthId) {
-    setState(() {
-      _currentMonthId = monthId;
-      _savedCoords = null;
-      _filter = ExpensesFilter();
-      _fetchData();
-    });
-  }
-
-  void _showMonthSelectorDialog(List<dynamic> months) {
-    showDialog(context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.selectMonth),
-          contentPadding: EdgeInsets.zero,
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              shrinkWrap: true,
-              itemCount: months.length,
-              itemBuilder: (context, index) {
-                final month = months[index];
-                final date = DateTime.parse(month['start_date']);
-                final jiffy = Jiffy.parseFromDateTime(date);
-
-                final bool showYearHeader = index == 0 ||
-                    Jiffy.parseFromDateTime(DateTime.parse(months[index - 1]['start_date'])).year != jiffy.year;
-
-                final isSelected = (_currentMonthId == null && month['is_current'] == true) || month['id'] == _currentMonthId;
-
-                var startDate = DateTime.parse(month['start_date']);
-                var endDate = DateTime.parse(month['end_date']);
-                var monthDates = startDate.year == endDate.year
-                    ? "${DateFormat("d.MM").format(startDate)}-${DateFormat("d.MM").format(endDate)}"
-                    : "${DateFormat("d.MM.yyyy").format(startDate)}-${DateFormat("d.MM.yyyy").format(endDate)}";
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (showYearHeader)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                        child: Text(
-                          jiffy.year.toString(),
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                      ),
-                    ListTile(
-                      title: Text(
-                        monthDates,
-                        style: TextStyle(
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                      trailing: isSelected
-                          ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
-                          : null,
-                      onTap: () {
-                        _selectMonth(month['id']);
-                        Navigator.pop(context);
-                      },
-                    ),
-                    if (index < months.length - 1 && Jiffy.parseFromDateTime(DateTime.parse(months[index + 1]['start_date'])).year != jiffy.year)
-                      const Divider(indent: 16, endIndent: 16),
-                  ],
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(AppLocalizations.of(context)!.cancel),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-
-  int _getCurrentMonthIdx(List<dynamic> months) {
-    var currentMonthIdx = months.indexWhere((month) => month['id'] == _currentMonthId);
-    if (currentMonthIdx < 0) {
-      currentMonthIdx = 0;
-    }
-    return currentMonthIdx;
-  }
-
-  List<Widget> _monthMenu(BuildContext context, bool isVisible, List<dynamic> months) {
-    if (!isVisible || months.isEmpty) {
-      return [];
-    }
-
-    var currentMonthIdx = _getCurrentMonthIdx(months);
-    var nextMonthId = currentMonthIdx > 0 ? months[currentMonthIdx - 1]['id'] : null;
-    var previousMonthId = currentMonthIdx < months.length - 1 ? months[currentMonthIdx + 1]['id'] : null;
-
-    final localizations = AppLocalizations.of(context)!;
-
-    Jiffy.now().localeCode;
-
+  List<_Tab> _buildTabs(MonthData data, {required bool showSwitch}) {
     return [
-      IconButton(
-        icon: const Icon(Icons.arrow_back_ios),
-        tooltip: localizations.nextMonth,
-        onPressed: previousMonthId != null ? () => _selectMonth(previousMonthId) : null,
+      _Tab(
+        // The month follows the finger and a chevron shows at the edge; the
+        // release moves (see MonthSwipeDetector).
+        MonthSwipeDetector(
+          canGoBackward: _months.previousMonth != null,
+          canGoForward: _months.nextMonth != null,
+          onMove: _onMonthSwipe,
+          shift: _monthShift,
+          child: SummaryScreen(
+            onShowExpenses: () => _showExpenses(_ExpensesView.list),
+            onShowIncomes: () => _selectTab(_incomesTab),
+          ),
+        ),
+        const FabMenu(),
       ),
-      IconButton(
-        icon: const Icon(Icons.arrow_forward_ios),
-        tooltip: localizations.prevMonth,
-        onPressed: nextMonthId != null ? () => _selectMonth(nextMonthId) : null,
+      _Tab(
+        _ExpensesTab(
+          data: data,
+          view: _expensesView,
+          filter: _filter,
+          showSwitch: showSwitch,
+          onViewChanged: _showExpenses,
+          onOpenFiltered: _openFilteredExpensesList,
+          onClearFilter: _clearFilter,
+        ),
+        const FabMenu(fabType: FabType.expense),
       ),
-      IconButton(
-        icon: const Icon(Icons.calendar_month),
-        tooltip: localizations.monthDetails,
-        onPressed: () => _showMonthSelectorDialog(months),
+      _Tab(
+        IncomesScreen(data: data),
+        const FabMenu(fabType: FabType.income),
       ),
     ];
   }
+
+  IconButton _monthPickerButton(AppLocalizations l10n, MonthData data) {
+    return IconButton(
+      icon: const Icon(Icons.calendar_month_outlined),
+      tooltip: l10n.selectMonth,
+      onPressed: () => _showMonthPicker(data),
+    );
+  }
+
+  IconButton _settingsButton(AppLocalizations l10n) {
+    return IconButton(
+      icon: const Icon(Icons.settings_outlined),
+      tooltip: l10n.settings,
+      onPressed: _openSettings,
+    );
+  }
+
+  /// Which labels the rail has room for in [height] (the window's height
+  /// without the system insets): every one, with labels under the month
+  /// picker and Settings as well (a tablet); only the selected destination's;
+  /// or none (a phone in landscape). The figures are the Material 3 rail
+  /// metrics: a labelled destination is 64 dp, an icon-only one 44 dp, the
+  /// FAB block 72 dp, and the two actions at the bottom 128 dp with labels
+  /// or 112 dp without.
+  static NavigationRailLabelType _railLabelsFor(double height) {
+    const fabBlock = 72.0;
+    const labelled = 64.0;
+    const iconOnly = 44.0;
+    if (height >= fabBlock + 3 * labelled + 128) {
+      return NavigationRailLabelType.all;
+    }
+    if (height >= fabBlock + labelled + 2 * iconOnly + 112) {
+      return NavigationRailLabelType.selected;
+    }
+    return NavigationRailLabelType.none;
+  }
+
+  /// The rail of a wide window: the tab's FAB on top, the destinations, and
+  /// the month picker with Settings pinned at the bottom. Labels follow the
+  /// room there is ([_railLabelsFor]); the destinations scroll rather than
+  /// overflow if the window is shorter than even the icon-only rail.
+  Widget _navigationRail(AppLocalizations l10n, Widget? fab, MonthData data,
+      {required double height}) {
+    final labels = _railLabelsFor(height);
+    final labelledActions = labels == NavigationRailLabelType.all;
+    return NavigationRail(
+      selectedIndex: _currentIndex,
+      onDestinationSelected: _onDestinationSelected,
+      groupAlignment: -1,
+      leading: fab ?? const SizedBox.square(dimension: 56),
+      labelType: labels,
+      scrollable: true,
+      trailingAtBottom: true,
+      destinations: [
+        NavigationRailDestination(
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home),
+            label: Text(l10n.summary)),
+        NavigationRailDestination(
+            icon: const Icon(Icons.receipt_long_outlined),
+            selectedIcon: const Icon(Icons.receipt_long),
+            label: Text(l10n.expenses)),
+        NavigationRailDestination(
+            icon: const Icon(Icons.savings_outlined),
+            selectedIcon: const Icon(Icons.savings),
+            label: Text(l10n.incomes)),
+      ],
+      trailing: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RailAction(
+              icon: Icons.calendar_month_outlined,
+              label: l10n.month,
+              tooltip: l10n.selectMonth,
+              showLabel: labelledActions,
+              onPressed: () => _showMonthPicker(data),
+            ),
+            RailAction(
+              icon: Icons.settings_outlined,
+              label: l10n.settings,
+              tooltip: l10n.settings,
+              showLabel: labelledActions,
+              onPressed: _openSettings,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  NavigationBar _bottomNavigation(AppLocalizations l10n) {
+    return NavigationBar(
+      selectedIndex: _currentIndex,
+      onDestinationSelected: _onDestinationSelected,
+      destinations: [
+        NavigationDestination(
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home),
+            label: l10n.summary),
+        NavigationDestination(
+            icon: const Icon(Icons.receipt_long_outlined),
+            selectedIcon: const Icon(Icons.receipt_long),
+            label: l10n.expenses),
+        NavigationDestination(
+            icon: const Icon(Icons.savings_outlined),
+            selectedIcon: const Icon(Icons.savings),
+            label: l10n.incomes),
+      ],
+    );
+  }
 }
 
-class ScreenData {
-  Widget? screen;
-  String? title;
-  Widget? fab;
+/// The Expenses tab: a List / Table switch above the chosen view. While a
+/// table drill-down filter is active the switch hides and the list shows
+/// the filter chip instead.
+class _ExpensesTab extends StatelessWidget {
+  const _ExpensesTab({
+    required this.data,
+    required this.view,
+    required this.filter,
+    required this.showSwitch,
+    required this.onViewChanged,
+    required this.onOpenFiltered,
+    required this.onClearFilter,
+  });
 
-  ScreenData({this.screen, this.title, this.fab});
+  final MonthData data;
+  final _ExpensesView view;
+  final ExpensesFilter filter;
+
+  /// False when the shell shows the List / Table switch in the bar instead.
+  final bool showSwitch;
+  final ValueChanged<_ExpensesView> onViewChanged;
+  final ValueChanged<ExpensesFilter> onOpenFiltered;
+  final VoidCallback onClearFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        if (!filter.isActive && showSwitch)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: _ExpensesViewSwitch(view: view, onChanged: onViewChanged),
+            ),
+          ),
+        Expanded(
+          child: view == _ExpensesView.list
+              ? ExpensesListView(
+                  data: data, filter: filter, onClearFilter: onClearFilter)
+              : ExpensesTableView(data: data, onOpenFiltered: onOpenFiltered),
+        ),
+      ],
+    );
+  }
+}
+
+/// The List / Table switch of the Expenses tab: full width below the bar on
+/// a phone, a dense control inside the bar when the window is wide.
+class _ExpensesViewSwitch extends StatelessWidget {
+  const _ExpensesViewSwitch(
+      {required this.view, required this.onChanged, this.dense = false});
+
+  final _ExpensesView view;
+  final ValueChanged<_ExpensesView> onChanged;
+  final bool dense;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return SegmentedButton<_ExpensesView>(
+      showSelectedIcon: false,
+      style: dense
+          ? const ButtonStyle(visualDensity: VisualDensity.compact)
+          : null,
+      segments: [
+        ButtonSegment(
+          value: _ExpensesView.list,
+          icon: const Icon(Icons.view_list_outlined),
+          label: Text(l10n.expensesListShort),
+        ),
+        ButtonSegment(
+          value: _ExpensesView.table,
+          icon: const Icon(Icons.grid_on_outlined),
+          label: Text(l10n.expensesTableShort),
+        ),
+      ],
+      selected: {view},
+      onSelectionChanged: (selection) => onChanged(selection.first),
+    );
+  }
+}
+
+/// Keeps the body's top clear of the pinned toolbar. The absorber around
+/// the header takes the toolbar's extent out of the outer scroll range,
+/// which lays the body out under it; this pads the body by that extent, as
+/// a `SliverOverlapInjector` does for a sliver body.
+class _OverlapPadding extends SingleChildRenderObjectWidget {
+  const _OverlapPadding({required this.handle, required super.child});
+
+  final SliverOverlapAbsorberHandle handle;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderOverlapPadding(handle);
+
+  @override
+  void updateRenderObject(
+          BuildContext context, _RenderOverlapPadding renderObject) =>
+      renderObject.handle = handle;
+}
+
+class _RenderOverlapPadding extends RenderShiftedBox {
+  _RenderOverlapPadding(this._handle) : super(null);
+
+  SliverOverlapAbsorberHandle _handle;
+
+  set handle(SliverOverlapAbsorberHandle value) {
+    if (value == _handle) return;
+    if (attached) _handle.removeListener(markNeedsLayout);
+    _handle = value;
+    if (attached) _handle.addListener(markNeedsLayout);
+    markNeedsLayout();
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _handle.addListener(markNeedsLayout);
+  }
+
+  @override
+  void detach() {
+    _handle.removeListener(markNeedsLayout);
+    super.detach();
+  }
+
+  @override
+  void performLayout() {
+    // The header lays out before the body within the same frame, so the
+    // absorbed extent is current here.
+    final top = _handle.layoutExtent ?? 0.0;
+    final child = this.child;
+    if (child == null) {
+      size = constraints.constrain(Size(0, top));
+      return;
+    }
+    child.layout(constraints.deflate(EdgeInsets.only(top: top)),
+        parentUsesSize: true);
+    (child.parentData! as BoxParentData).offset = Offset(0, top);
+    size =
+        constraints.constrain(Size(child.size.width, child.size.height + top));
+  }
 }
