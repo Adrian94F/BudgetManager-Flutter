@@ -89,5 +89,13 @@
     "plannedSavings": "Planowane oszczędności",
     "actualBalance": "Rzeczywisty bilans",
     "forDailyExpenses": "Na codzienne wydatki",
-    "plannedLine": "Plan"
+    "plannedLine": "Plan",
+    "searchExpenses": "Szukaj wydatków",
+    "incomingExpenses": "Nadchodzące wydatki ({count})",
+    "today": "Dzisiaj",
+    "yesterday": "Wczoraj",
+    "noExpenses": "Brak wydatków w tym miesiącu.",
+    "noResults": "Nic nie znaleziono.",
+    "invalidAmount": "Podaj poprawną kwotę.",
+    "noCategories": "Najpierw dodaj kategorię w ustawieniach budżetu."
 }

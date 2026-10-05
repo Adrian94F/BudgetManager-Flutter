@@ -101,5 +101,20 @@
   "plannedSavings": "Planned savings",
   "actualBalance": "Actual balance",
   "forDailyExpenses": "For daily expenses",
-  "plannedLine": "Plan"
+  "plannedLine": "Plan",
+  "searchExpenses": "Search expenses",
+  "incomingExpenses": "Incoming expenses ({count})",
+  "@incomingExpenses": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "noExpenses": "No expenses in this month yet.",
+  "noResults": "Nothing found.",
+  "invalidAmount": "Enter a valid amount.",
+  "noCategories": "Add a category in Budget settings first."
 }

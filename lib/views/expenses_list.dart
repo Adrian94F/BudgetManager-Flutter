@@ -1,397 +1,328 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
-import '../app/app_scope.dart';
-import '../tools/formatters.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
-import 'expense_details.dart';
+import '../api/api.dart';
+import '../app/app_scope.dart';
+import '../models/models.dart';
+import '../tools/dates.dart';
+import '../tools/formatters.dart';
+import 'expense_form.dart';
+import 'widgets/error_views.dart';
 
+/// A day and/or category narrowing the list, set from the expenses table.
+class ExpensesFilter {
+  const ExpensesFilter({this.date, this.category});
+
+  final DateTime? date;
+  final int? category;
+
+  bool get isActive => date != null || category != null;
+}
+
+/// The month's expenses grouped by day, newest first. Future-dated expenses
+/// sit in a collapsed "Incoming" section at the top; a search box narrows the
+/// list by category, comment, amount or date.
 class ExpensesListView extends StatefulWidget {
-  final List<dynamic> expenses;
-  final List<dynamic> categories;
-  final Future<void> Function() refreshParent;
-  final int monthId;
-  final ExpensesFilter filter;
+  const ExpensesListView({super.key, required this.data, required this.filter});
 
-  const ExpensesListView({super.key, required this.expenses, required this.categories, required this.filter, required this.monthId, required this.refreshParent});
+  final MonthData data;
+  final ExpensesFilter filter;
 
   @override
   State<ExpensesListView> createState() => _ExpensesListViewState();
 }
 
 class _ExpensesListViewState extends State<ExpensesListView> {
-  final ScrollController _scrollController = ScrollController();
-  final Map<int, GlobalKey> _itemKeys = {};
+  final _searchController = TextEditingController();
+  String _query = '';
 
   @override
-  void initState() {
-    super.initState();
-
-    widget.expenses.sort((a, b) {
-      int dateCmp = DateTime.parse(b['date']).compareTo(DateTime.parse(a['date']));  // group by date
-      if (dateCmp != 0) {
-        return dateCmp;
-      }
-      int idCmp = (a['id']).compareTo((b['id']));  // sort by id
-      return idCmp;
-      // int categoryCmp = (a['category']).compareTo((b['category']));
-      // if (categoryCmp != 0) {
-      //   return categoryCmp;
-      // }
-      // int valueCmp = (a['value']).compareTo((b['value']));
-      // return valueCmp;
-    });
-
-    for (int i = 0; i < widget.expenses.length; i++) {
-      _itemKeys[i] = GlobalKey();
-    }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.filter.date == null && widget.filter.category == null) {
-        _scrollToToday();
-      }
-    });
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
-  void _scrollToToday() {
-    DateTime now = DateTime.now();
-    int? targetIndex;
+  bool get _isSearching => _query.trim().isNotEmpty;
 
-    for (int i = 0; i < widget.expenses.length; i++) {
-      DateTime expenseDate = DateTime.parse(widget.expenses[i]['date']);
-
-      if (expenseDate.year == now.year &&
-          expenseDate.month == now.month &&
-          expenseDate.day == now.day) {
-        targetIndex = i;
-        break;
-      } else if (expenseDate.isBefore(now)) {
-        targetIndex = i;
-        break;
-      }
-    }
-
-    if (targetIndex != null && _itemKeys.containsKey(targetIndex)) {
-      final context = _itemKeys[targetIndex]!.currentContext;
-      if (context != null) {
-        Scrollable.ensureVisible(
-          context,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-        );
-      }
-    }
+  List<Expense> _applyFilter(List<Expense> expenses) {
+    final filter = widget.filter;
+    return expenses.where((e) {
+      if (filter.date != null && !Dates.isSameDay(e.date, filter.date!)) return false;
+      if (filter.category != null && e.categoryId != filter.category) return false;
+      return true;
+    }).toList();
   }
 
-  String _getCategoryName(int categoryId) {
-    final category = widget.categories.firstWhere(
-          (element) => element['id'] == categoryId,
-      orElse: () => {'name': '–'},
-    );
-    return category['name'];
+  List<Expense> _applySearch(List<Expense> expenses, String locale) {
+    if (!_isSearching) return expenses;
+    final query = _query.trim().toLowerCase();
+    final shortDate = DateFormat.yMMMd(locale);
+    final longDate = DateFormat.yMMMMEEEEd(locale);
+    return expenses.where((e) {
+      final haystack = [
+        widget.data.categoryName(e.categoryId),
+        e.comment ?? '',
+        Formatters.currencyFormatter.format(e.value),
+        e.value.toStringAsFixed(2),
+        shortDate.format(e.date),
+        longDate.format(e.date),
+      ].join('\n').toLowerCase();
+      return haystack.contains(query);
+    }).toList();
   }
 
-  Widget _dateHeader(DateTime date) {
-    final dateFormat = DateFormat('d.MM');
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20.0, 20.0, 8.0, 8.0),
-          child: Text(
-            dateFormat.format(date),
-            style: const TextStyle(
-              fontSize: 18.0,
-              //fontStyle: FontStyle.italic,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        const Divider(
-          height: 0,
-        )
-      ]
-    );
+  String _dayLabel(DateTime day, DateTime today, AppLocalizations l10n, String locale) {
+    if (Dates.isSameDay(day, today)) return l10n.today;
+    if (Dates.isSameDay(day, Dates.addDays(today, -1))) return l10n.yesterday;
+    final format = day.year == today.year ? DateFormat.MMMMEEEEd(locale) : DateFormat.yMMMMEEEEd(locale);
+    final text = format.format(day);
+    return text.isEmpty ? text : text[0].toUpperCase() + text.substring(1);
   }
 
-  Widget _expenseListItemTitle(dynamic expense) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
-                  margin: const EdgeInsets.only(right: 8.0),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.light
-                        ? Colors.indigo.shade50
-                        : Colors.grey.shade900,
-                    borderRadius: BorderRadius.circular(4.0),
-                  ),
-                  child: Text(
-                    _getCategoryName(expense['category']),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).brightness == Brightness.light
-                            ? Colors.grey.shade900
-                            : Colors.grey.shade100),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        Text(
-          Formatters.currencyFormatter.format(expense['value']),
-          textAlign: TextAlign.right,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
-        ),
-      ],
-    );
+  String _filterTitle(AppLocalizations l10n, String locale) {
+    final parts = [
+      if (widget.filter.date != null) DateFormat.yMMMd(locale).format(widget.filter.date!),
+      if (widget.filter.category != null) widget.data.categoryName(widget.filter.category!),
+    ];
+    return '${l10n.filteredExpenses}: ${parts.join(', ')}';
   }
 
-  Container _monthlyExpenseTag() {
-    return Container(
-      margin: const EdgeInsetsDirectional.fromSTEB(0, 4, 8, 4),
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
-      decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.light
-            ? Colors.indigo.shade50
-            : Colors.grey.shade900,
-        borderRadius: BorderRadius.circular(4.0),
-      ),
-      child: Icon(
-        Icons.repeat,
-        size: 16,
-        color: Theme.of(context).brightness == Brightness.light
-            ? Colors.grey.shade900
-            : Colors.grey.shade100,
-      ),
-    );
-  }
+  Future<void> _edit(Expense expense) => ExpenseFormScreen.open(context, expense: expense);
 
-  Widget? _expenseListItemSubtitle(dynamic expense) {
-    if ((expense['comment'] == null || expense['comment'].isEmpty) && !expense['is_monthly']) {
-      return null;
-    }
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: [
-        if (expense['is_monthly'])
-          _monthlyExpenseTag(),
-        Flexible(
-          child: Text(
-            expense['comment'],
-            style: const TextStyle(fontStyle: FontStyle.italic),
-          )
-        )
-      ],
-    );
-  }
+  Future<void> _copy(Expense expense) => ExpenseFormScreen.open(context, template: expense);
 
-  Widget _expenseListItem(dynamic expense) {
-    return Slidable(
-      key: Key(expense['id'].toString()),
-      endActionPane: ActionPane(
-        motion: const ScrollMotion(),
-        children: [
-          SlidableAction(
-            onPressed: (context) {
-              // get copy of expense without id
-              final expenseCopy = Map<String, dynamic>.from(expense);
-              expenseCopy.remove('id');
-              _showExpenseDetailsDialog(expenseCopy);
-            },
-            foregroundColor: Colors.indigo,
-            backgroundColor: Theme.of(context).brightness == Brightness.light
-                ? Colors.white
-                : Colors.grey.shade900,
-            icon: Icons.copy_rounded,
-            label: AppLocalizations.of(context)!.copy,
-          ),
-          SlidableAction(
-            onPressed: (context) {
-              _showExpenseRemovalDialog(expense);
-            },
-            foregroundColor: Colors.red.shade900,
-            backgroundColor: Theme.of(context).brightness == Brightness.light
-                ? Colors.white
-                : Colors.grey.shade900,
-            icon: Icons.delete_rounded,
-            label: AppLocalizations.of(context)!.remove,
+  Future<void> _confirmDelete(Expense expense) async {
+    final l10n = AppLocalizations.of(context)!;
+    final months = AppScope.of(context).months;
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.alert),
+        content: Text(l10n.expenseRemoval),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.cancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+            child: Text(l10n.remove),
           ),
         ],
       ),
-      child: Builder(
-        builder: (context) => InkWell(
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0.0),
-            title: _expenseListItemTitle(expense),
-            subtitle: _expenseListItemSubtitle(expense)
-          ),
-          onTap: () {
-            final controller = Slidable.of(context)!;
-            final isClosed = controller.actionPaneType.value == ActionPaneType.none;
-            if (isClosed) {
-              _showExpenseDetailsDialog(expense);
-            } else {
-              controller.close();
-            }
-          },
-        )
-      )
     );
+    if (confirmed != true) return;
+    try {
+      await months.deleteExpense(expense.id);
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(describeApiError(e, l10n))));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final filterTitleParts =
-    "${AppLocalizations.of(context)!.filteredExpenses}: ${[
-      if (widget.filter.date != null)
-        DateFormat("d.MM.yyyy").format(widget.filter.date!),
-      if (widget.filter.category != null)
-        _getCategoryName(widget.filter.category!)
-    ].join(", ")}";
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).toString();
+    final today = Dates.today();
 
-    final filteredExpenses = widget.expenses.where((expense) {
-      if (widget.filter.date != null && DateTime.parse(expense['date']).difference(widget.filter.date!).inDays != 0) {
-        return false;
-      }
-      if (widget.filter.category != null && expense['category'] != widget.filter.category) {
-        return false;
-      }
-      return true;
-    }).toList();
+    final sorted = _applySearch(_applyFilter(widget.data.expenses), locale)
+      ..sort((a, b) {
+        final byDate = b.date.compareTo(a.date);
+        return byDate != 0 ? byDate : b.id.compareTo(a.id);
+      });
+    final separateIncoming = !_isSearching && widget.filter.date == null;
+    final incoming = separateIncoming ? sorted.where((e) => e.date.isAfter(today)).toList() : const <Expense>[];
+    final current = separateIncoming ? sorted.where((e) => !e.date.isAfter(today)).toList() : sorted;
 
-    return (widget.filter.date != null || widget.filter.category != null)
-      ? Scaffold(
-        appBar: AppBar(
-          title: Text(
-            filterTitleParts,
-            style: const TextStyle(fontSize: 16),
-          ),
-          forceMaterialTransparency: true,
-        ),
-        body: _buildExpensesList(filteredExpenses)
-      )
-      : _buildExpensesList(filteredExpenses);
-  }
-
-  Widget _buildExpensesList(List<dynamic> filteredExpenses) {
-    return ListView.builder(
-      controller: _scrollController,
-      itemCount: filteredExpenses.length,
-      padding: const EdgeInsets.only(bottom: 80),
-      itemBuilder: (context, index) {
-        final expense = filteredExpenses[index];
-        bool showDateHeader = (index == 0 || filteredExpenses[index - 1]['date'] != expense['date']) && widget.filter.date == null;
-
-        return Column(
-          key: _itemKeys[index],
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (showDateHeader)
-              _dateHeader(DateTime.parse(expense['date'])),
-            _expenseListItem(expense)
-          ],
-        );
-      },
-    );
-  }
-
-  void _showExpenseDetailsDialog(Map<String, dynamic>? expense) {
-    Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => ExpenseDetails(
-          expense: expense,
-          categories: widget.categories,
-          monthId: widget.monthId,
-          preferredCategoryId: expense != null ? expense['category'] : widget.filter.category,
-          preferredDate: expense != null ? DateTime.parse(expense['date']) : widget.filter.date,
-        ))
-    ).then(
-      (value) => setState(() {
-        widget.refreshParent();
-      })
-    );
-  }
-
-  void _showExpenseRemovalDialog(Map<String, dynamic> expense) async {
-    final title = AppLocalizations.of(context)!.alert;
-    final api = AppScope.of(context).api;
-
-    bool isLoading = false;
-    String? errorMessage;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text(title),
-              content: isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Text(errorMessage!, style: const TextStyle(color: Colors.red)),
-                    ),
-                  Text(AppLocalizations.of(context)!.expenseRemoval)
-                ],
-              ),
-              actions: isLoading
-                  ? []
-                  : [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(AppLocalizations.of(context)!.cancel),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    setState(() {
-                      isLoading = true;
-                      errorMessage = null;
-                    });
-
-                    try {
-                      await api.deleteExpense(expense['id'] as int);
-                      if (!context.mounted) return;
-                      Navigator.pop(context);
-                      widget.refreshParent();
-                    } catch (e) {
-                      setState(() {
-                        isLoading = false;
-                        errorMessage = AppLocalizations.of(context)!.errorSavingData;
-                      });
-                    }
-                  },
-                  child: Text(AppLocalizations.of(context)!.remove),
-                ),
+    final body = Column(
+      children: [
+        if (!widget.filter.isActive)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: SearchBar(
+              controller: _searchController,
+              hintText: l10n.searchExpenses,
+              leading: const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.search)),
+              trailing: [
+                if (_query.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() => _query = '');
+                    },
+                  ),
               ],
-            );
-          },
-        );
-      },
+              elevation: const WidgetStatePropertyAll(0),
+              onChanged: (value) => setState(() => _query = value),
+            ),
+          ),
+        Expanded(child: _buildList(context, l10n, locale, today, incoming, current)),
+      ],
+    );
+
+    if (!widget.filter.isActive) return body;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_filterTitle(l10n, locale), style: const TextStyle(fontSize: 16)),
+        forceMaterialTransparency: true,
+      ),
+      body: body,
+    );
+  }
+
+  Widget _buildList(
+    BuildContext context,
+    AppLocalizations l10n,
+    String locale,
+    DateTime today,
+    List<Expense> incoming,
+    List<Expense> current,
+  ) {
+    if (incoming.isEmpty && current.isEmpty) {
+      return ListView(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(48.0),
+            child: Text(
+              _isSearching ? l10n.noResults : l10n.noExpenses,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final items = <Widget>[];
+    if (incoming.isNotEmpty) {
+      items.add(ExpansionTile(
+        leading: const Icon(Icons.schedule_rounded),
+        title: Text(l10n.incomingExpenses(incoming.length)),
+        children: [
+          for (final expense in incoming) _expenseTile(expense, showDate: true, locale: locale),
+        ],
+      ));
+    }
+    DateTime? lastDay;
+    for (final expense in current) {
+      if (lastDay == null || !Dates.isSameDay(lastDay, expense.date)) {
+        lastDay = expense.date;
+        items.add(_DayHeader(label: _dayLabel(expense.date, today, l10n, locale)));
+      }
+      items.add(_expenseTile(expense, showDate: false, locale: locale));
+    }
+    return ListView(padding: const EdgeInsets.only(bottom: 88), children: items);
+  }
+
+  Widget _expenseTile(Expense expense, {required bool showDate, required String locale}) {
+    return _ExpenseTile(
+      key: ValueKey(expense.id),
+      expense: expense,
+      categoryName: widget.data.categoryName(expense.categoryId),
+      dateLabel: showDate ? DateFormat.MMMEd(locale).format(expense.date) : null,
+      onEdit: () => _edit(expense),
+      onCopy: () => _copy(expense),
+      onDelete: () => _confirmDelete(expense),
     );
   }
 }
 
-class ExpensesFilter {
-  DateTime? date;
-  int? category;
+class _DayHeader extends StatelessWidget {
+  const _DayHeader({required this.label});
 
-  ExpensesFilter({this.date, this.category});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+      child: Text(
+        label,
+        style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary),
+      ),
+    );
+  }
+}
+
+class _ExpenseTile extends StatelessWidget {
+  const _ExpenseTile({
+    super.key,
+    required this.expense,
+    required this.categoryName,
+    required this.dateLabel,
+    required this.onEdit,
+    required this.onCopy,
+    required this.onDelete,
+  });
+
+  final Expense expense;
+  final String categoryName;
+  final String? dateLabel;
+  final VoidCallback onEdit;
+  final VoidCallback onCopy;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final comment = expense.comment;
+    final subtitleParts = [
+      if (dateLabel != null) dateLabel!,
+      if (comment != null && comment.isNotEmpty) comment,
+    ];
+
+    return Slidable(
+      key: key,
+      endActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        extentRatio: 0.5,
+        children: [
+          SlidableAction(
+            onPressed: (_) => onCopy(),
+            backgroundColor: scheme.secondaryContainer,
+            foregroundColor: scheme.onSecondaryContainer,
+            icon: Icons.content_copy_rounded,
+            label: l10n.copy,
+          ),
+          SlidableAction(
+            onPressed: (_) => onDelete(),
+            backgroundColor: scheme.errorContainer,
+            foregroundColor: scheme.onErrorContainer,
+            icon: Icons.delete_outline_rounded,
+            label: l10n.remove,
+          ),
+        ],
+      ),
+      child: ListTile(
+        onTap: onEdit,
+        title: Row(
+          children: [
+            if (expense.isMonthly) ...[
+              Icon(Icons.repeat_rounded, size: 18, color: scheme.primary),
+              const SizedBox(width: 6),
+            ],
+            Expanded(child: Text(categoryName, maxLines: 1, overflow: TextOverflow.ellipsis)),
+            const SizedBox(width: 12),
+            Text(
+              Formatters.currencyFormatter.format(expense.value),
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        subtitle: subtitleParts.isEmpty
+            ? null
+            : Text(
+                subtitleParts.join(' · '),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+      ),
+    );
+  }
 }

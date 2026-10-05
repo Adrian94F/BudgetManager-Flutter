@@ -1,26 +1,28 @@
 import 'package:flutter/material.dart';
-
 import 'package:budget_manager/l10n/app_localizations.dart';
+
+import '../../app/app_scope.dart';
 import '../../domain/domain.dart';
-import '../../models/models.dart';
 import '../../tools/dates.dart';
-import '../month_details.dart';
-import '../expense_details.dart';
+import '../expense_form.dart';
 import '../income_details.dart';
+import '../month_details.dart';
 
 enum FabType { full, expense, income }
 
+/// The floating action button of a tab: a plain "add" on the expenses and
+/// incomes tabs, and a menu sheet with every action on the summary tab.
 class FabMenu extends StatelessWidget {
-  final Map<String, dynamic> loadedData;
-  final VoidCallback onRefresh;
-  final FabType fabType;
-
   const FabMenu({
     super.key,
-    required this.loadedData,
     required this.onRefresh,
     this.fabType = FabType.full,
   });
+
+  /// Reloads the month after a screen that still writes through the API
+  /// directly has closed.
+  final VoidCallback onRefresh;
+  final FabType fabType;
 
   @override
   Widget build(BuildContext context) {
@@ -36,44 +38,32 @@ class FabMenu extends StatelessWidget {
   }
 
   void addExpenseFabAction(BuildContext context, {bool inModal = true}) {
-    if (inModal) {
-      Navigator.pop(context);
-    }
+    if (inModal) Navigator.pop(context);
+    ExpenseFormScreen.open(context);
+  }
+
+  void addIncomeFabAction(BuildContext context, {bool inModal = true}) {
+    if (inModal) Navigator.pop(context);
+    final month = AppScope.of(context).months.month!;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ExpenseDetails(
-          categories: loadedData['categories'],
-          monthId: loadedData['month']['id'],
-          topCategories: getTopNCategories(loadedData['expenses'], 5),
+        builder: (context) => IncomeDetails(
+          income: null,
+          monthId: month.id,
+          preferredDate: BudgetRules.defaultEntryDate(month),
         ),
       ),
     ).then((_) => onRefresh());
   }
 
-  void addIncomeFabAction(BuildContext context, {bool inModal = true}) {
-    if (inModal) {
-      Navigator.pop(context);
-    }
-    Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (context) => IncomeDetails(
-              income: null,
-              monthId: loadedData['month']['id'],
-              preferredDate: DateTime.now(),
-            )))
-        .then((_) => onRefresh());
-  }
-
   void monthDetailsFabAction(BuildContext context) {
     Navigator.pop(context);
+    final raw = AppScope.of(context).months.rawJson!;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => MonthDetailsScreen(
-          month: loadedData['month'],
-        ),
+        builder: (context) => MonthDetailsScreen(month: raw['month'] as Map<String, dynamic>),
       ),
     ).then((_) => onRefresh());
   }
@@ -81,10 +71,8 @@ class FabMenu extends StatelessWidget {
   void newMonthFabAction(BuildContext context) {
     Navigator.pop(context);
     // The proposal follows the newest month, as the web app does.
-    final months = loadedData['months'] as List<dynamic>;
-    final range = months.isEmpty
-        ? BudgetRules.firstMonthRange()
-        : BudgetRules.nextMonthRange(Month.fromJson(months.first as Map<String, dynamic>));
+    final months = AppScope.of(context).months.data!.months;
+    final range = months.isEmpty ? BudgetRules.firstMonthRange() : BudgetRules.nextMonthRange(months.first);
     final newMonth = {
       'id': null,
       'start_date': Dates.formatApi(range.start),
@@ -93,9 +81,7 @@ class FabMenu extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => MonthDetailsScreen(
-          month: newMonth,
-        ),
+        builder: (context) => MonthDetailsScreen(month: newMonth),
       ),
     ).then((_) => onRefresh());
   }
@@ -135,9 +121,7 @@ class FabMenu extends StatelessWidget {
   Widget buildAddExpenseFAB(BuildContext context, {double elevation = 6}) {
     return FloatingActionButton(
       heroTag: 'add_expense_fab',
-      onPressed: () {
-        addExpenseFabAction(context, inModal: false);
-      },
+      onPressed: () => addExpenseFabAction(context, inModal: false),
       elevation: elevation,
       child: const Icon(Icons.add),
     );
@@ -146,9 +130,7 @@ class FabMenu extends StatelessWidget {
   Widget buildAddIncomeFAB(BuildContext context, {double elevation = 6}) {
     return FloatingActionButton(
       heroTag: 'add_income_fab',
-      onPressed: () {
-        addIncomeFabAction(context, inModal: false);
-      },
+      onPressed: () => addIncomeFabAction(context, inModal: false),
       elevation: elevation,
       child: const Icon(Icons.add),
     );
@@ -163,92 +145,46 @@ class FabMenu extends StatelessWidget {
       onPressed: () {
         showModalBottomSheet(
           context: context,
-          backgroundColor: Colors.transparent,
-          isScrollControlled: true,
+          showDragHandle: true,
           builder: (BuildContext context) {
-            final isVertical =
-                MediaQuery.of(context).orientation == Orientation.portrait;
-            return GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Container(
-                color: Colors.transparent,
-                child: DraggableScrollableSheet(
-                  initialChildSize: isVertical ? 0.3 : 0.6,
-                  minChildSize: 0.3,
-                  maxChildSize: isVertical ? 0.4 : 0.6,
-                  builder: (_, scrollController) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).canvasColor,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(16.0),
-                          topRight: Radius.circular(16.0),
-                        ),
-                      ),
-                      child: SingleChildScrollView(
-                        controller: scrollController,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Center(
-                                child: Container(
-                                  margin:
-                                  const EdgeInsets.only(bottom: 16.0),
-                                  height: 5.0,
-                                  width: 40.0,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[300],
-                                    borderRadius:
-                                    BorderRadius.circular(10.0),
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding:
-                                const EdgeInsets.only(bottom: 8.0),
-                                child: Text(
-                                  AppLocalizations.of(context)!
-                                      .transactions,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium,
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  buildAddExpenseButton(context),
-                                  const SizedBox(width: 16),
-                                  buildAddIncomeButton(context),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              Padding(
-                                padding:
-                                const EdgeInsets.only(bottom: 8.0),
-                                child: Text(
-                                  AppLocalizations.of(context)!.month,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium,
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  buildMonthDetailsButton(context),
-                                  const SizedBox(width: 16),
-                                  buildNewMonthButton(context),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Text(
+                      AppLocalizations.of(context)!.transactions,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 8,
+                    children: [
+                      buildAddExpenseButton(context),
+                      buildAddIncomeButton(context),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Text(
+                      AppLocalizations.of(context)!.month,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 8,
+                    children: [
+                      buildMonthDetailsButton(context),
+                      buildNewMonthButton(context),
+                    ],
+                  ),
+                ],
               ),
             );
           },
@@ -256,23 +192,5 @@ class FabMenu extends StatelessWidget {
       },
       child: const Icon(Icons.menu_rounded),
     );
-  }
-
-  static List<int> getTopNCategories(
-      List<dynamic> expenses, int nOfCategories) {
-    Map<int, int> categoryCounts = {};
-    for (var expense in expenses) {
-      if (!expense['is_monthly']) {
-        int categoryId = expense['category'];
-        categoryCounts[categoryId] = (categoryCounts[categoryId] ?? 0) + 1;
-      }
-    }
-    List<MapEntry<int, int>> categoryCountsList =
-    categoryCounts.entries.toList();
-    categoryCountsList.sort((a, b) => b.value.compareTo(a.value));
-    return categoryCountsList
-        .take(nOfCategories)
-        .map((entry) => entry.key)
-        .toList();
   }
 }

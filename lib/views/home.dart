@@ -36,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   var _currentIndex = 0;
   int? _previousIndex;
-  ExpensesFilter _filter = ExpensesFilter();
+  ExpensesFilter _filter = const ExpensesFilter();
   ScrollCoords? _savedCoords;
   bool _wasInBackground = false;
 
@@ -96,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _refreshHard() {
     setState(() {
-      _filter = ExpensesFilter();
+      _filter = const ExpensesFilter();
       _savedCoords = null;
     });
     return _months.refresh();
@@ -104,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _selectMonth(int monthId) {
     setState(() {
-      _filter = ExpensesFilter();
+      _filter = const ExpensesFilter();
       _savedCoords = null;
     });
     _months.selectMonth(monthId);
@@ -112,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _selectTab(int index) {
     setState(() {
-      _filter = ExpensesFilter();
+      _filter = const ExpensesFilter();
       _previousIndex = null;
       _currentIndex = index;
     });
@@ -194,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   ) {
     final l10n = AppLocalizations.of(context)!;
     final month = data.month;
-    final tabs = month == null ? null : _buildTabs(raw, month);
+    final tabs = month == null ? null : _buildTabs(data, raw);
     final isMonthTab = _currentIndex < _monthRelatedViews;
 
     final Widget content;
@@ -247,24 +247,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  List<_Tab> _buildTabs(Map<String, dynamic> raw, Month month) {
+  List<_Tab> _buildTabs(MonthData data, Map<String, dynamic> raw) {
     final expenses = raw['expenses'] as List<dynamic>;
     final categories = raw['categories'] as List<dynamic>;
     final monthRaw = raw['month'] as Map<String, dynamic>;
     return [
       _Tab(
         SummaryScreen(onShowExpenses: () => _selectTab(1), onShowIncomes: () => _selectTab(3)),
-        FabMenu(loadedData: raw, onRefresh: _refresh),
+        FabMenu(onRefresh: _refresh),
       ),
       _Tab(
-        ExpensesListView(
-          expenses: expenses,
-          categories: categories,
-          filter: _filter,
-          monthId: month.id,
-          refreshParent: _refresh,
-        ),
-        FabMenu(loadedData: raw, onRefresh: _refresh, fabType: FabType.expense),
+        ExpensesListView(data: data, filter: _filter),
+        FabMenu(onRefresh: _refresh, fabType: FabType.expense),
       ),
       _Tab(
         ExpensesTableView(
@@ -280,7 +274,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ),
       _Tab(
         IncomesScreen(data: raw, refreshParent: _refresh),
-        FabMenu(loadedData: raw, onRefresh: _refresh, fabType: FabType.income),
+        FabMenu(onRefresh: _refresh, fabType: FabType.income),
       ),
       const _Tab(SettingsScreen(), null),
     ];
