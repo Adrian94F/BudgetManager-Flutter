@@ -12,7 +12,6 @@ class SessionStore {
   static const refreshTokenKey = 'refresh_token';
   static const usernameKey = 'login';
   static const passwordKey = 'password';
-  static const serverUrlKey = 'server_url';
   static const themeModeKey = 'theme_mode';
   static const dynamicColorKey = 'dynamic_color';
   static const localeKey = 'locale';
@@ -55,11 +54,6 @@ class SessionStore {
     await _store.delete(usernameKey);
     await _store.delete(passwordKey);
   }
-
-  Future<String?> serverUrl() => _store.read(serverUrlKey);
-
-  Future<void> setServerUrl(String? url) =>
-      url == null || url.trim().isEmpty ? _store.delete(serverUrlKey) : _store.write(serverUrlKey, url.trim());
 
   Future<String?> themeMode() => _store.read(themeModeKey);
 

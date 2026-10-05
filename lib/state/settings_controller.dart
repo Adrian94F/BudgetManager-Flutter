@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/api.dart';
 
-/// App settings kept on the device: theme, dynamic colour, language and
-/// server URL.
+/// App settings kept on the device: theme, dynamic colour and language.
 class SettingsController extends ChangeNotifier {
   SettingsController(this._session);
 
@@ -15,7 +14,6 @@ class SettingsController extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
   bool _useDynamicColor = false;
   Locale? _locale;
-  String? _serverUrl;
 
   ThemeMode get themeMode => _themeMode;
   bool get useDynamicColor => _useDynamicColor;
@@ -24,14 +22,10 @@ class SettingsController extends ChangeNotifier {
   /// Android 13+ includes the per-app language setting).
   Locale? get locale => _locale;
 
-  /// The configured server URL, or null for the default server.
-  String? get serverUrl => _serverUrl;
-
   Future<void> load() async {
     _themeMode = parseThemeMode(await _session.themeMode());
     _useDynamicColor = await _session.dynamicColor();
     _locale = parseLocale(await _session.locale());
-    _serverUrl = await _session.serverUrl();
     notifyListeners();
   }
 
@@ -60,13 +54,6 @@ class SettingsController extends ChangeNotifier {
     _useDynamicColor = enabled;
     notifyListeners();
     await _session.setDynamicColor(enabled);
-  }
-
-  Future<void> setServerUrl(String? url) async {
-    final trimmed = url?.trim();
-    _serverUrl = trimmed == null || trimmed.isEmpty ? null : trimmed;
-    notifyListeners();
-    await _session.setServerUrl(_serverUrl);
   }
 
   static ThemeMode parseThemeMode(String? name) => switch (name) {

@@ -18,7 +18,8 @@ import 'session_store.dart';
 /// problem surfaces as an [ApiException] of kind network and never logs the
 /// user out.
 class ApiClient {
-  static const defaultBaseUrl = 'https://budget.frydmanski.cc';
+  /// The one server the app talks to.
+  static const baseUrl = 'https://budget.frydmanski.cc';
   static const requestTimeout = Duration(seconds: 20);
 
   ApiClient({
@@ -212,21 +213,8 @@ class ApiClient {
 
   // MARK: - Transport
 
-  /// `https://host[/prefix]`, without a trailing slash or `/api`.
-  static String normalizeBaseUrl(String? url) {
-    var value = (url ?? '').trim();
-    if (value.isEmpty) return defaultBaseUrl;
-    if (!value.contains('://')) value = 'https://$value';
-    while (value.endsWith('/')) {
-      value = value.substring(0, value.length - 1);
-    }
-    if (value.endsWith('/api')) value = value.substring(0, value.length - 4);
-    return value;
-  }
-
-  Future<Uri> uriFor(String path, [Map<String, String>? query]) async {
-    final base = normalizeBaseUrl(await session.serverUrl());
-    final uri = Uri.parse('$base/api/$path');
+  Uri uriFor(String path, [Map<String, String>? query]) {
+    final uri = Uri.parse('$baseUrl/api/$path');
     return query == null ? uri : uri.replace(queryParameters: query);
   }
 
@@ -238,7 +226,7 @@ class ApiClient {
     bool authenticated = true,
     bool allowRetry = true,
   }) async {
-    final request = http.Request(method, await uriFor(path, query));
+    final request = http.Request(method, uriFor(path, query));
     request.headers['Accept'] = 'application/json';
     if (body != null) {
       request.headers['Content-Type'] = 'application/json';

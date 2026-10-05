@@ -16,7 +16,6 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _serverController = TextEditingController();
   bool _rememberMe = false;
 
   @override
@@ -26,14 +25,12 @@ class _LoginScreenState extends State<LoginScreen> {
     _usernameController.text = services.auth.savedUsername;
     _passwordController.text = services.auth.savedPassword;
     _rememberMe = services.auth.rememberMe;
-    _serverController.text = services.settings.serverUrl ?? '';
   }
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
-    _serverController.dispose();
     super.dispose();
   }
 
@@ -41,7 +38,6 @@ class _LoginScreenState extends State<LoginScreen> {
     final services = AppScope.of(context);
     if (services.auth.isBusy) return;
     FocusScope.of(context).unfocus();
-    await services.settings.setServerUrl(_serverController.text);
     await services.auth.login(
       username: _usernameController.text.trim(),
       password: _passwordController.text,
@@ -49,13 +45,11 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// Registration lives on the web app; it opens in a Custom Tab against the
-  /// server typed in the form.
+  /// Registration lives on the web app; it opens in a Custom Tab.
   Future<void> _openRegistration() async {
     final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
-    final base = ApiClient.normalizeBaseUrl(_serverController.text);
-    final opened = await launchUrl(Uri.parse('$base/register'),
+    final opened = await launchUrl(Uri.parse('${ApiClient.baseUrl}/register'),
         mode: LaunchMode.inAppBrowserView);
     if (!opened) {
       messenger.showSnackBar(SnackBar(content: Text(l10n.cannotOpenBrowser)));
@@ -129,16 +123,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         textInputAction: TextInputAction.done,
                         autofillHints: const [AutofillHints.password],
                         onSubmitted: (_) => _login(),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _serverController,
-                        decoration: InputDecoration(
-                          labelText: l10n.serverUrl,
-                          prefixIcon: const Icon(Icons.dns_outlined),
-                          border: fieldBorder,
-                        ),
-                        keyboardType: TextInputType.url,
                       ),
                       const SizedBox(height: 8),
                       CheckboxListTile(

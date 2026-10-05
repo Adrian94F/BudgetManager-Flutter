@@ -48,22 +48,13 @@ void main() {
 
   group('requests', () {
     test('build URLs under /api with trailing slashes and a bearer token', () async {
-      await session.setServerUrl('https://example.org/');
       final api = client((_) async => json(monthResponse));
 
       final data = await api.fetchMonth(monthId: 5);
 
-      expect(requests.single.url.toString(), 'https://example.org/api/month/?month_id=5');
+      expect(requests.single.url.toString(), '${ApiClient.baseUrl}/api/month/?month_id=5');
       expect(requests.single.headers['Authorization'], 'Bearer A1');
       expect(data.month!.id, 11);
-    });
-
-    test('use the default server when none is configured', () async {
-      final api = client((_) async => json(monthResponse));
-
-      await api.fetchMonth();
-
-      expect(requests.single.url.toString(), '${ApiClient.defaultBaseUrl}/api/month/');
     });
 
     test('send the bodies the server expects', () async {
@@ -240,13 +231,5 @@ void main() {
       );
       expect(requests.single.headers.containsKey('Authorization'), isFalse);
     });
-  });
-
-  test('normalizes server URLs', () {
-    expect(ApiClient.normalizeBaseUrl(null), ApiClient.defaultBaseUrl);
-    expect(ApiClient.normalizeBaseUrl('  '), ApiClient.defaultBaseUrl);
-    expect(ApiClient.normalizeBaseUrl('example.org'), 'https://example.org');
-    expect(ApiClient.normalizeBaseUrl('http://localhost:8000/'), 'http://localhost:8000');
-    expect(ApiClient.normalizeBaseUrl('https://example.org/api/'), 'https://example.org');
   });
 }

@@ -8,47 +8,11 @@ import '../models/models.dart';
 import '../tools/formatters.dart';
 import 'widgets/error_views.dart';
 
-/// Theme, dynamic colour, language, currency and server URL.
-class AppSettingsScreen extends StatefulWidget {
+/// Theme, dynamic colour, language and currency.
+class AppSettingsScreen extends StatelessWidget {
   const AppSettingsScreen({super.key});
 
-  @override
-  State<AppSettingsScreen> createState() => _AppSettingsScreenState();
-}
-
-class _AppSettingsScreenState extends State<AppSettingsScreen> {
-  final _serverController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _serverController.text = AppScope.of(context).settings.serverUrl ?? '';
-  }
-
-  @override
-  void dispose() {
-    _serverController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _saveServerUrl() async {
-    final services = AppScope.of(context);
-    final l10n = AppLocalizations.of(context)!;
-    final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
-    final newUrl = _serverController.text.trim();
-    if (newUrl.isEmpty) {
-      messenger.showSnackBar(SnackBar(content: Text(l10n.urlCannotBeEmpty)));
-      return;
-    }
-    await services.settings.setServerUrl(newUrl);
-    messenger.showSnackBar(SnackBar(content: Text(l10n.urlUpdated)));
-    // A new server means a new account: back to the root, which shows the login.
-    navigator.popUntil((route) => route.isFirst);
-    await services.auth.logout();
-  }
-
-  void _pickCurrency(String current) {
+  void _pickCurrency(BuildContext context, String current) {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -129,32 +93,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   const Icon(Icons.chevron_right),
                 ],
               ),
-              onTap: () => _pickCurrency(currency),
-            ),
-            const SizedBox(height: 16),
-            _SectionTitle(l10n.connection),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: _serverController,
-                    keyboardType: TextInputType.url,
-                    autocorrect: false,
-                    decoration: InputDecoration(
-                      labelText: l10n.serverUrl,
-                      prefixIcon: const Icon(Icons.dns_outlined),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  FilledButton.tonal(
-                    onPressed: _saveServerUrl,
-                    child: Text(l10n.saveServerUrl),
-                  ),
-                ],
-              ),
+              onTap: () => _pickCurrency(context, currency),
             ),
             const SizedBox(height: 24),
             Padding(
