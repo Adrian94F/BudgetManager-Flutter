@@ -18,31 +18,40 @@ class IncomesScreen extends StatelessWidget {
 
   final MonthData data;
 
-  Future<void> _confirmDelete(BuildContext context, Income income) async {
+  /// Deletes on the server and offers Undo, which re-creates the income in
+  /// the month it came from. Returns whether the row may be dismissed.
+  Future<bool> _delete(BuildContext context, Income income) async {
     final l10n = AppLocalizations.of(context)!;
-    final months = AppScope.of(context).months;
+    final services = AppScope.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.alert),
-        content: Text(l10n.incomeRemoval),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.cancel)),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
-            child: Text(l10n.remove),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
+    final monthId = data.month!.id;
     try {
-      await months.deleteIncome(income.id);
+      await services.months.deleteIncome(income.id);
     } on ApiException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(describeApiError(e, l10n))));
+      return false;
     }
+    messenger.showSnackBar(SnackBar(
+      content: Text(l10n.incomeDeleted),
+      action: SnackBarAction(
+        label: l10n.undo,
+        onPressed: () async {
+          try {
+            await services.api.createIncome(
+              monthId: monthId,
+              value: income.value,
+              date: income.date,
+              comment: income.comment ?? '',
+              isSalary: income.isSalary,
+            );
+            await services.months.refresh();
+          } on ApiException catch (e) {
+            messenger.showSnackBar(SnackBar(content: Text(describeApiError(e, l10n))));
+          }
+        },
+      ),
+    ));
+    return true;
   }
 
   @override
@@ -85,7 +94,7 @@ class IncomesScreen extends StatelessWidget {
         income: income,
         onEdit: () => IncomeFormScreen.open(context, income: income),
         onCopy: () => IncomeFormScreen.open(context, template: income),
-        onDelete: () => _confirmDelete(context, income),
+        onDelete: () => _delete(context, income),
       ));
     }
     return ListView(padding: const EdgeInsets.only(bottom: 88), children: items);
@@ -104,7 +113,9 @@ class _IncomeTile extends StatelessWidget {
   final Income income;
   final VoidCallback onEdit;
   final VoidCallback onCopy;
-  final VoidCallback onDelete;
+
+  /// Deletes the income; returns whether the row may go.
+  final Future<bool> Function() onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -118,6 +129,7 @@ class _IncomeTile extends StatelessWidget {
       endActionPane: ActionPane(
         motion: const ScrollMotion(),
         extentRatio: 0.5,
+        dismissible: DismissiblePane(confirmDismiss: onDelete, onDismissed: () {}),
         children: [
           SlidableAction(
             onPressed: (_) => onCopy(),

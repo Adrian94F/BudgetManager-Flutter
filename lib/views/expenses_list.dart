@@ -50,31 +50,42 @@ class ExpensesListView extends StatelessWidget {
     return parts.join(' · ');
   }
 
-  Future<void> _confirmDelete(BuildContext context, Expense expense) async {
+  /// Deletes on the server and offers Undo, which re-creates the expense in
+  /// the month it came from (it gets a new id). Returns whether the row may
+  /// be dismissed, so a failed delete leaves the row in place.
+  Future<bool> _delete(BuildContext context, Expense expense) async {
     final l10n = AppLocalizations.of(context)!;
-    final months = AppScope.of(context).months;
+    final services = AppScope.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.alert),
-        content: Text(l10n.expenseRemoval),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.cancel)),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
-            child: Text(l10n.remove),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
+    final monthId = data.month!.id;
     try {
-      await months.deleteExpense(expense.id);
+      await services.months.deleteExpense(expense.id);
     } on ApiException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(describeApiError(e, l10n))));
+      return false;
     }
+    messenger.showSnackBar(SnackBar(
+      content: Text(l10n.expenseDeleted),
+      action: SnackBarAction(
+        label: l10n.undo,
+        onPressed: () async {
+          try {
+            await services.api.createExpense(
+              monthId: monthId,
+              value: expense.value,
+              date: expense.date,
+              categoryId: expense.categoryId,
+              comment: expense.comment ?? '',
+              isMonthly: expense.isMonthly,
+            );
+            await services.months.refresh();
+          } on ApiException catch (e) {
+            messenger.showSnackBar(SnackBar(content: Text(describeApiError(e, l10n))));
+          }
+        },
+      ),
+    ));
+    return true;
   }
 
   @override
@@ -164,7 +175,7 @@ class ExpensesListView extends StatelessWidget {
       dateLabel: showDate ? DateFormat.MMMEd(locale).format(expense.date) : null,
       onEdit: () => ExpenseFormScreen.open(context, expense: expense),
       onCopy: () => ExpenseFormScreen.open(context, template: expense),
-      onDelete: () => _confirmDelete(context, expense),
+      onDelete: () => _delete(context, expense),
     );
   }
 }
@@ -185,7 +196,9 @@ class _ExpenseTile extends StatelessWidget {
   final String? dateLabel;
   final VoidCallback onEdit;
   final VoidCallback onCopy;
-  final VoidCallback onDelete;
+
+  /// Deletes the expense; returns whether the row may go.
+  final Future<bool> Function() onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -203,6 +216,9 @@ class _ExpenseTile extends StatelessWidget {
       endActionPane: ActionPane(
         motion: const ScrollMotion(),
         extentRatio: 0.5,
+        // A full swipe deletes once the server confirmed; a partial swipe
+        // shows Copy and Remove.
+        dismissible: DismissiblePane(confirmDismiss: onDelete, onDismissed: () {}),
         children: [
           SlidableAction(
             onPressed: (_) => onCopy(),

@@ -50,18 +50,25 @@ void main() {
     expect(jsonDecode(updated.body)['id'], isNotNull);
     expect(find.textContaining('45.00'), findsOneWidget);
 
-    // Delete: swipe the row, confirm the dialog.
-    await tester.drag(find.text('Lunch'), const Offset(-400, 0));
+    // Delete: swipe the row, tap Remove; no dialog, an Undo snackbar instead.
+    await tester.drag(find.text('Lunch'), const Offset(-200, 0));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Remove'));
-    await tester.pumpAndSettle();
-    expect(find.text('Do you really want to remove this expense?'), findsOneWidget);
-    await tester.tap(find.widgetWithText(TextButton, 'Remove'));
     await tester.pumpAndSettle();
 
     expect(server.requests.where((r) => r.method == 'DELETE' && r.url.path == '/api/expense/'), hasLength(1));
     expect(find.text('Lunch'), findsNothing);
     expect(find.text('Weekly shop'), findsOneWidget);
+    expect(find.text('Expense deleted'), findsOneWidget);
+
+    // Undo re-creates it in the same month.
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+    final recreated = server.requests.where((r) => r.method == 'POST' && r.url.path == '/api/expense/').last;
+    expect(jsonDecode(recreated.body), containsPair('comment', 'Lunch'));
+    expect(jsonDecode(recreated.body), containsPair('month', 11));
+    expect(find.text('Lunch'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
   });
 
   testWidgets('finds an expense through the top-bar search', (tester) async {

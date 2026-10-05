@@ -72,6 +72,7 @@ ThemeData buildTheme(Brightness brightness, {Color? seedColor}) {
     floatingActionButtonTheme: const FloatingActionButtonThemeData(shape: _cardShape),
     bottomSheetTheme: const BottomSheetThemeData(shape: _sheetShape),
     dialogTheme: const DialogThemeData(shape: _dialogShape),
+    snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
     filledButtonTheme: FilledButtonThemeData(style: ButtonStyle(shape: _pressableShape(20))),
     elevatedButtonTheme: ElevatedButtonThemeData(style: ButtonStyle(shape: _pressableShape(20))),
     outlinedButtonTheme: OutlinedButtonThemeData(style: ButtonStyle(shape: _pressableShape(20))),
