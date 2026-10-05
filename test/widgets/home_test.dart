@@ -324,10 +324,10 @@ void main() {
   });
 
   testWidgets(
-      'a pinch stretches the cash flow upwards and one finger scrolls it',
+      'a pinch stretches the expenses column, one finger scrolls it, the rest stays',
       (tester) async {
     final server = FakeServer();
-    // A tiny category: its label needs a tall chart, so the stretch has far
+    // A tiny category: its label needs a tall column, so the stretch has far
     // to go before every label fits.
     server.expenses[11]!.add({
       'id': 2,
@@ -344,11 +344,17 @@ void main() {
     await tester.pumpAndSettle();
     final chart = find.byType(CashFlowChart);
     final viewport = tester.getSize(chart).height;
+    ScrollPosition column() => tester
+        .widget<SingleChildScrollView>(find.descendant(
+            of: chart, matching: find.byType(SingleChildScrollView)))
+        .controller!
+        .position;
     final limit = CashFlowChart.heightToLabelAll(
       tester.element(chart),
       tester.widget<CashFlowChart>(chart).diagram,
     );
     expect(limit, greaterThan(viewport * 3));
+    expect(column().maxScrollExtent, 0);
 
     // Two fingers 80 px apart move to 240 px apart: three times the height.
     Future<void> pinch() async {
@@ -367,18 +373,23 @@ void main() {
     }
 
     await pinch();
-    expect(tester.getSize(chart).height, closeTo(viewport * 3, viewport * 0.1));
+    expect(column().maxScrollExtent, closeTo(viewport * 2, viewport * 0.1));
+    // The chart itself keeps its size: incomes and the budget stay put.
+    expect(tester.getSize(chart).height, viewport);
 
-    // Another one would make it nine times; the stretch stops where the
-    // smallest category fits its label.
-    await pinch();
-    expect(tester.getSize(chart).height, closeTo(limit, 1));
+    // Pinching on, the stretch stops where the smallest category fits its
+    // label, however far the fingers go.
+    for (var i = 0;
+        i < 4 && column().maxScrollExtent < limit - viewport - 1;
+        i++) {
+      await pinch();
+    }
+    expect(column().maxScrollExtent, closeTo(limit - viewport, 1));
 
-    // What no longer fits scrolls with one finger.
-    final topBefore = tester.getTopLeft(chart).dy;
+    // One finger scrolls the column.
     await tester.drag(chart, const Offset(0, -150), warnIfMissed: false);
     await tester.pumpAndSettle();
-    expect(tester.getTopLeft(chart).dy, lessThan(topBefore - 100));
+    expect(column().pixels, greaterThan(100));
   });
 
   testWidgets('a tap on a category in the cash flow opens its expenses',

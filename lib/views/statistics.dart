@@ -6,7 +6,6 @@ import '../domain/domain.dart';
 import '../models/models.dart';
 import 'widgets/cash_flow_chart.dart';
 import 'widgets/month_burndown_chart.dart';
-import 'widgets/vertical_zoom_view.dart';
 
 /// The two statistics of a month.
 enum StatisticsView { burndown, cashFlow }
@@ -154,21 +153,12 @@ class _CashFlowView extends StatelessWidget {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            // A pinch stretches the diagram upwards, so more labels fit, and one
-            // finger scrolls it; the two variants cross-fade rather than snap.
-            child: VerticalZoomView(
-              // Up to the height at which every category has its label.
-              maxZoom: 100,
-              maxHeight: CashFlowChart.heightToLabelAll(context, diagram),
-              child: AnimatedSwitcher(
-                duration: Durations.medium1,
-                child: CashFlowChart(
-                  key: ValueKey(includeRecurring),
-                  diagram: diagram,
-                  includeRecurring: includeRecurring,
-                  onCategoryTap: onCategoryTap,
-                ),
-              ),
+            // A pinch stretches the expenses column, so more labels fit, and
+            // one finger scrolls it; incomes and the budget stay put.
+            child: CashFlowChart(
+              diagram: diagram,
+              includeRecurring: includeRecurring,
+              onCategoryTap: onCategoryTap,
             ),
           ),
         ),

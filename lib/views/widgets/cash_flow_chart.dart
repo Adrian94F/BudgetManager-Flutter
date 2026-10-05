@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
@@ -14,14 +15,19 @@ import 'category_style.dart';
 /// budget at a third of the width, the categories and the leftover on the
 /// right, each node as tall as its amount. The links are translucent bands
 /// shaded from one end's colour to the other's; a category keeps the colour
-/// it has everywhere else in the app, incomes are the primary colour, the
-/// leftover the "saved" green. A node tall enough gets a label with its
-/// amount beside it, in the node's colour: on the roomy right side name and
-/// amount share one line, on the left the amount goes under the name. A
-/// node too short for a label has none; a tap on a category (its node,
-/// label or band) calls [onCategoryTap], which is how a small one is told
-/// apart.
-class CashFlowChart extends StatelessWidget {
+/// it has everywhere else in the app (quieter, see [categoryMuting]),
+/// incomes are the primary colour, the leftover the "saved" green. A node
+/// tall enough gets a label with its amount beside it, in the node's colour:
+/// on the roomy right side name and amount share one line, on the left the
+/// amount goes under the name. A node too short for a label has none.
+///
+/// The expenses column can be stretched with a pinch, up to the height at
+/// which every category has its label ([heightToLabelAll]), and scrolled
+/// with one finger. The sources and the budget stay as they are; a band
+/// reaches a category only while the category is on screen, so bands come
+/// and go as the column scrolls. A tap on a category (its node, label or
+/// band) calls [onCategoryTap], which is how a small one is told apart.
+class CashFlowChart extends StatefulWidget {
   const CashFlowChart({
     super.key,
     required this.diagram,
@@ -39,48 +45,149 @@ class CashFlowChart extends StatelessWidget {
   /// How far a label's text may stand out over each end of its node, in
   /// logical pixels: a node up to twice this shorter than its text still
   /// gets the label. Tune to taste.
-  static const labelOverhang = 4.0;
+  static const labelOverhang = 1.0;
 
   /// How much of a category's own saturation the diagram takes away, 0 to
   /// 1. The colours categories have in the table and the list are vivid
   /// for small marks; as wide bands they are quieter. Tune to taste.
-  static const categoryMuting = 0.5;
+  static const categoryMuting = 0.3;
+
+  /// How many times its own height the expenses column may be stretched to
+  /// at the very most, whatever [heightToLabelAll] says.
+  static const maxZoom = 100.0;
 
   static Color _muted(Color color) {
     final hsl = HSLColor.fromColor(color);
     return hsl.withSaturation(hsl.saturation * (1 - categoryMuting)).toColor();
   }
 
-  /// The content height at which every node is tall enough for its label
-  /// (one line beside a sink, two beside a source), so a zoom need go no
+  /// The expenses column's height at which every category and the leftover
+  /// is tall enough for its one-line label, so the stretch need go no
   /// further; zero for an empty diagram.
   static double heightToLabelAll(
-      BuildContext context, CashFlowDiagram diagram) {
+    BuildContext context,
+    CashFlowDiagram diagram,
+  ) {
     final total = diagram.budget.value;
     if (total <= 0) return 0;
-    final theme = Theme.of(context);
-    final direction = Directionality.of(context);
-    double lineHeight(TextStyle style) => (TextPainter(
-            text: TextSpan(text: '0', style: style), textDirection: direction)
-          ..layout())
+    final line = (TextPainter(
+      text: TextSpan(text: '0', style: Theme.of(context).textTheme.labelMedium),
+      textDirection: Directionality.of(context),
+    )..layout())
         .height;
-    final oneLine = lineHeight(theme.textTheme.labelMedium!);
-    final twoLines = oneLine + lineHeight(theme.textTheme.labelSmall!);
     var needed = 0.0;
-    void consider(CashFlowNode node, double label) {
-      if (node.value <= 0) return;
-      needed =
-          math.max(needed, total * (label - 2 * labelOverhang) / node.value);
-    }
-
     for (final node in diagram.sinks) {
-      consider(node, oneLine);
+      if (node.value <= 0) continue;
+      needed = math.max(
+        needed,
+        total * (line - 2 * labelOverhang) / node.value,
+      );
     }
-    for (final node in diagram.sources) {
-      consider(node, twoLines);
+    return needed + math.max(diagram.sinks.length - 1, 0) * _Geometry.nodeGap;
+  }
+
+  @override
+  State<CashFlowChart> createState() => _CashFlowChartState();
+}
+
+class _CashFlowChartState extends State<CashFlowChart> {
+  /// The expenses column's scroll position. An empty scroll view owns it,
+  /// for the physics (fling, clamping, overscroll); the column itself is
+  /// painted, and the painter follows the position.
+  final _scroll = ScrollController();
+  double _zoom = 1;
+  double _viewport = 0;
+
+  /// The one-finger scroll in progress, driven through the position. The
+  /// scroll view ignores pointers itself, since its drag recognizer would
+  /// fight the pinch's scale recognizer.
+  Drag? _drag;
+  int _pointers = 0;
+  double _startZoom = 1;
+  double _startOffset = 0;
+  double _startFocalY = 0;
+
+  /// The stretch the diagram allows now.
+  double get _maxZoom {
+    if (_viewport <= 0) return CashFlowChart.maxZoom;
+    final height = CashFlowChart.heightToLabelAll(context, widget.diagram);
+    return (height / _viewport).clamp(1.0, CashFlowChart.maxZoom);
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _rebase(double focalY) {
+    _startZoom = _zoom;
+    _startOffset = _scroll.hasClients ? _scroll.offset : 0;
+    _startFocalY = focalY;
+  }
+
+  void _startDrag(Offset global, Offset local) {
+    if (!_scroll.hasClients) return;
+    _drag = _scroll.position.drag(
+      DragStartDetails(globalPosition: global, localPosition: local),
+      () => _drag = null,
+    );
+  }
+
+  void _onScaleStart(ScaleStartDetails details) {
+    _pointers = details.pointerCount;
+    _rebase(details.localFocalPoint.dy);
+    if (_pointers == 1) {
+      _startDrag(details.focalPoint, details.localFocalPoint);
     }
-    final nodes = math.max(diagram.sources.length, diagram.sinks.length);
-    return needed + math.max(nodes - 1, 0) * _Geometry.nodeGap;
+  }
+
+  void _onScaleUpdate(ScaleUpdateDetails details) {
+    if (details.pointerCount != _pointers) {
+      // A finger came or went: the recognizer starts its scale over, and so
+      // does the stretch; a scroll in progress ends.
+      _pointers = details.pointerCount;
+      _drag?.cancel();
+      _drag = null;
+      _rebase(details.localFocalPoint.dy);
+      if (_pointers == 1) {
+        _startDrag(details.focalPoint, details.localFocalPoint);
+      }
+    }
+    if (_pointers >= 2) {
+      final zoom = (_startZoom * details.verticalScale).clamp(1.0, _maxZoom);
+      if (zoom == _zoom) return;
+      // The point of the column that was under the fingers when they came
+      // down stretches with it; scrolling there keeps it under them.
+      final contentY = (_startOffset + _startFocalY) * zoom / _startZoom;
+      final offset = contentY - details.localFocalPoint.dy;
+      setState(() => _zoom = zoom);
+      // The new extent exists once this frame has laid out.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_scroll.hasClients) return;
+        _scroll.jumpTo(offset.clamp(0.0, _scroll.position.maxScrollExtent));
+      });
+    } else {
+      _drag?.update(
+        DragUpdateDetails(
+          globalPosition: details.focalPoint,
+          localPosition: details.localFocalPoint,
+          delta: Offset(0, details.focalPointDelta.dy),
+          primaryDelta: details.focalPointDelta.dy,
+        ),
+      );
+    }
+  }
+
+  void _onScaleEnd(ScaleEndDetails details) {
+    _drag?.end(
+      DragEndDetails(
+        velocity: details.velocity,
+        primaryVelocity: details.velocity.pixelsPerSecond.dy,
+      ),
+    );
+    _drag = null;
+    _pointers = 0;
   }
 
   @override
@@ -89,13 +196,14 @@ class CashFlowChart extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final budgetColors = BudgetColors.of(context);
+    final diagram = widget.diagram;
 
     String nameOf(CashFlowNode node) => switch (node.kind) {
           CashFlowNodeKind.salary =>
-            includeRecurring ? l10n.salary : l10n.salaryAfterRecurring,
+            widget.includeRecurring ? l10n.salary : l10n.salaryAfterRecurring,
           CashFlowNodeKind.otherIncome => l10n.otherIncome,
           CashFlowNodeKind.budget =>
-            includeRecurring ? l10n.budget : l10n.dailyBudget,
+            widget.includeRecurring ? l10n.budget : l10n.dailyBudget,
           CashFlowNodeKind.category => node.category!.name,
           CashFlowNodeKind.leftover => l10n.leftover,
         };
@@ -109,7 +217,10 @@ class CashFlowChart extends StatelessWidget {
               node.category!.name,
               theme.brightness,
             )) {
-              final style => (_muted(style.accent), _muted(style.onContainer)),
+              final style => (
+                  CashFlowChart._muted(style.accent),
+                  CashFlowChart._muted(style.onContainer),
+                ),
             },
           CashFlowNodeKind.leftover => (
               budgetColors.success,
@@ -146,18 +257,44 @@ class CashFlowChart extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final size = constraints.biggest;
-        final geometry = _Geometry.compute(diagram, size, styles, text);
+        _viewport = size.height;
+        // A new limit (the diagram changed) may be below the stretch reached.
+        _zoom = _zoom.clamp(1.0, _maxZoom);
+        final painter = _SankeyPainter(
+          diagram: diagram,
+          styles: styles,
+          text: text,
+          zoom: _zoom,
+          scroll: _scroll,
+        );
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTapUp: onCategoryTap == null
+          // Measure the pinch from where the fingers came down, not from
+          // where the gesture was told apart from a tap, so the column
+          // follows the fingers exactly.
+          dragStartBehavior: DragStartBehavior.down,
+          onScaleStart: _onScaleStart,
+          onScaleUpdate: _onScaleUpdate,
+          onScaleEnd: _onScaleEnd,
+          onTapUp: widget.onCategoryTap == null
               ? null
               : (details) {
-                  final category = geometry.categoryAt(details.localPosition);
-                  if (category != null) onCategoryTap!(category);
+                  final category = painter.categoryAt(
+                    details.localPosition,
+                    size,
+                  );
+                  if (category != null) widget.onCategoryTap!(category);
                 },
-          child: CustomPaint(
-            size: size,
-            painter: _SankeyPainter(geometry: geometry, styles: styles),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              SingleChildScrollView(
+                controller: _scroll,
+                physics: const NeverScrollableScrollPhysics(),
+                child: SizedBox(height: size.height * _zoom),
+              ),
+              CustomPaint(painter: painter),
+            ],
           ),
         );
       },
@@ -208,14 +345,6 @@ class _NodeBox {
   final Rect rect;
 }
 
-class _LinkBand {
-  const _LinkBand({required this.from, required this.to, required this.path});
-
-  final _NodeBox from;
-  final _NodeBox to;
-  final Path path;
-}
-
 /// A node's label, laid out and placed. [inline] puts the name and the
 /// amount on one line, the amount at the node's edge and the name before
 /// it; otherwise the amount, if there is one, goes under the name.
@@ -261,50 +390,69 @@ class _PlacedLabel {
         top + height <= box.rect.bottom + slack;
   }
 
-  void paint(Canvas canvas) {
+  /// Paints the label moved down by [dy].
+  void paint(Canvas canvas, {double dy = 0}) {
     final amount = this.amount;
+    final y = top + dy;
     if (inline) {
       if (alignRight) {
         var right = x;
         if (amount != null) {
-          amount.paint(canvas, Offset(right - amount.width, top));
+          amount.paint(canvas, Offset(right - amount.width, y));
           right -= amount.width + inlineGap;
         }
-        name.paint(canvas, Offset(right - name.width, top));
+        name.paint(canvas, Offset(right - name.width, y));
       } else {
-        name.paint(canvas, Offset(x, top));
-        amount?.paint(canvas, Offset(x + name.width + inlineGap, top));
+        name.paint(canvas, Offset(x, y));
+        amount?.paint(canvas, Offset(x + name.width + inlineGap, y));
       }
       return;
     }
-    var y = top;
+    var lineY = y;
     for (final painter in [name, if (amount != null) amount]) {
-      painter.paint(canvas, Offset(alignRight ? x - painter.width : x, y));
-      y += painter.height;
+      painter.paint(canvas, Offset(alignRight ? x - painter.width : x, lineY));
+      lineY += painter.height;
     }
   }
 }
 
-/// Where everything sits: three columns of nodes, the bands between them
-/// and the labels. Heights are proportional to the amounts, with the same
-/// scale in every column, and each column is centred vertically so the
-/// bands of a short column do not all run downhill.
+/// Where everything sits. The sources, the budget and the bands between
+/// them are laid out in the viewport; the expenses column is laid out in
+/// its own, taller space (the viewport's height times the stretch) and
+/// scrolls past the viewport, its bands drawn from the budget to wherever
+/// its nodes stand at the moment. Heights are proportional to the amounts;
+/// the viewport uses one scale, the stretched column its own.
 class _Geometry {
   const _Geometry({
     required this.size,
     required this.sources,
     required this.budget,
+    required this.inflows,
+    required this.leftLabels,
+    required this.contentHeight,
     required this.sinks,
-    required this.links,
-    required this.labels,
+    required this.sinkLabels,
+    required this.slotTops,
+    required this.slotHeights,
   });
 
   final Size size;
   final List<_NodeBox> sources;
   final _NodeBox budget;
+
+  /// The bands from the sources into the budget.
+  final List<Path> inflows;
+  final List<_PlacedLabel> leftLabels;
+
+  /// The expenses column's height; its nodes and labels are in its space.
+  final double contentHeight;
   final List<_NodeBox> sinks;
-  final List<_LinkBand> links;
-  final List<_PlacedLabel> labels;
+  final List<_PlacedLabel> sinkLabels;
+
+  /// Where on the budget's right side each sink's band starts, and how
+  /// tall it is there; the slots stay put while the column scrolls.
+  final List<double> slotTops;
+  final List<double> slotHeights;
 
   static const nodeWidth = 10.0;
 
@@ -333,32 +481,38 @@ class _Geometry {
     CashFlowDiagram diagram,
     Size size,
     Map<CashFlowNode, _NodeStyle> styles,
-    _TextStyles text,
-  ) {
+    _TextStyles text, {
+    required double zoom,
+  }) {
     final total = diagram.budget.value;
-    // Nodes in a column stand a gap apart, unless the window is so short
-    // that the gaps would eat the height; then they shrink so that all of
+    final height = size.height;
+    final contentHeight = height * zoom;
+
+    // Nodes in a column stand a gap apart, unless the column is so short
+    // that the gaps would eat its height; then they shrink so that all of
     // them take at most a quarter of it.
-    final mostNodes = math.max(diagram.sources.length, diagram.sinks.length);
-    final gap = math.min(
-      nodeGap,
-      0.25 * size.height / math.max(mostNodes - 1, 1),
-    );
-    double gaps(int count) => math.max(count - 1, 0) * gap;
-    final tallestGaps = math.max(
-      gaps(diagram.sources.length),
-      gaps(diagram.sinks.length),
-    );
-    final scale =
-        total > 0 ? math.max(size.height - tallestGaps, 0) / total : 0.0;
-    double nodeHeightOf(double value) =>
+    double gapFor(int count, double columnHeight) => math.min(
+          nodeGap,
+          0.25 * columnHeight / math.max(count - 1, 1),
+        );
+    double gapsFor(int count, double columnHeight) =>
+        math.max(count - 1, 0) * gapFor(count, columnHeight);
+    double scaleFor(double columnHeight, double gaps) =>
+        total > 0 ? math.max(columnHeight - gaps, 0) / total : 0.0;
+    double nodeHeightOf(double value, double scale) =>
         math.max(value * scale, value > 0 ? minNodeHeight : 0);
 
-    List<_NodeBox> column(List<CashFlowNode> nodes, double x) {
-      final heights = [for (final n in nodes) nodeHeightOf(n.value)];
-      final columnHeight =
-          heights.fold(0.0, (sum, h) => sum + h) + gaps(nodes.length);
-      var y = (size.height - columnHeight) / 2;
+    List<_NodeBox> column(
+      List<CashFlowNode> nodes,
+      double x,
+      double columnHeight,
+      double scale,
+      double gap,
+    ) {
+      final heights = [for (final n in nodes) nodeHeightOf(n.value, scale)];
+      final used = heights.fold(0.0, (sum, h) => sum + h) +
+          math.max(nodes.length - 1, 0) * gap;
+      var y = (columnHeight - used) / 2;
       final boxes = <_NodeBox>[];
       for (var i = 0; i < nodes.length; i++) {
         boxes.add(
@@ -369,53 +523,65 @@ class _Geometry {
       return boxes;
     }
 
-    final sources = column(diagram.sources, 0);
-    final budget = column([
-      diagram.budget,
-    ], size.width * budgetFraction - nodeWidth / 2)
-        .single;
-    final sinks = column(diagram.sinks, size.width - nodeWidth);
+    // The viewport's scale is the one every column would share without a
+    // stretch, so an unstretched diagram looks the same as ever.
+    final viewportScale = scaleFor(
+      height,
+      math.max(
+        gapsFor(diagram.sources.length, height),
+        gapsFor(diagram.sinks.length, height),
+      ),
+    );
+    final sources = column(
+      diagram.sources,
+      0,
+      height,
+      viewportScale,
+      gapFor(diagram.sources.length, height),
+    );
+    final budget = column(
+      [diagram.budget],
+      size.width * budgetFraction - nodeWidth / 2,
+      height,
+      viewportScale,
+      0,
+    ).single;
+
+    final sinkGap = gapFor(diagram.sinks.length, contentHeight);
+    final sinks = column(
+      diagram.sinks,
+      size.width - nodeWidth,
+      contentHeight,
+      scaleFor(contentHeight, gapsFor(diagram.sinks.length, contentHeight)),
+      sinkGap,
+    );
 
     // Bands stack top to bottom on the budget's sides in the nodes' order,
     // at exactly their share of its height; what the inflow leaves
     // uncovered at the bottom is the month's deficit.
-    final links = <_LinkBand>[];
+    final inflows = <Path>[];
     var inY = budget.rect.top;
     for (final source in sources) {
-      final h = source.node.value * scale;
-      links.add(
-        _LinkBand(
-          from: source,
-          to: budget,
-          path: _band(
-            source.rect.right,
-            source.rect.top,
-            source.rect.bottom,
-            budget.rect.left,
-            inY,
-            inY + h,
-          ),
+      final h = source.node.value * viewportScale;
+      inflows.add(
+        _band(
+          source.rect.right,
+          source.rect.top,
+          source.rect.bottom,
+          budget.rect.left,
+          inY,
+          inY + h,
         ),
       );
       inY += h;
     }
+    final slotTops = <double>[];
+    final slotHeights = <double>[];
     var outY = budget.rect.top;
     for (final sink in sinks) {
-      final h = sink.node.value * scale;
-      links.add(
-        _LinkBand(
-          from: budget,
-          to: sink,
-          path: _band(
-            budget.rect.right,
-            outY,
-            outY + h,
-            sink.rect.left,
-            sink.rect.top,
-            sink.rect.bottom,
-          ),
-        ),
-      );
+      final h = sink.node.value * viewportScale;
+      slotTops.add(outY);
+      slotHeights.add(h);
       outY += h;
     }
 
@@ -433,10 +599,9 @@ class _Geometry {
       size.width - nodeWidth - budget.rect.right - 2 * labelGap,
       0.0,
     );
-    final labels = <_PlacedLabel>[];
-    if (leftWidth >= 24) {
-      labels.addAll(
-        _settle(
+    final leftLabels = leftWidth < 24
+        ? const <_PlacedLabel>[]
+        : _settle(
             [
               _label(
                 budget,
@@ -459,31 +624,58 @@ class _Geometry {
                   x: nodeWidth + labelGap,
                 ),
             ].nonNulls.toList(),
-            size.height),
-      );
-    }
-    if (rightWidth >= 24) {
-      labels.addAll([
-        for (final box in sinks)
-          _label(
-            box,
-            styles,
-            text,
-            maxWidth: rightWidth,
-            inline: rightWidth >= inlineWidth,
-            alignRight: true,
-            x: size.width - nodeWidth - labelGap,
-          ),
-      ].nonNulls);
-    }
+            height);
+    final sinkLabels = rightWidth < 24
+        ? const <_PlacedLabel>[]
+        : [
+            for (final box in sinks)
+              _label(
+                box,
+                styles,
+                text,
+                maxWidth: rightWidth,
+                inline: rightWidth >= inlineWidth,
+                alignRight: true,
+                x: size.width - nodeWidth - labelGap,
+              ),
+          ].nonNulls.toList();
 
     return _Geometry(
       size: size,
       sources: sources,
       budget: budget,
+      inflows: inflows,
+      leftLabels: leftLabels,
+      contentHeight: contentHeight,
       sinks: sinks,
-      links: links,
-      labels: labels,
+      sinkLabels: sinkLabels,
+      slotTops: slotTops,
+      slotHeights: slotHeights,
+    );
+  }
+
+  /// The part of the viewport the expenses column scrolls through.
+  Rect get sinkArea =>
+      Rect.fromLTRB(budget.rect.right, 0, size.width, size.height);
+
+  /// Whether the sink at [i] shows in the viewport when the column is
+  /// scrolled by [offset].
+  bool sinkVisible(int i, double offset) {
+    final rect = sinks[i].rect.shift(Offset(0, -offset));
+    return rect.bottom > 0 && rect.top < size.height;
+  }
+
+  /// The band from the budget to the sink at [i], the column scrolled by
+  /// [offset].
+  Path sinkBand(int i, double offset) {
+    final rect = sinks[i].rect;
+    return _band(
+      budget.rect.right,
+      slotTops[i],
+      slotTops[i] + slotHeights[i],
+      rect.left,
+      rect.top - offset,
+      rect.bottom - offset,
     );
   }
 
@@ -606,66 +798,132 @@ class _Geometry {
       ..close();
   }
 
-  /// The category under [point]: its node, its label or its band.
-  Category? categoryAt(Offset point) {
+  /// The category under [point], the column scrolled by [offset]: its
+  /// node, its label or its band.
+  Category? categoryAt(Offset point, double offset) {
+    final shifted = Offset(point.dx, point.dy + offset);
     for (final sink in sinks) {
       final category = sink.node.category;
-      if (category != null && sink.rect.inflate(6).contains(point)) {
+      if (category != null && sink.rect.inflate(6).contains(shifted)) {
         return category;
       }
     }
-    for (final label in labels) {
+    for (final label in sinkLabels) {
       final category = label.box.node.category;
-      if (category != null && label.rect.inflate(4).contains(point)) {
+      if (category != null && label.rect.inflate(4).contains(shifted)) {
         return category;
       }
     }
-    for (final link in links) {
-      final category = link.to.node.category;
-      if (category != null && link.path.contains(point)) return category;
+    for (var i = 0; i < sinks.length; i++) {
+      final category = sinks[i].node.category;
+      if (category != null &&
+          sinkVisible(i, offset) &&
+          sinkBand(i, offset).contains(point)) {
+        return category;
+      }
     }
     return null;
   }
 }
 
 class _SankeyPainter extends CustomPainter {
-  const _SankeyPainter({required this.geometry, required this.styles});
+  _SankeyPainter({
+    required this.diagram,
+    required this.styles,
+    required this.text,
+    required this.zoom,
+    required this.scroll,
+  }) : super(repaint: scroll);
 
-  final _Geometry geometry;
+  final CashFlowDiagram diagram;
   final Map<CashFlowNode, _NodeStyle> styles;
+  final _TextStyles text;
+  final double zoom;
+
+  /// The expenses column's scroll position; a change repaints.
+  final ScrollController scroll;
+
+  _Geometry? _geometry;
 
   static const bandAlpha = 0.35;
   static const nodeRadius = Radius.circular(3);
 
+  double get _offset => scroll.hasClients ? scroll.offset : 0;
+
+  _Geometry geometryFor(Size size) {
+    if (_geometry?.size != size) {
+      _geometry = _Geometry.compute(diagram, size, styles, text, zoom: zoom);
+    }
+    return _geometry!;
+  }
+
+  Category? categoryAt(Offset point, Size size) =>
+      geometryFor(size).categoryAt(point, _offset);
+
   @override
   void paint(Canvas canvas, Size size) {
-    for (final link in geometry.links) {
-      final from = styles[link.from.node]!.color;
-      final to = styles[link.to.node]!.color;
-      final paint = Paint()
-        ..shader = ui.Gradient.linear(
-          Offset(link.from.rect.right, 0),
-          Offset(link.to.rect.left, 0),
-          [from.withValues(alpha: bandAlpha), to.withValues(alpha: bandAlpha)],
-        );
-      canvas.drawPath(link.path, paint);
-    }
-    for (final box in [
-      ...geometry.sources,
-      geometry.budget,
-      ...geometry.sinks,
-    ]) {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(box.rect, nodeRadius),
-        Paint()..color = styles[box.node]!.color,
+    final g = geometryFor(size);
+    final offset = _offset;
+
+    for (var i = 0; i < g.sources.length; i++) {
+      canvas.drawPath(
+        g.inflows[i],
+        _bandPaint(g.sources[i], g.budget),
       );
     }
-    for (final label in geometry.labels) {
+    // The expenses column: only what is in view, bands included, clipped to
+    // its area so a node half scrolled out is cut at the edge.
+    canvas.save();
+    canvas.clipRect(g.sinkArea);
+    for (var i = 0; i < g.sinks.length; i++) {
+      if (!g.sinkVisible(i, offset)) continue;
+      canvas.drawPath(g.sinkBand(i, offset), _bandPaint(g.budget, g.sinks[i]));
+    }
+    for (var i = 0; i < g.sinks.length; i++) {
+      if (!g.sinkVisible(i, offset)) continue;
+      _node(canvas, g.sinks[i], dy: -offset);
+    }
+    for (final label in g.sinkLabels) {
+      final rect = label.rect.shift(Offset(0, -offset));
+      if (rect.bottom < 0 || rect.top > size.height) continue;
+      label.paint(canvas, dy: -offset);
+    }
+    canvas.restore();
+
+    for (final box in [...g.sources, g.budget]) {
+      _node(canvas, box);
+    }
+    for (final label in g.leftLabels) {
       label.paint(canvas);
     }
   }
 
+  Paint _bandPaint(_NodeBox from, _NodeBox to) {
+    final fromColor = styles[from.node]!.color;
+    final toColor = styles[to.node]!.color;
+    return Paint()
+      ..shader = ui.Gradient.linear(
+        Offset(from.rect.right, 0),
+        Offset(to.rect.left, 0),
+        [
+          fromColor.withValues(alpha: bandAlpha),
+          toColor.withValues(alpha: bandAlpha),
+        ],
+      );
+  }
+
+  void _node(Canvas canvas, _NodeBox box, {double dy = 0}) {
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(box.rect.shift(Offset(0, dy)), nodeRadius),
+      Paint()..color = styles[box.node]!.color,
+    );
+  }
+
   @override
   bool shouldRepaint(_SankeyPainter oldDelegate) =>
-      oldDelegate.geometry != geometry || oldDelegate.styles != styles;
+      oldDelegate.diagram != diagram ||
+      oldDelegate.styles != styles ||
+      oldDelegate.text != text ||
+      oldDelegate.zoom != zoom ||
+      oldDelegate.scroll != scroll;
 }
