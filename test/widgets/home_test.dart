@@ -94,6 +94,36 @@ void main() {
     expect(find.text('App settings'), findsOneWidget);
   });
 
+  testWidgets('changes the currency from App settings', (tester) async {
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+    expect(find.textContaining('zł'), findsWidgets);
+
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('App settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('PLN · zł'), findsOneWidget);
+
+    await tester.tap(find.text('Currency'));
+    await tester.pumpAndSettle();
+    expect(find.text('Choose currency'), findsOneWidget);
+    await tester.tap(find.text('Euro'));
+    await tester.pumpAndSettle();
+
+    expect(server.currency, 'EUR');
+    expect(find.text('Currency changed'), findsOneWidget);
+    expect(find.text('EUR · €'), findsOneWidget);
+
+    // Back on the summary every amount is in euro, without a reload.
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.textContaining('€4,880.00'), findsOneWidget);
+    expect(find.textContaining('zł'), findsNothing);
+  });
+
   testWidgets('keeps the data and shows a banner when a refresh fails', (tester) async {
     final server = FakeServer();
     final services = await pumpApp(tester, server, loggedIn: true);

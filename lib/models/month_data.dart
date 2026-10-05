@@ -1,4 +1,5 @@
 import 'category.dart';
+import 'currency.dart';
 import 'expense.dart';
 import 'income.dart';
 import 'money.dart';
@@ -22,6 +23,9 @@ class MonthData {
   /// The user's planned savings as the server stores it. It applies only to
   /// the current month; see `BudgetMath.effectivePlannedSavings`.
   final double plannedSavings;
+
+  /// ISO 4217 code of the user's currency; every amount is in it.
+  final String currency;
   final String? message;
 
   const MonthData({
@@ -31,6 +35,7 @@ class MonthData {
     this.incomes = const [],
     this.expenses = const [],
     this.plannedSavings = 0,
+    this.currency = defaultCurrency,
     this.message,
   });
 
@@ -60,6 +65,7 @@ class MonthData {
       incomes: incomes,
       expenses: expenses,
       plannedSavings: parseMoney(json['planned_savings']),
+      currency: json['currency'] as String? ?? defaultCurrency,
       message: json['message'] as String?,
     );
   }
@@ -98,6 +104,7 @@ class MonthData {
     List<Income>? incomes,
     List<Expense>? expenses,
     double? plannedSavings,
+    String? currency,
     String? message,
   }) =>
       MonthData(
@@ -107,6 +114,7 @@ class MonthData {
         incomes: incomes ?? this.incomes,
         expenses: expenses ?? this.expenses,
         plannedSavings: plannedSavings ?? this.plannedSavings,
+        currency: currency ?? this.currency,
         message: message ?? this.message,
       );
 }

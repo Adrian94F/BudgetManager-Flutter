@@ -1,4 +1,5 @@
 export 'category.dart';
+export 'currency.dart';
 export 'expense.dart';
 export 'income.dart';
 export 'money.dart';

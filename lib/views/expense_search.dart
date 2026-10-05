@@ -15,7 +15,7 @@ bool expenseMatches(Expense expense, String query, MonthData data, String locale
   final haystack = [
     data.categoryName(expense.categoryId),
     expense.comment ?? '',
-    Formatters.money(expense.value, locale),
+    Formatters.money(expense.value, locale, currency: data.currency),
     expense.value.toStringAsFixed(2),
     DateFormat.yMMMd(locale).format(expense.date),
     DateFormat.yMMMMEEEEd(locale).format(expense.date),
@@ -106,7 +106,7 @@ class _ResultTile extends StatelessWidget {
           Expanded(child: Text(categoryName, maxLines: 1, overflow: TextOverflow.ellipsis)),
           const SizedBox(width: 12),
           Text(
-            Formatters.money(expense.value, locale),
+            Formatters.moneyOf(context, expense.value),
             style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
         ],

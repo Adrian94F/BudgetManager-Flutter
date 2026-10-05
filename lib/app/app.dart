@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
+import '../state/month_controller.dart';
 import '../state/settings_controller.dart';
+import '../tools/formatters.dart';
 import '../views/home.dart';
 import '../views/login.dart';
 import 'app_scope.dart';
@@ -66,6 +69,9 @@ class _BudgetManagerAppState extends State<BudgetManagerApp> {
             theme: buildTheme(Brightness.light, seedColor: seed),
             darkTheme: buildTheme(Brightness.dark, seedColor: seed),
             themeMode: services.settings.themeMode,
+            // Above the navigator, so every route formats amounts in the
+            // user's currency and follows a change made in the settings.
+            builder: (context, child) => _CurrencyScopeHost(months: services.months, child: child!),
             home: Builder(
               builder: (context) {
                 // Transparent system bars with icons readable on the theme.
@@ -91,4 +97,56 @@ class _BudgetManagerAppState extends State<BudgetManagerApp> {
       ),
     );
   }
+}
+
+/// Publishes the controller's currency as a [CurrencyScope]. Only a change
+/// of currency rebuilds the tree below; a notification can arrive while a
+/// descendant builds (the first load starts in HomeScreen.initState), so the
+/// rebuild then waits for the frame to finish.
+class _CurrencyScopeHost extends StatefulWidget {
+  const _CurrencyScopeHost({required this.months, required this.child});
+
+  final MonthController months;
+  final Widget child;
+
+  @override
+  State<_CurrencyScopeHost> createState() => _CurrencyScopeHostState();
+}
+
+class _CurrencyScopeHostState extends State<_CurrencyScopeHost> {
+  late String _currency = widget.months.currency;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.months.addListener(_onMonthsChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _CurrencyScopeHost oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.months != widget.months) {
+      oldWidget.months.removeListener(_onMonthsChanged);
+      widget.months.addListener(_onMonthsChanged);
+      _currency = widget.months.currency;
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.months.removeListener(_onMonthsChanged);
+    super.dispose();
+  }
+
+  void _onMonthsChanged() {
+    if (!mounted || widget.months.currency == _currency) return;
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) => _onMonthsChanged());
+      return;
+    }
+    setState(() => _currency = widget.months.currency);
+  }
+
+  @override
+  Widget build(BuildContext context) => CurrencyScope(currency: _currency, child: widget.child);
 }

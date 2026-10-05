@@ -49,6 +49,12 @@ class FakeServer {
     {'id': 2, 'name': 'Transport', 'position': 2},
   ];
   double plannedSavings = 0;
+  String currency = 'PLN';
+  final List<Map<String, dynamic>> currencyChoices = [
+    {'code': 'PLN', 'name': 'Polish złoty'},
+    {'code': 'EUR', 'name': 'Euro'},
+    {'code': 'CHF', 'name': 'Swiss franc'},
+  ];
   int defaultMonthId = 11;
   int _nextId = 1000;
 
@@ -87,6 +93,13 @@ class FakeServer {
       case '/api/planned-savings/':
         plannedSavings = (jsonDecode(request.body)['planned_savings'] as num).toDouble();
         return _json({'planned_savings': plannedSavings});
+      case '/api/currency/':
+        if (request.method == 'POST') {
+          final code = jsonDecode(request.body)['currency'] as String?;
+          if (!currencyChoices.any((c) => c['code'] == code)) return _json({'detail': 'Invalid currency.'}, 400);
+          currency = code!;
+        }
+        return _json({'currency': currency, 'choices': currencyChoices});
     }
     return _json({'detail': 'Not found.'}, 404);
   }
@@ -105,6 +118,7 @@ class FakeServer {
         'incomes': incomes[id] ?? [],
         'expenses': expenses[id] ?? [],
         'planned_savings': plannedSavings,
+        'currency': currency,
       });
     }
     final body = jsonDecode(request.body) as Map<String, dynamic>;

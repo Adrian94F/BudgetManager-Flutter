@@ -60,6 +60,7 @@ class _MonthBurndownChartState extends State<MonthBurndownChart> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final locale = Localizations.localeOf(context).toString();
+    final currency = CurrencyScope.of(context);
     final dayFormat = DateFormat('d.MM');
     final tooltipDateFormat = DateFormat.MMMEd(locale);
 
@@ -81,7 +82,7 @@ class _MonthBurndownChartState extends State<MonthBurndownChart> {
         tooltipText: scheme.onInverseSurface,
       ),
       labelStyle: theme.textTheme.labelSmall!,
-      money: (value) => Formatters.money(value, locale),
+      money: (value) => Formatters.money(value, locale, currency: currency),
       dayLabel: dayFormat.format,
       tooltipDate: tooltipDateFormat.format,
       words: (

@@ -45,6 +45,12 @@ void main() {
       expect(data.message, isNull);
     });
 
+    test('reads the currency and defaults to PLN', () {
+      expect(MonthData.fromJson(sampleResponse).currency, 'PLN');
+      expect(MonthData.fromJson({...sampleResponse, 'currency': 'EUR'}).currency, 'EUR');
+      expect(MonthData.fromJson(sampleResponse).copyWith(currency: 'CHF').currency, 'CHF');
+    });
+
     test('accepts money as float, int and string', () {
       final data = MonthData.fromJson(sampleResponse);
 

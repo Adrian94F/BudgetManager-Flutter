@@ -39,6 +39,9 @@ class MonthController extends ChangeNotifier {
 
   Month? get month => _data?.month;
 
+  /// The currency every amount is in, as the server reports it.
+  String get currency => _data?.currency ?? defaultCurrency;
+
   MonthSummary get summary =>
       _summary ??= _data == null ? MonthSummary.empty : MonthSummary.compute(_data!);
 
@@ -154,6 +157,14 @@ class MonthController extends ChangeNotifier {
   Future<void> savePlannedSavings(double value) async {
     await _api.savePlannedSavings(value);
     await refresh();
+  }
+
+  /// Changes the user's currency on the server; the amounts on screen switch
+  /// at once, without a reload.
+  Future<void> setCurrency(String code) async {
+    await _api.setCurrency(code);
+    _data = _data?.copyWith(currency: code);
+    notifyListeners();
   }
 
   // MARK: - Incomes and expenses

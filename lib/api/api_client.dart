@@ -191,6 +191,14 @@ class ApiClient {
 
   // MARK: - Account
 
+  /// The user's currency and the codes the server accepts.
+  Future<CurrencySettings> fetchCurrency() async {
+    final response = await _send('GET', 'currency/');
+    return CurrencySettings.fromJson(_decode(response) as Map<String, dynamic>);
+  }
+
+  Future<void> setCurrency(String code) => _send('POST', 'currency/', body: {'currency': code});
+
   Future<void> changePassword({
     required String oldPassword,
     required String newPassword,
