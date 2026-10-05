@@ -17,7 +17,6 @@ class MonthController extends ChangeNotifier {
   final ApiClient _api;
 
   MonthData? _data;
-  Map<String, dynamic>? _rawJson;
   bool _isLoading = false;
   bool _isRefreshing = false;
   ApiException? _error;
@@ -27,10 +26,6 @@ class MonthController extends ChangeNotifier {
   BurndownSeries? _burndown;
 
   MonthData? get data => _data;
-
-  /// The response as the server sent it, for screens not yet moved to
-  /// [data]. Removed once they are.
-  Map<String, dynamic>? get rawJson => _rawJson;
 
   bool get hasData => _data != null;
 
@@ -84,10 +79,9 @@ class MonthController extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final json = await _api.fetchMonthJson(monthId: monthId);
+      final data = await _api.fetchMonth(monthId: monthId);
       if (sequence != _loadSequence) return;
-      _rawJson = json;
-      _data = MonthData.fromJson(json);
+      _data = data;
       _summary = null;
       _burndown = null;
     } on ApiException catch (e) {
@@ -121,7 +115,6 @@ class MonthController extends ChangeNotifier {
   void clear() {
     _loadSequence++;
     _data = null;
-    _rawJson = null;
     _error = null;
     _isLoading = false;
     _isRefreshing = false;

@@ -3,10 +3,8 @@ import 'package:budget_manager/l10n/app_localizations.dart';
 
 import '../api/api.dart';
 import '../app/app_scope.dart';
-import '../domain/domain.dart';
 import '../models/models.dart';
 import '../state/month_controller.dart';
-import '../tools/dates.dart';
 import 'expenses_list.dart';
 import 'expenses_table.dart';
 import 'incomes.dart';
@@ -87,8 +85,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
-  Future<void> _refresh() => _months.refresh();
-
   Future<void> _refreshHard() {
     setState(() => _filter = const ExpensesFilter());
     return _months.refresh();
@@ -114,22 +110,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
-  /// Opens the month form for a new month: the one after the newest, or the
-  /// current calendar month for an account without months.
-  Future<void> _createMonth() async {
-    final months = _months.data?.months ?? const <Month>[];
-    final range = months.isEmpty ? BudgetRules.firstMonthRange() : BudgetRules.nextMonthRange(months.first);
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => MonthDetailsScreen(month: {
-          'id': null,
-          'start_date': Dates.formatApi(range.start),
-          'end_date': Dates.formatApi(range.end),
-        }),
-      ),
-    );
-    await _refresh();
+  void _createMonth() {
+    MonthDetailsScreen.openCreate(context);
   }
 
   void _showMonthPicker(MonthData data) {
@@ -233,11 +215,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return [
       _Tab(
         SummaryScreen(onShowExpenses: () => _selectTab(1), onShowIncomes: () => _selectTab(3)),
-        FabMenu(onRefresh: _refresh),
+        const FabMenu(),
       ),
       _Tab(
         ExpensesListView(data: data, filter: _filter),
-        FabMenu(onRefresh: _refresh, fabType: FabType.expense),
+        const FabMenu(fabType: FabType.expense),
       ),
       _Tab(
         ExpensesTableView(data: data, onOpenFiltered: _openFilteredExpensesList),
@@ -245,7 +227,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ),
       _Tab(
         IncomesScreen(data: data),
-        FabMenu(onRefresh: _refresh, fabType: FabType.income),
+        const FabMenu(fabType: FabType.income),
       ),
       const _Tab(SettingsScreen(), null),
     ];

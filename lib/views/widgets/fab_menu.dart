@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
 import '../../app/app_scope.dart';
-import '../../domain/domain.dart';
-import '../../tools/dates.dart';
 import '../expense_form.dart';
 import '../income_form.dart';
 import '../month_details.dart';
@@ -13,15 +11,8 @@ enum FabType { full, expense, income }
 /// The floating action button of a tab: a plain "add" on the expenses and
 /// incomes tabs, and a menu sheet with every action on the summary tab.
 class FabMenu extends StatelessWidget {
-  const FabMenu({
-    super.key,
-    required this.onRefresh,
-    this.fabType = FabType.full,
-  });
+  const FabMenu({super.key, this.fabType = FabType.full});
 
-  /// Reloads the month after a screen that still writes through the API
-  /// directly has closed.
-  final VoidCallback onRefresh;
   final FabType fabType;
 
   @override
@@ -49,31 +40,13 @@ class FabMenu extends StatelessWidget {
 
   void monthDetailsFabAction(BuildContext context) {
     Navigator.pop(context);
-    final raw = AppScope.of(context).months.rawJson!;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MonthDetailsScreen(month: raw['month'] as Map<String, dynamic>),
-      ),
-    ).then((_) => onRefresh());
+    final month = AppScope.of(context).months.month;
+    if (month != null) MonthDetailsScreen.openEdit(context, month);
   }
 
   void newMonthFabAction(BuildContext context) {
     Navigator.pop(context);
-    // The proposal follows the newest month, as the web app does.
-    final months = AppScope.of(context).months.data!.months;
-    final range = months.isEmpty ? BudgetRules.firstMonthRange() : BudgetRules.nextMonthRange(months.first);
-    final newMonth = {
-      'id': null,
-      'start_date': Dates.formatApi(range.start),
-      'end_date': Dates.formatApi(range.end),
-    };
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MonthDetailsScreen(month: newMonth),
-      ),
-    ).then((_) => onRefresh());
+    MonthDetailsScreen.openCreate(context);
   }
 
   Widget buildAddExpenseButton(BuildContext context) {

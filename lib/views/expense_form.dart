@@ -7,6 +7,7 @@ import '../api/api.dart';
 import '../app/app_scope.dart';
 import '../domain/domain.dart';
 import '../models/models.dart';
+import 'widgets/error_views.dart';
 
 /// Full-screen dialog to add or edit an expense. Opened with [expense] it
 /// edits that expense; with [template] it prefills a copy; otherwise it
@@ -159,17 +160,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
         children: [
           if (_error != null) ...[
-            Container(
-              padding: const EdgeInsets.all(12.0),
-              decoration: BoxDecoration(color: scheme.errorContainer, borderRadius: BorderRadius.circular(12.0)),
-              child: Row(
-                children: [
-                  Icon(Icons.error_outline_rounded, color: scheme.onErrorContainer),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(_error!, style: TextStyle(color: scheme.onErrorContainer))),
-                ],
-              ),
-            ),
+            FormErrorBox(message: _error!),
             const SizedBox(height: 16),
           ],
           TextField(

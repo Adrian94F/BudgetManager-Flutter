@@ -118,6 +118,13 @@
   "invalidAmount": "Enter a valid amount.",
   "noCategories": "Add a category in Budget settings first.",
   "noIncomes": "No incomes in this month yet.",
+  "editMonth": "Edit month",
+  "newMonthTitle": "New month",
+  "deleteMonth": "Delete month",
+  "deleteMonthHint": "Only a month without incomes and expenses can be deleted.",
+  "deleteMonthConfirm": "Delete this month? This cannot be undone.",
+  "plannedSavingsHint": "Set aside each month; counts only in the current month.",
+  "invalidDateRange": "The end date must not be before the start date.",
   "expensesOutsideMonth": "{count} expenses are dated outside this month.",
   "@expensesOutsideMonth": {
     "placeholders": {

@@ -69,7 +69,7 @@ void main() {
     expect(months.hasData, isTrue);
     expect(months.month!.id, 11);
     expect(months.data!.months.map((m) => m.id), [12, 11, 10]);
-    expect(months.rawJson!['planned_savings'], 500.0);
+    expect(months.data!.plannedSavings, 500.0);
     expect(months.summary.allIncomes, 3000);
     expect(months.burndown.startingBalance, 3000);
     expect(months.isLoading, isFalse);
@@ -176,7 +176,6 @@ void main() {
     months.clear();
 
     expect(months.hasData, isFalse);
-    expect(months.rawJson, isNull);
     expect(months.error, isNull);
     expect(months.summary.allIncomes, 0);
   });

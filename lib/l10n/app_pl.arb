@@ -99,5 +99,12 @@
     "invalidAmount": "Podaj poprawną kwotę.",
     "noCategories": "Najpierw dodaj kategorię w ustawieniach budżetu.",
     "noIncomes": "Brak przychodów w tym miesiącu.",
+    "editMonth": "Edytuj miesiąc",
+    "newMonthTitle": "Nowy miesiąc",
+    "deleteMonth": "Usuń miesiąc",
+    "deleteMonthHint": "Można usunąć tylko miesiąc bez przychodów i wydatków.",
+    "deleteMonthConfirm": "Usunąć ten miesiąc? Tej operacji nie można cofnąć.",
+    "plannedSavingsHint": "Odkładane co miesiąc; liczy się tylko w bieżącym miesiącu.",
+    "invalidDateRange": "Data końcowa nie może być wcześniejsza niż początkowa.",
     "expensesOutsideMonth": "Liczba wydatków z datą poza tym miesiącem: {count}."
 }
