@@ -12,6 +12,7 @@ class InfoCard extends StatelessWidget {
   final bool isInteger;
   final Color? color;
   final Color? textColor;
+  final VoidCallback? onTap;
 
   const InfoCard({super.key,
     this.icon,
@@ -23,6 +24,7 @@ class InfoCard extends StatelessWidget {
     this.isInteger = false,
     this.color,
     this.textColor,
+    this.onTap,
   });
 
   @override
@@ -33,13 +35,16 @@ class InfoCard extends StatelessWidget {
     return Card(
       elevation: 0,
       color: color,
+      clipBehavior: Clip.antiAlias,
       shape: isOutlined
           ? RoundedRectangleBorder(
         side: BorderSide(color: colorScheme.outlineVariant),
         borderRadius: const BorderRadius.all(Radius.circular(12)),
       )
           : null,
-      child: Padding(
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -90,6 +95,7 @@ class InfoCard extends StatelessWidget {
               ...children,
             ],
           ],
+        ),
         ),
       ),
     );

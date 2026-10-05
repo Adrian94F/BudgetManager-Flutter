@@ -253,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final monthRaw = raw['month'] as Map<String, dynamic>;
     return [
       _Tab(
-        SummaryScreen(data: raw),
+        SummaryScreen(onShowExpenses: () => _selectTab(1), onShowIncomes: () => _selectTab(3)),
         FabMenu(loadedData: raw, onRefresh: _refresh),
       ),
       _Tab(

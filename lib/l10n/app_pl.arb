@@ -85,5 +85,8 @@
     "errorServerUnavailable": "Serwer jest niedostępny. Sprawdź połączenie.",
     "errorInvalidCredentials": "Nieprawidłowa nazwa użytkownika lub hasło.",
     "sessionExpired": "Sesja wygasła. Zaloguj się ponownie.",
-    "noMonths": "Nie ma jeszcze żadnego miesiąca. Utwórz pierwszy, aby zacząć."
+    "noMonths": "Nie ma jeszcze żadnego miesiąca. Utwórz pierwszy, aby zacząć.",
+    "plannedSavings": "Planowane oszczędności",
+    "actualBalance": "Rzeczywisty bilans",
+    "forDailyExpenses": "Na codzienne wydatki"
 }
