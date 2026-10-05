@@ -35,14 +35,15 @@ class SummaryScreen extends StatelessWidget {
           _buildIncomesCard(context, summary),
         ];
         if (orientation == Orientation.landscape) {
-          // Two independent lists: neither takes the shell's primary controller.
+          // The chart takes the whole left column; only the cards scroll, in
+          // a list of their own (not the shell's primary controller).
           return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
-                child: ListView(
-                  primary: false,
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-                  children: [chart],
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: chart,
                 ),
               ),
               Expanded(
@@ -63,24 +64,23 @@ class SummaryScreen extends StatelessWidget {
     );
   }
 
+  /// Portrait: a strip of fixed height above the cards. Landscape: the card
+  /// fills whatever height the column gives it (the chart paints to any size).
   Widget _buildChartCard(BuildContext context, BurndownSeries series, Orientation orientation) {
-    final isVertical = orientation == Orientation.portrait;
-    return SizedBox(
-      height: isVertical ? 200 : 300,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const ChartViewScreen()),
-        ),
-        child: AbsorbPointer(
-          child: Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: MonthBurndownChart(series: series, isSimplified: true),
-          ),
+    final card = InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ChartViewScreen()),
+      ),
+      child: AbsorbPointer(
+        child: Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: MonthBurndownChart(series: series, isSimplified: true),
         ),
       ),
     );
+    return orientation == Orientation.portrait ? SizedBox(height: 200, child: card) : card;
   }
 
   Widget _buildExpensesCard(BuildContext context, MonthSummary summary) {

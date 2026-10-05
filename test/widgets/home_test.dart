@@ -1,5 +1,7 @@
 import 'package:budget_manager/tools/dates.dart';
 import 'package:budget_manager/views/month_picker_sheet.dart';
+import 'package:budget_manager/views/widgets/info_card.dart';
+import 'package:budget_manager/views/widgets/month_burndown_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
@@ -17,6 +19,23 @@ void main() {
     expect(find.text('BALANCE'), findsOneWidget);
     // 5000 income - 120 expense
     expect(find.textContaining('4,880.00'), findsOneWidget);
+  });
+
+  testWidgets('in landscape the chart fills its column and the sums keep to the right edge', (tester) async {
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+
+    // The 800x600 surface is landscape: chart on the left, cards on the right.
+    final chart = find.byType(MonthBurndownChart);
+    expect(chart, findsOneWidget);
+    expect(tester.getSize(chart).height, greaterThan(350));
+    expect(find.ancestor(of: chart, matching: find.byType(ListView)), findsNothing);
+
+    // The card's amount ends where the card's padding begins (16 inside the
+    // Card's own 4 dp margin), however wide the card.
+    final expensesCard = find.widgetWithText(InfoCard, 'EXPENSES');
+    final amount = find.descendant(of: expensesCard, matching: find.byType(FittedBox));
+    expect(tester.getTopRight(amount).dx, closeTo(tester.getTopRight(expensesCard).dx - 20, 1));
   });
 
   testWidgets('switches months through the picker', (tester) async {

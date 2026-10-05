@@ -70,17 +70,22 @@ class InfoCard extends StatelessWidget {
                   ),
                   if (amount != null) ...[
                     const SizedBox(width: 8),
-                    // A long amount in a narrow card scales down instead of overflowing.
+                    // The amount keeps to the card's right edge whatever the
+                    // card's width, and a long one in a narrow card scales
+                    // down instead of overflowing.
                     Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
+                      child: Align(
                         alignment: Alignment.centerRight,
-                        child: Text(
-                          isInteger ? amount!.toInt().toString() : Formatters.moneyOf(context, amount!),
-                          maxLines: 1,
-                          style: textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: textColor ?? colorScheme.onSurface,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            isInteger ? amount!.toInt().toString() : Formatters.moneyOf(context, amount!),
+                            maxLines: 1,
+                            style: textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: textColor ?? colorScheme.onSurface,
+                            ),
                           ),
                         ),
                       ),
