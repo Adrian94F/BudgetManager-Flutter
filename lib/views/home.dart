@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
-import 'package:intl/intl.dart';
 
+import '../api/api.dart';
 import '../app/app_scope.dart';
 import '../domain/domain.dart';
 import '../models/models.dart';
@@ -11,6 +11,7 @@ import 'expenses_list.dart';
 import 'expenses_table.dart';
 import 'incomes.dart';
 import 'month_details.dart';
+import 'month_picker_sheet.dart';
 import 'settings.dart';
 import 'summary.dart';
 import 'widgets/error_views.dart';
@@ -30,21 +31,52 @@ class _Tab {
   final Widget? fab;
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   static const _monthRelatedViews = 4;
 
   var _currentIndex = 0;
   int? _previousIndex;
   ExpensesFilter _filter = ExpensesFilter();
   ScrollCoords? _savedCoords;
+  bool _wasInBackground = false;
 
   MonthController get _months => AppScope.of(context).months;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (!_months.hasData && !_months.isBusy) {
       _months.load();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Figures such as "spent today" go stale when the app sat in the
+  /// background overnight, so the month is reloaded on return, after the
+  /// session was refreshed. A brief inactive state (a dialog, the
+  /// notification shade) does not count.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      _wasInBackground = true;
+    } else if (state == AppLifecycleState.resumed && _wasInBackground) {
+      _wasInBackground = false;
+      _refreshAfterBackground();
+    }
+  }
+
+  Future<void> _refreshAfterBackground() async {
+    final services = AppScope.of(context);
+    try {
+      if (await services.api.ensureSession()) await services.months.refresh();
+    } on ApiException {
+      // A rejected session already signed the user out through the client.
     }
   }
 
@@ -93,8 +125,11 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _createFirstMonth() async {
-    final range = BudgetRules.firstMonthRange();
+  /// Opens the month form for a new month: the one after the newest, or the
+  /// current calendar month for an account without months.
+  Future<void> _createMonth() async {
+    final months = _months.data?.months ?? const <Month>[];
+    final range = months.isEmpty ? BudgetRules.firstMonthRange() : BudgetRules.nextMonthRange(months.first);
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -106,6 +141,16 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
     await _refresh();
+  }
+
+  void _showMonthPicker(MonthData data) {
+    MonthPickerSheet.show(
+      context,
+      months: data.months,
+      selectedId: data.month?.id,
+      onSelect: _selectMonth,
+      onCreate: _createMonth,
+    );
   }
 
   @override
@@ -156,15 +201,16 @@ class _HomeScreenState extends State<HomeScreen> {
     if (tabs != null) {
       content = tabs[_currentIndex].screen;
     } else if (isMonthTab) {
-      content = NoMonthView(message: raw['message'] as String?, onCreate: _createFirstMonth);
+      content = NoMonthView(message: raw['message'] as String?, onCreate: _createMonth);
     } else {
       content = const SettingsScreen();
     }
     final fab = tabs?[_currentIndex].fab;
 
-    final title = isMonthTab && month != null ? _monthDates(month) : _tabTitle(l10n);
     final appBar = AppBar(
-      title: Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+      title: isMonthTab && month != null
+          ? _MonthTitle(month: month, onTap: () => _showMonthPicker(data))
+          : Text(_tabTitle(l10n), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
       forceMaterialTransparency: true,
       leading: _previousIndex != null
           ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _returnToPreviousTab)
@@ -251,16 +297,6 @@ class _HomeScreenState extends State<HomeScreen> {
     };
   }
 
-  String _monthDates(Month month, {bool withYear = true}) {
-    final start = month.startDate;
-    final end = month.endDate;
-    if (start.year != end.year) {
-      return '${DateFormat('d.MM.yyyy').format(start)}-${DateFormat('d.MM.yyyy').format(end)}';
-    }
-    final endFormat = withYear ? 'd.MM.yyyy' : 'd.MM';
-    return '${DateFormat('d.MM').format(start)}-${DateFormat(endFormat).format(end)}';
-  }
-
   List<Widget> _monthActions(AppLocalizations l10n, MonthController months, MonthData data) {
     final previous = months.previousMonth;
     final next = months.nextMonth;
@@ -278,71 +314,9 @@ class _HomeScreenState extends State<HomeScreen> {
       IconButton(
         icon: const Icon(Icons.calendar_month),
         tooltip: l10n.selectMonth,
-        onPressed: () => _showMonthSelector(data),
+        onPressed: () => _showMonthPicker(data),
       ),
     ];
-  }
-
-  void _showMonthSelector(MonthData data) {
-    final selectedId = data.month?.id;
-    final months = data.months;
-    showDialog<void>(
-      context: context,
-      builder: (context) {
-        final l10n = AppLocalizations.of(context)!;
-        final theme = Theme.of(context);
-        return AlertDialog(
-          title: Text(l10n.selectMonth),
-          contentPadding: EdgeInsets.zero,
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              shrinkWrap: true,
-              itemCount: months.length,
-              itemBuilder: (context, index) {
-                final month = months[index];
-                final year = month.startDate.year;
-                final showYearHeader = index == 0 || months[index - 1].startDate.year != year;
-                final yearEnds = index < months.length - 1 && months[index + 1].startDate.year != year;
-                final isSelected = month.id == selectedId;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (showYearHeader)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                        child: Text(
-                          '$year',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                      ),
-                    ListTile(
-                      title: Text(
-                        _monthDates(month, withYear: false),
-                        style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
-                      ),
-                      trailing: isSelected ? Icon(Icons.check_circle, color: theme.colorScheme.primary) : null,
-                      onTap: () {
-                        Navigator.pop(context);
-                        _selectMonth(month.id);
-                      },
-                    ),
-                    if (yearEnds) const Divider(indent: 16, endIndent: 16),
-                  ],
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
-          ],
-        );
-      },
-    );
   }
 
   NavigationRail _navigationRail(AppLocalizations l10n, Widget? fab) {
@@ -374,6 +348,41 @@ class _HomeScreenState extends State<HomeScreen> {
         NavigationDestination(icon: const Icon(Icons.download), label: l10n.incomes),
         NavigationDestination(icon: const Icon(Icons.settings_rounded), label: l10n.settings),
       ],
+    );
+  }
+}
+
+/// Month name with its date range underneath; tapping opens the month picker.
+class _MonthTitle extends StatelessWidget {
+  const _MonthTitle({required this.month, required this.onTap});
+
+  final Month month;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final locale = Localizations.localeOf(context).toString();
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              month.title(locale),
+              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            Text(
+              month.rangeTitle(locale),
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
