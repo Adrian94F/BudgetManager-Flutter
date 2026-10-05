@@ -36,6 +36,11 @@ class CashFlowChart extends StatelessWidget {
   final bool includeRecurring;
   final ValueChanged<Category>? onCategoryTap;
 
+  /// How far a label's text may stand out over each end of its node, in
+  /// logical pixels: a node up to twice this shorter than its text still
+  /// gets the label. Tune to taste.
+  static const labelOverhang = 1.0;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -207,9 +212,9 @@ class _PlacedLabel {
       Rect.fromLTWH(alignRight ? x - width : x, top, width, height);
 
   /// Whether the label sits beside its own node, give or take
-  /// [_Geometry.fitTolerance] over the node's ends.
+  /// [CashFlowChart.labelOverhang] over each of the node's ends.
   bool get fitsItsNode {
-    const slack = _Geometry.fitTolerance / 2;
+    const slack = CashFlowChart.labelOverhang;
     return top >= box.rect.top - slack &&
         top + height <= box.rect.bottom + slack;
   }
@@ -281,9 +286,6 @@ class _Geometry {
 
   /// A side at least this wide fits a name and its amount on one line.
   static const inlineWidth = 120.0;
-
-  /// How much a label may stand out over its node's ends, in total.
-  static const fitTolerance = 4.0;
 
   factory _Geometry.compute(
     CashFlowDiagram diagram,
@@ -460,7 +462,7 @@ class _Geometry {
     double? top,
   }) {
     final style = styles[box.node]!;
-    final room = box.rect.height + fitTolerance;
+    final room = box.rect.height + 2 * CashFlowChart.labelOverhang;
     _PlacedLabel place(TextPainter name, TextPainter? amount, bool inline) {
       final label = _PlacedLabel(
         box: box,
