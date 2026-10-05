@@ -56,5 +56,12 @@ ThemeData buildTheme(Brightness brightness, {Color? seedColor}) {
     colorScheme: colorScheme,
     brightness: brightness,
     extensions: [brightness == Brightness.light ? BudgetColors.light : BudgetColors.dark],
+    // Predictive back on Android 14+: the page peeks out as the gesture
+    // starts, with the manifest's enableOnBackInvokedCallback.
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
+      },
+    ),
   );
 }

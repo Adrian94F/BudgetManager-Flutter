@@ -146,7 +146,7 @@ class _IncomeTile extends StatelessWidget {
             Expanded(child: Text(income.isSalary ? l10n.salary : l10n.otherIncome)),
             const SizedBox(width: 12),
             Text(
-              Formatters.currencyFormatter.format(income.value),
+              Formatters.moneyOf(context, income.value),
               style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
           ],

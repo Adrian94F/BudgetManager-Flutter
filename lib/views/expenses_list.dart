@@ -65,7 +65,7 @@ class _ExpensesListViewState extends State<ExpensesListView> {
       final haystack = [
         widget.data.categoryName(e.categoryId),
         e.comment ?? '',
-        Formatters.currencyFormatter.format(e.value),
+        Formatters.money(e.value, locale),
         e.value.toStringAsFixed(2),
         shortDate.format(e.date),
         longDate.format(e.date),
@@ -284,7 +284,7 @@ class _ExpenseTile extends StatelessWidget {
             Expanded(child: Text(categoryName, maxLines: 1, overflow: TextOverflow.ellipsis)),
             const SizedBox(width: 12),
             Text(
-              Formatters.currencyFormatter.format(expense.value),
+              Formatters.moneyOf(context, expense.value),
               style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
           ],

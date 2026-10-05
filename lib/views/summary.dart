@@ -91,8 +91,8 @@ class SummaryScreen extends StatelessWidget {
       children: summary.allExpenses == 0
           ? const []
           : [
-              detailRow(l10n.dailyExpenses, Formatters.currencyFormatter.format(summary.dailyExpenses)),
-              detailRow(l10n.recurrentExpenses, Formatters.currencyFormatter.format(summary.monthlyExpenses)),
+              detailRow(l10n.dailyExpenses, Formatters.moneyOf(context, summary.dailyExpenses)),
+              detailRow(l10n.recurrentExpenses, Formatters.moneyOf(context, summary.monthlyExpenses)),
             ],
     );
   }
@@ -108,9 +108,9 @@ class SummaryScreen extends StatelessWidget {
       children: summary.allIncomes == 0
           ? const []
           : [
-              detailRow(l10n.forDailyExpenses, Formatters.currencyFormatter.format(summary.incomesForDailyExpenses)),
-              detailRow(l10n.salary, Formatters.currencyFormatter.format(summary.salaries)),
-              detailRow(l10n.otherIncome, Formatters.currencyFormatter.format(summary.otherIncomes)),
+              detailRow(l10n.forDailyExpenses, Formatters.moneyOf(context, summary.incomesForDailyExpenses)),
+              detailRow(l10n.salary, Formatters.moneyOf(context, summary.salaries)),
+              detailRow(l10n.otherIncome, Formatters.moneyOf(context, summary.otherIncomes)),
             ],
     );
   }
@@ -140,7 +140,7 @@ class _BalanceCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
     final budgetColors = BudgetColors.of(context);
-    final money = Formatters.currencyFormatter.format;
+    String money(double amount) => Formatters.moneyOf(context, amount);
 
     final Color background;
     final Color foreground;

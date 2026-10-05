@@ -68,7 +68,7 @@ class InfoCard extends StatelessWidget {
                   ),
                   if (amount != null && isCurrency)
                     Text(
-                      Formatters.currencyFormatter.format(amount),
+                      Formatters.moneyOf(context, amount!),
                       style: textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: textColor ?? colorScheme.onSurface,

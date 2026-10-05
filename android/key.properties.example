@@ -1,0 +1,7 @@
+# Copy to android/key.properties (ignored by git) and fill in your release keystore.
+# Create one with:
+#   keytool -genkey -v -keystore ~/budget-manager-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias budgetmanager
+storeFile=/absolute/path/to/budget-manager-release.jks
+storePassword=change-me
+keyAlias=budgetmanager
+keyPassword=change-me
