@@ -5,7 +5,7 @@ import '../app/app_scope.dart';
 import '../app/theme.dart';
 import '../domain/domain.dart';
 import '../tools/formatters.dart';
-import 'chart_view.dart';
+import 'statistics.dart';
 import 'widgets/info_card.dart';
 import 'widgets/month_burndown_chart.dart';
 
@@ -76,7 +76,7 @@ class SummaryScreen extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const ChartViewScreen()),
+        MaterialPageRoute(builder: (context) => const StatisticsScreen()),
       ),
       child: AbsorbPointer(
         child: Padding(

@@ -20,6 +20,15 @@ void main() {
     expect(Formatters.money(1234.5, 'en', currency: 'USD'), r'$1,234.50');
   });
 
+  test('rounds to whole units when asked', () {
+    expect(Formatters.money(1234.5, 'en', decimalDigits: 0), 'zł 1,235');
+    expect(Formatters.money(1234.4, 'en', decimalDigits: 0), 'zł 1,234');
+    expect(
+      Formatters.money(1234.5, 'pl', decimalDigits: 0),
+      '1 235 zł',
+    );
+  });
+
   test('knows the symbol of a currency', () {
     expect(Formatters.currencySymbol('PLN', 'pl'), 'zł');
     expect(Formatters.currencySymbol('EUR', 'en'), '€');

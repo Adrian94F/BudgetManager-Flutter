@@ -10,8 +10,15 @@ offers the same features with SwiftUI.
 
 - Month summary: balance after planned savings, actual balance, max daily
   allowance, spent today, days left; burndown chart with the ideal line to
-  the savings target, weekends and today shaded, full-screen chart with daily
-  and recurring bars.
+  the savings target, weekends and today shaded; tap it for the Statistics
+  screen.
+- Statistics: a Burndown | Cash flow switch. The full burndown with daily
+  and recurring bars, or the month's cash flow as a Sankey diagram (salary
+  and other income into the budget, out to the categories and the
+  leftover), with the recurring expenses in or out; tap a category to see
+  its expenses (back returns to the diagram), pinch to stretch the expenses column until every category
+  has its label and scroll it, while incomes and the budget stay put and
+  bands reach only the categories on screen.
 - Expenses grouped by day with search, a collapsed section for future
   expenses, swipe to copy or delete, suggested categories when adding.
 - Category × day table with drill-down into the filtered list.
@@ -29,7 +36,7 @@ offers the same features with SwiftUI.
 | Folder | Role |
 | --- | --- |
 | `lib/models/` | `Month`, `Category`, `Income`, `Expense`, `MonthData`: the API response, parsed once |
-| `lib/domain/` | Pure Dart budget rules: `MonthSummary`, `BurndownSeries`, `ExpenseTable`, `BudgetRules` |
+| `lib/domain/` | Pure Dart budget rules: `MonthSummary`, `BurndownSeries`, `CashFlow`, `ExpenseTable`, `BudgetRules` |
 | `lib/api/` | `ApiClient` (one method per endpoint, shared token refresh), `ApiException`, `SessionStore` |
 | `lib/state/` | `AuthController`, `SettingsController`, `MonthController` (`ChangeNotifier`) |
 | `lib/app/` | `AppServices` wiring, `AppScope`, theme, dynamic colour, the `MaterialApp` |

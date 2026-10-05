@@ -173,5 +173,14 @@
         "type": "int"
       }
     }
-  }
+  },
+  "burndown": "Burndown",
+  "cashFlow": "Cash flow",
+  "budget": "Budget",
+  "dailyBudget": "Daily budget",
+  "salaryAfterRecurring": "Salary after recurring expenses",
+  "leftover": "Leftover",
+  "includeRecurringExpenses": "Include recurring expenses",
+  "noFlowData": "No data for this month",
+  "noFlowDataHint": "Add incomes or expenses to see the flow."
 }

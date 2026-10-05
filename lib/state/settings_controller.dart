@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../api/api.dart';
 
-/// App settings kept on the device: theme, dynamic colour and language.
+/// App settings kept on the device: theme, dynamic colour, language and
+/// whether the cash flow diagram includes the recurring expenses.
 class SettingsController extends ChangeNotifier {
   SettingsController(this._session);
 
@@ -14,6 +15,7 @@ class SettingsController extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
   bool _useDynamicColor = false;
   Locale? _locale;
+  bool _includeRecurringInFlow = true;
 
   ThemeMode get themeMode => _themeMode;
   bool get useDynamicColor => _useDynamicColor;
@@ -22,10 +24,15 @@ class SettingsController extends ChangeNotifier {
   /// Android 13+ includes the per-app language setting).
   Locale? get locale => _locale;
 
+  /// Whether the cash flow diagram has the recurring expenses in (the web
+  /// page's "Include monthly expenses" switch).
+  bool get includeRecurringInFlow => _includeRecurringInFlow;
+
   Future<void> load() async {
     _themeMode = parseThemeMode(await _session.themeMode());
     _useDynamicColor = await _session.dynamicColor();
     _locale = parseLocale(await _session.locale());
+    _includeRecurringInFlow = await _session.flowIncludesRecurring();
     notifyListeners();
   }
 
@@ -54,6 +61,12 @@ class SettingsController extends ChangeNotifier {
     _useDynamicColor = enabled;
     notifyListeners();
     await _session.setDynamicColor(enabled);
+  }
+
+  Future<void> setIncludeRecurringInFlow(bool enabled) async {
+    _includeRecurringInFlow = enabled;
+    notifyListeners();
+    await _session.setFlowIncludesRecurring(enabled);
   }
 
   static ThemeMode parseThemeMode(String? name) => switch (name) {

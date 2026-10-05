@@ -45,6 +45,80 @@ MonthData threeDayMonth({double plannedSavings = 0}) {
 }
 
 void main() {
+  group('CashFlow', () {
+    test(
+        'splits incomes and groups spending by category like the server flow view',
+        () {
+      final data = threeDayMonth().copyWith(incomes: [
+        Income(id: 1, value: 2137, date: DateTime(2026, 1, 1), isSalary: true),
+        Income(id: 2, value: 420, date: DateTime(2026, 1, 1), isSalary: false),
+      ]);
+      final flow = CashFlow.compute(data);
+
+      expect(flow.salary, 2137);
+      expect(flow.otherIncomes, 420);
+      expect(flow.allExpenses, 802);
+      expect(flow.recurringExpenses, 666);
+      expect(flow.leftover, 1755);
+      expect(flow.categories.map((c) => c.category.name).toList(),
+          ['Rent', 'Food']);
+      expect(flow.categories.first.monthly, 666);
+      expect(flow.categories.last.daily, 136);
+      expect(flow.isEmpty, isFalse);
+    });
+
+    test('the diagram runs everything through the budget, leftover last', () {
+      final diagram =
+          CashFlow.compute(threeDayMonth()).diagram(includeRecurring: true);
+
+      expect(diagram.sources.map((n) => n.kind).toList(),
+          [CashFlowNodeKind.salary]);
+      expect(diagram.sources.single.value, 2137);
+      expect(diagram.budget.value, 2137);
+      expect(diagram.sinks.map((n) => n.kind).toList(), [
+        CashFlowNodeKind.category,
+        CashFlowNodeKind.category,
+        CashFlowNodeKind.leftover,
+      ]);
+      expect(diagram.sinks.map((n) => n.value).toList(), [666, 136, 1335]);
+      expect(diagram.sinks.first.category, rent);
+    });
+
+    test(
+        'without the recurring expenses they come off the salary and the daily budget balances',
+        () {
+      final diagram =
+          CashFlow.compute(threeDayMonth()).diagram(includeRecurring: false);
+
+      expect(diagram.sources.single.value, 2137 - 666);
+      expect(diagram.sinks.map((n) => n.value).toList(), [136, 1335]);
+      expect(diagram.sinks.first.category, food);
+      expect(diagram.budget.value, 1471);
+    });
+
+    test(
+        'a month in the red has no leftover and a budget as big as the spending',
+        () {
+      final data = threeDayMonth().copyWith(incomes: [
+        Income(id: 1, value: 500, date: DateTime(2026, 1, 1), isSalary: true),
+      ]);
+      final flow = CashFlow.compute(data);
+      expect(flow.leftover, 500 - 802);
+
+      final diagram = flow.diagram(includeRecurring: true);
+      expect(diagram.sinks.map((n) => n.kind),
+          everyElement(CashFlowNodeKind.category));
+      expect(diagram.budget.value, 802);
+    });
+
+    test('an empty month has an empty flow', () {
+      final flow =
+          CashFlow.compute(threeDayMonth().copyWith(incomes: [], expenses: []));
+      expect(flow.isEmpty, isTrue);
+      expect(flow.diagram(includeRecurring: true).isEmpty, isTrue);
+    });
+  });
+
   group('MonthSummary', () {
     test('sums incomes and expenses like the server calculator', () {
       final data = threeDayMonth().copyWith(incomes: [

@@ -1,5 +1,9 @@
+import 'package:budget_manager/domain/domain.dart';
 import 'package:budget_manager/tools/dates.dart';
+import 'package:budget_manager/views/category_expenses.dart';
 import 'package:budget_manager/views/month_picker_sheet.dart';
+import 'package:budget_manager/views/statistics.dart';
+import 'package:budget_manager/views/widgets/cash_flow_chart.dart';
 import 'package:budget_manager/views/widgets/info_card.dart';
 import 'package:budget_manager/views/widgets/month_burndown_chart.dart';
 import 'package:flutter/material.dart';
@@ -278,6 +282,153 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
     expect(server.monthLoads, loadsBefore);
+  });
+
+  testWidgets('Statistics switches between the burndown and the cash flow',
+      (tester) async {
+    final server = FakeServer();
+    // A recurring expense, so the cash flow has something to leave out.
+    server.expenses[11]!.add({
+      'id': 2,
+      'value': 500.0,
+      'date': server.currentMonth['start_date'],
+      'comment': 'Bus pass',
+      'category': 2,
+      'is_monthly': true,
+    });
+    final services = await pumpApp(tester, server, loggedIn: true);
+
+    // The card absorbs the chart's pointer events and takes the tap itself.
+    await tester.tap(find.byType(MonthBurndownChart), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(find.byType(StatisticsScreen), findsOneWidget);
+    expect(find.byType(BurndownLegend), findsOneWidget);
+    expect(find.byType(CashFlowChart), findsNothing);
+
+    await tester.tap(find.text('Cash flow'));
+    await tester.pumpAndSettle();
+    expect(find.byType(BurndownLegend), findsNothing);
+    var chart = tester.widget<CashFlowChart>(find.byType(CashFlowChart));
+    expect(chart.diagram.sources.map((n) => n.value).toList(), [5000]);
+    expect(chart.diagram.sinks.map((n) => n.value).toList(), [500, 120, 4380]);
+    expect(chart.diagram.sinks.first.category?.name, 'Transport');
+    expect(chart.diagram.sinks.last.kind, CashFlowNodeKind.leftover);
+
+    // Leaving the recurring expenses out takes them off the salary.
+    await tester.tap(find.text('Include recurring expenses'));
+    await tester.pumpAndSettle();
+    chart = tester.widget<CashFlowChart>(find.byType(CashFlowChart));
+    expect(chart.diagram.sources.map((n) => n.value).toList(), [4500]);
+    expect(chart.diagram.sinks.map((n) => n.value).toList(), [120, 4380]);
+    // The choice is kept on the device.
+    expect(await services.session.flowIncludesRecurring(), isFalse);
+  });
+
+  testWidgets(
+      'a pinch stretches the expenses column, one finger scrolls it, the rest stays',
+      (tester) async {
+    final server = FakeServer();
+    // A tiny category: its label needs a tall column, so the stretch has far
+    // to go before every label fits.
+    server.expenses[11]!.add({
+      'id': 2,
+      'value': 15.0,
+      'date': server.currentMonth['start_date'],
+      'comment': 'Ticket',
+      'category': 2,
+      'is_monthly': false,
+    });
+    await pumpApp(tester, server, loggedIn: true);
+    await tester.tap(find.byType(MonthBurndownChart), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cash flow'));
+    await tester.pumpAndSettle();
+    final chart = find.byType(CashFlowChart);
+    final viewport = tester.getSize(chart).height;
+    ScrollPosition column() => tester
+        .widget<SingleChildScrollView>(find.descendant(
+            of: chart, matching: find.byType(SingleChildScrollView)))
+        .controller!
+        .position;
+    final limit = CashFlowChart.heightToLabelAll(
+      tester.element(chart),
+      tester.widget<CashFlowChart>(chart).diagram,
+    );
+    expect(limit, greaterThan(viewport * 3));
+    expect(column().maxScrollExtent, 0);
+
+    // Two fingers 80 px apart move to 240 px apart: three times the height.
+    Future<void> pinch() async {
+      final centre = tester.getCenter(chart);
+      final upper = await tester.startGesture(centre - const Offset(0, 40));
+      final lower = await tester.startGesture(centre + const Offset(0, 40));
+      await tester.pump();
+      for (var i = 0; i < 10; i++) {
+        await upper.moveBy(const Offset(0, -8));
+        await lower.moveBy(const Offset(0, 8));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await upper.up();
+      await lower.up();
+      await tester.pumpAndSettle();
+    }
+
+    await pinch();
+    expect(column().maxScrollExtent, closeTo(viewport * 2, viewport * 0.1));
+    // The chart itself keeps its size: incomes and the budget stay put.
+    expect(tester.getSize(chart).height, viewport);
+
+    // Pinching on, the stretch stops where the smallest category fits its
+    // label, however far the fingers go.
+    for (var i = 0;
+        i < 4 && column().maxScrollExtent < limit - viewport - 1;
+        i++) {
+      await pinch();
+    }
+    expect(column().maxScrollExtent, closeTo(limit - viewport, 1));
+
+    // One finger scrolls the column.
+    await tester.drag(chart, const Offset(0, -150), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(column().pixels, greaterThan(100));
+  });
+
+  testWidgets(
+      'a tap on a category in the cash flow opens its expenses, back returns',
+      (tester) async {
+    final server = FakeServer();
+    server.expenses[11]!.add({
+      'id': 2,
+      'value': 500.0,
+      'date': server.currentMonth['start_date'],
+      'comment': 'Bus pass',
+      'category': 2,
+      'is_monthly': true,
+    });
+    await pumpApp(tester, server, loggedIn: true);
+    // The card absorbs the chart's pointer events and takes the tap itself.
+    await tester.tap(find.byType(MonthBurndownChart), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cash flow'));
+    await tester.pumpAndSettle();
+
+    // The biggest category sits at the top of the right column.
+    final rect = tester.getRect(find.byType(CashFlowChart));
+    await tester.tapAt(Offset(rect.right - 4, rect.top + 12));
+    await tester.pumpAndSettle();
+
+    // The category's expenses open above the statistics.
+    expect(find.byType(CategoryExpensesScreen), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Transport'), findsOneWidget);
+    expect(find.text('Bus pass'), findsOneWidget);
+    expect(find.text('Weekly shop'), findsNothing);
+    expect(find.byType(InputChip), findsNothing);
+
+    // Back returns to the diagram.
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byType(CategoryExpensesScreen), findsNothing);
+    expect(find.byType(CashFlowChart), findsOneWidget);
   });
 
   testWidgets('pull-to-refresh reloads the month', (tester) async {
