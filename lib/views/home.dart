@@ -17,6 +17,7 @@ import 'summary.dart';
 import 'widgets/error_views.dart';
 import 'widgets/fab_menu.dart';
 import 'widgets/month_app_bar.dart';
+import 'widgets/rail_action.dart';
 
 /// The signed-in shell: a collapsing top bar with the month's title, the
 /// month picker and Settings, and three tabs below (Summary, Expenses as a
@@ -265,7 +266,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (useRail) {
       return Row(
         children: [
-          _navigationRail(l10n, fab, data, compact: compactHeader, height: constraints.maxHeight),
+          _navigationRail(l10n, fab, data, height: constraints.maxHeight - MediaQuery.paddingOf(context).vertical),
           Expanded(child: Scaffold(body: body)),
         ],
       );
@@ -324,39 +325,63 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// Which labels the rail has room for in [height] (the window's height
+  /// without the system insets): every one, with labels under the month
+  /// picker and Settings as well (a tablet); only the selected destination's;
+  /// or none (a phone in landscape). The figures are the Material 3 rail
+  /// metrics: a labelled destination is 64 dp, an icon-only one 44 dp, the
+  /// FAB block 72 dp, and the two actions at the bottom 128 dp with labels
+  /// or 112 dp without.
+  static NavigationRailLabelType _railLabelsFor(double height) {
+    const fabBlock = 72.0;
+    const labelled = 64.0;
+    const iconOnly = 44.0;
+    if (height >= fabBlock + 3 * labelled + 128) return NavigationRailLabelType.all;
+    if (height >= fabBlock + labelled + 2 * iconOnly + 112) return NavigationRailLabelType.selected;
+    return NavigationRailLabelType.none;
+  }
+
   /// The rail of a wide window: the tab's FAB on top, the destinations, and
-  /// the month picker with Settings at the bottom. A compact height drops
-  /// the labels, and the rail scrolls rather than overflowing when even that
-  /// is too tall.
-  Widget _navigationRail(AppLocalizations l10n, Widget? fab, MonthData data, {required bool compact, required double height}) {
-    final rail = NavigationRail(
+  /// the month picker with Settings pinned at the bottom. Labels follow the
+  /// room there is ([_railLabelsFor]); the destinations scroll rather than
+  /// overflow if the window is shorter than even the icon-only rail.
+  Widget _navigationRail(AppLocalizations l10n, Widget? fab, MonthData data, {required double height}) {
+    final labels = _railLabelsFor(height);
+    final labelledActions = labels == NavigationRailLabelType.all;
+    return NavigationRail(
       selectedIndex: _currentIndex,
       onDestinationSelected: _onDestinationSelected,
       groupAlignment: -1,
       leading: fab ?? const SizedBox.square(dimension: 56),
-      labelType: compact ? NavigationRailLabelType.none : NavigationRailLabelType.all,
+      labelType: labels,
+      scrollable: true,
+      trailingAtBottom: true,
       destinations: [
         NavigationRailDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: Text(l10n.summary)),
         NavigationRailDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: Text(l10n.expenses)),
         NavigationRailDestination(icon: const Icon(Icons.savings_outlined), selectedIcon: const Icon(Icons.savings), label: Text(l10n.incomes)),
       ],
-      trailing: Expanded(
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 8, bottom: 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [_monthPickerButton(l10n, data), _settingsButton(l10n)],
+      trailing: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RailAction(
+              icon: Icons.calendar_month_outlined,
+              label: l10n.month,
+              tooltip: l10n.selectMonth,
+              showLabel: labelledActions,
+              onPressed: () => _showMonthPicker(data),
             ),
-          ),
+            RailAction(
+              icon: Icons.settings_outlined,
+              label: l10n.settings,
+              tooltip: l10n.settings,
+              showLabel: labelledActions,
+              onPressed: _openSettings,
+            ),
+          ],
         ),
-      ),
-    );
-    return SingleChildScrollView(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(minHeight: height),
-        child: IntrinsicHeight(child: rail),
       ),
     );
   }

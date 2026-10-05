@@ -108,7 +108,10 @@ void main() {
     expect(find.descendant(of: rail, matching: find.byTooltip('Select month')), findsOneWidget);
     expect(find.descendant(of: rail, matching: find.byTooltip('Settings')), findsOneWidget);
     expect(find.descendant(of: find.byType(SliverAppBar), matching: find.byTooltip('Settings')), findsNothing);
-    expect(tester.widget<NavigationRail>(rail).labelType, NavigationRailLabelType.none);
+    // 360 dp leaves room for the selected destination's label only, and none
+    // under the two actions.
+    expect(tester.widget<NavigationRail>(rail).labelType, NavigationRailLabelType.selected);
+    expect(find.descendant(of: rail, matching: find.text('Settings')), findsNothing);
 
     // The summary's action sheet shows every action without overflowing.
     await tester.tap(find.byIcon(Icons.menu_rounded));
@@ -116,6 +119,20 @@ void main() {
     expect(find.text('Add expense'), findsOneWidget);
     expect(find.text('Create new'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a tall window labels every rail item, the actions included', (tester) async {
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+
+    final rail = find.byType(NavigationRail);
+    expect(tester.widget<NavigationRail>(rail).labelType, NavigationRailLabelType.all);
+    expect(find.descendant(of: rail, matching: find.text('Month')), findsOneWidget);
+    expect(find.descendant(of: rail, matching: find.text('Settings')), findsOneWidget);
+
+    await tester.tap(find.descendant(of: rail, matching: find.text('Month')));
+    await tester.pumpAndSettle();
+    expect(find.byType(MonthPickerSheet), findsOneWidget);
   });
 
   testWidgets('opens Settings from the top bar', (tester) async {
