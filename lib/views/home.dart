@@ -47,6 +47,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   ExpensesFilter _filter = const ExpensesFilter();
   bool _wasInBackground = false;
 
+  /// Drives the header and the tab's list together (see `NestedScrollView`).
+  final _scrollController = ScrollController();
+  final _refreshKey = GlobalKey<RefreshIndicatorState>();
+
   MonthController get _months => AppScope.of(context).months;
 
   @override
@@ -61,6 +65,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -118,6 +123,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _filter = const ExpensesFilter();
       _currentIndex = index;
     });
+  }
+
+  /// A tap on the selected destination goes back to the top and reloads,
+  /// as Android apps do; any other destination just switches the tab.
+  Future<void> _onDestinationSelected(int index) async {
+    if (index != _currentIndex) {
+      _selectTab(index);
+      return;
+    }
+    if (_scrollController.hasClients) {
+      // The nested controller brings both the header and the list to the top.
+      await _scrollController.animateTo(0, duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
+    }
+    await _refreshKey.currentState?.show();
   }
 
   void _showExpenses(_ExpensesView view) {
@@ -208,39 +227,39 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     // The header collapses as the tab's list scrolls under it; a tab with its
     // own scroll controllers (the table) simply keeps the header expanded.
-    final body = RefreshIndicator(
-      onRefresh: _refreshHard,
-      edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight,
-      child: NestedScrollView(
-        headerSliverBuilder: (context, _) => [
-          MonthSliverAppBar(
-            title: month?.title(locale) ?? 'Budget Manager',
-            subtitle: month?.rangeTitle(locale),
-            onTitleTap: month == null ? null : () => _showMonthPicker(data),
-            leading: _filter.isActive
-                ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _clearFilter)
-                : null,
-            actions: [
-              if (showSearch) ExpenseSearchButton(data: data),
-              IconButton(
-                icon: const Icon(Icons.calendar_month_outlined),
-                tooltip: l10n.selectMonth,
-                onPressed: () => _showMonthPicker(data),
-              ),
-              IconButton(
-                icon: const Icon(Icons.settings_outlined),
-                tooltip: l10n.settings,
-                onPressed: _openSettings,
-              ),
-              const SizedBox(width: 4),
-            ],
-            showProgress: months.isRefreshing,
-          ),
-          if (months.error != null)
-            SliverToBoxAdapter(child: ErrorBanner(error: months.error!, onRetry: months.refresh)),
-        ],
-        body: content,
-      ),
+    // The refresh indicator sits in the body: the pull happens on the tab's
+    // list, whose notifications an indicator around the whole view would
+    // not see (it only listens at depth 0).
+    final body = NestedScrollView(
+      controller: _scrollController,
+      headerSliverBuilder: (context, _) => [
+        MonthSliverAppBar(
+          title: month?.title(locale) ?? 'Budget Manager',
+          subtitle: month?.rangeTitle(locale),
+          onTitleTap: month == null ? null : () => _showMonthPicker(data),
+          leading: _filter.isActive
+              ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _clearFilter)
+              : null,
+          actions: [
+            if (showSearch) ExpenseSearchButton(data: data),
+            IconButton(
+              icon: const Icon(Icons.calendar_month_outlined),
+              tooltip: l10n.selectMonth,
+              onPressed: () => _showMonthPicker(data),
+            ),
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: l10n.settings,
+              onPressed: _openSettings,
+            ),
+            const SizedBox(width: 4),
+          ],
+          showProgress: months.isRefreshing,
+        ),
+        if (months.error != null)
+          SliverToBoxAdapter(child: ErrorBanner(error: months.error!, onRetry: months.refresh)),
+      ],
+      body: RefreshIndicator(key: _refreshKey, onRefresh: _refreshHard, child: content),
     );
 
     if (constraints.maxWidth >= 600) {
@@ -292,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   NavigationRail _navigationRail(AppLocalizations l10n, Widget? fab) {
     return NavigationRail(
       selectedIndex: _currentIndex,
-      onDestinationSelected: _selectTab,
+      onDestinationSelected: _onDestinationSelected,
       groupAlignment: 0,
       leading: fab ?? const SizedBox.square(dimension: 56),
       labelType: NavigationRailLabelType.all,
@@ -307,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   NavigationBar _bottomNavigation(AppLocalizations l10n) {
     return NavigationBar(
       selectedIndex: _currentIndex,
-      onDestinationSelected: _selectTab,
+      onDestinationSelected: _onDestinationSelected,
       destinations: [
         NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: l10n.summary),
         NavigationDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: l10n.expenses),

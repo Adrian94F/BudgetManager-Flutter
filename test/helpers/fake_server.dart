@@ -61,6 +61,9 @@ class FakeServer {
   /// Every request received, oldest first.
   final List<http.Request> requests = [];
 
+  /// How many times a month was fetched.
+  int get monthLoads => requests.where((r) => r.method == 'GET' && r.url.path == '/api/month/').length;
+
   http.Client get client => MockClient(_handle);
 
   Map<String, dynamic> get currentMonth => months.firstWhere((m) => m['id'] == 11);

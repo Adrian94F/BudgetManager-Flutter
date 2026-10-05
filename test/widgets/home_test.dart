@@ -57,6 +57,39 @@ void main() {
     expect(server.requests.last.url.queryParameters['month_id'], '11');
   });
 
+  testWidgets('pull-to-refresh reloads the month', (tester) async {
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+    final loadsBefore = server.monthLoads;
+
+    await tester.drag(find.text('BALANCE'), const Offset(0, 300));
+    await tester.pump();
+    expect(find.byType(RefreshProgressIndicator), findsOneWidget);
+    await tester.pumpAndSettle();
+
+    expect(server.monthLoads, loadsBefore + 1);
+  });
+
+  testWidgets('tapping the selected destination again reloads the month', (tester) async {
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+    final loadsBefore = server.monthLoads;
+
+    // The test surface is 800 px wide, so navigation is the rail.
+    final incomesDestination = find.descendant(of: find.byType(NavigationRail), matching: find.text('Incomes'));
+
+    // Another destination: no reload, just the tab.
+    await tester.tap(incomesDestination);
+    await tester.pumpAndSettle();
+    expect(find.text('No incomes yet.'), findsNothing);
+    expect(server.monthLoads, loadsBefore);
+
+    // The same one again: back to the top and a reload.
+    await tester.tap(incomesDestination);
+    await tester.pumpAndSettle();
+    expect(server.monthLoads, loadsBefore + 1);
+  });
+
   testWidgets('opens Settings from the top bar', (tester) async {
     final server = FakeServer();
     await pumpApp(tester, server, loggedIn: true);
