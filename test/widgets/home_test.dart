@@ -39,6 +39,24 @@ void main() {
     expect(find.byType(MonthPickerSheet), findsNothing);
   });
 
+  testWidgets('swipes to the previous month on the Summary', (tester) async {
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+    final previous = server.months.firstWhere((m) => m['id'] == 10);
+    final previousTitle = DateFormat.MMMM('en').format(Dates.parseApi(previous['start_date'] as String));
+
+    await tester.fling(find.text('BALANCE'), const Offset(400, 0), 1200);
+    await tester.pumpAndSettle();
+
+    expect(server.requests.last.url.queryParameters['month_id'], '10');
+    expect(find.text(previousTitle), findsOneWidget);
+
+    // Back to the newer month with a fling to the left.
+    await tester.fling(find.text('BALANCE'), const Offset(-400, 0), 1200);
+    await tester.pumpAndSettle();
+    expect(server.requests.last.url.queryParameters['month_id'], '11');
+  });
+
   testWidgets('opens Settings from the top bar', (tester) async {
     final server = FakeServer();
     await pumpApp(tester, server, loggedIn: true);

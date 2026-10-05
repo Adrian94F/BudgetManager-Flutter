@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
 import '../api/api.dart';
@@ -127,6 +128,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
+  /// A horizontal fling on the Summary moves one month: left for the next,
+  /// right for the previous one, as on a calendar.
+  void _onSummarySwipe(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    const threshold = 250.0;
+    final target = velocity <= -threshold
+        ? _months.nextMonth
+        : velocity >= threshold
+            ? _months.previousMonth
+            : null;
+    if (target == null) return;
+    HapticFeedback.selectionClick();
+    _selectMonth(target.id);
+  }
+
   void _createMonth() {
     MonthDetailsScreen.openCreate(context);
   }
@@ -245,9 +261,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<_Tab> _buildTabs(MonthData data) {
     return [
       _Tab(
-        SummaryScreen(
-          onShowExpenses: () => _showExpenses(_ExpensesView.list),
-          onShowIncomes: () => _selectTab(_incomesTab),
+        GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onHorizontalDragEnd: _onSummarySwipe,
+          child: SummaryScreen(
+            onShowExpenses: () => _showExpenses(_ExpensesView.list),
+            onShowIncomes: () => _selectTab(_incomesTab),
+          ),
         ),
         const FabMenu(),
       ),

@@ -60,28 +60,32 @@ class InfoCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       title.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: textTheme.titleMedium?.copyWith(
                         color: textColor ?? colorScheme.primary,
                         letterSpacing: 0.8,
                       ),
                     ),
                   ),
-                  if (amount != null && isCurrency)
-                    Text(
-                      Formatters.moneyOf(context, amount!),
-                      style: textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: textColor ?? colorScheme.onSurface,
+                  if (amount != null) ...[
+                    const SizedBox(width: 8),
+                    // A long amount in a narrow card scales down instead of overflowing.
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          isInteger ? amount!.toInt().toString() : Formatters.moneyOf(context, amount!),
+                          maxLines: 1,
+                          style: textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: textColor ?? colorScheme.onSurface,
+                          ),
+                        ),
                       ),
                     ),
-                  if (amount != null && isInteger)
-                    Text(
-                      amount!.toInt().toString(),
-                      style: textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: textColor ?? colorScheme.onSurface,
-                      ),
-                    ),
+                  ],
                 ],
               ),
             ),
