@@ -113,6 +113,8 @@ class FakeServer {
         return _entry(request, incomes);
       case '/api/category/':
         return _json(categories);
+      case '/api/statistics/':
+        return _statistics();
       case '/api/planned-savings/':
         plannedSavings =
             (jsonDecode(request.body)['planned_savings'] as num).toDouble();
@@ -128,6 +130,25 @@ class FakeServer {
         return _json({'currency': currency, 'choices': currencyChoices});
     }
     return _json({'detail': 'Not found.'}, 404);
+  }
+
+  /// Every month's sums, oldest first, as the server's StatisticsView.
+  http.Response _statistics() {
+    final sorted = [...months]..sort(
+        (a, b) =>
+            (a['start_date'] as String).compareTo(b['start_date'] as String),
+      );
+    double sum(List<Map<String, dynamic>>? rows) => (rows ?? const [])
+        .fold(0.0, (total, row) => total + (row['value'] as num).toDouble());
+    return _json({
+      'labels': [for (final m in sorted) '${m['start_date']}-${m['end_date']}'],
+      'incomeSums': [for (final m in sorted) sum(incomes[m['id'] as int])],
+      'expenseSums': [for (final m in sorted) sum(expenses[m['id'] as int])],
+      'balances': [
+        for (final m in sorted)
+          sum(incomes[m['id'] as int]) - sum(expenses[m['id'] as int]),
+      ],
+    });
   }
 
   http.Response _month(http.Request request) {

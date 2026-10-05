@@ -25,6 +25,9 @@ class MonthController extends ChangeNotifier {
   MonthSummary? _summary;
   BurndownSeries? _burndown;
   CashFlow? _cashFlow;
+  MonthHistory? _history;
+  ApiException? _historyError;
+  bool _isLoadingHistory = false;
 
   MonthData? get data => _data;
 
@@ -74,6 +77,28 @@ class MonthController extends ChangeNotifier {
     return index < 0 ? null : index;
   }
 
+  /// The month-over-month history, once [loadHistory] fetched it; any
+  /// reload of the month forgets it, since the sums may have changed.
+  MonthHistory? get history => _history;
+  ApiException? get historyError => _historyError;
+  bool get isLoadingHistory => _isLoadingHistory;
+
+  /// Fetches the history unless it is there or on its way.
+  Future<void> loadHistory() async {
+    if (_history != null || _isLoadingHistory) return;
+    _isLoadingHistory = true;
+    _historyError = null;
+    notifyListeners();
+    try {
+      _history = await _api.fetchHistory(months: _data?.months ?? const []);
+    } on ApiException catch (e) {
+      _historyError = e;
+    } finally {
+      _isLoadingHistory = false;
+      notifyListeners();
+    }
+  }
+
   /// Loads [monthId], or, when null, the month that has today in it: the
   /// server's own default is its newest month, which may be one made ahead
   /// of time, and the app should open on the current one.
@@ -100,6 +125,7 @@ class MonthController extends ChangeNotifier {
       _summary = null;
       _burndown = null;
       _cashFlow = null;
+      _history = null;
     } on ApiException catch (e) {
       if (sequence != _loadSequence) return;
       _error = e;
@@ -144,9 +170,11 @@ class MonthController extends ChangeNotifier {
     _isLoading = false;
     _isRefreshing = false;
     _requestedMonthId = null;
+    _historyError = null;
     _summary = null;
     _burndown = null;
     _cashFlow = null;
+    _history = null;
     notifyListeners();
   }
 
