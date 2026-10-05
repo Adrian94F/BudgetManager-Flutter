@@ -181,9 +181,27 @@ class _HeroBalance extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-            Text(
-              money(summary.balance),
-              style: theme.textTheme.displaySmall?.copyWith(color: foreground, fontWeight: FontWeight.w700, letterSpacing: -0.5),
+            // A changed balance fades and rises in, instead of just snapping.
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 350),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              layoutBuilder: (current, previous) => Stack(
+                alignment: Alignment.centerLeft,
+                children: [...previous, if (current != null) current],
+              ),
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween(begin: const Offset(0, 0.2), end: Offset.zero).animate(animation),
+                  child: child,
+                ),
+              ),
+              child: Text(
+                money(summary.balance),
+                key: ValueKey(summary.balance),
+                style: theme.textTheme.displaySmall?.copyWith(color: foreground, fontWeight: FontWeight.w700, letterSpacing: -0.5),
+              ),
             ),
             if (summary.plannedSavings > 0) ...[
               const SizedBox(height: 4),

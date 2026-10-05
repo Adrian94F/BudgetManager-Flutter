@@ -101,9 +101,6 @@ class FabMenu extends StatelessWidget {
 
   Widget buildFullFAB(BuildContext context, {double elevation = 6}) {
     return FloatingActionButton(
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(16.0)),
-      ),
       elevation: elevation,
       onPressed: () {
         showModalBottomSheet(

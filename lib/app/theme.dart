@@ -47,8 +47,20 @@ class BudgetColors extends ThemeExtension<BudgetColors> {
   }
 }
 
+/// Button shape that tightens while pressed, as Material 3 Expressive
+/// buttons do; `Material` animates the change.
+WidgetStateProperty<OutlinedBorder?> _pressableShape(double radius) =>
+    WidgetStateProperty.resolveWith((states) => RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(states.contains(WidgetState.pressed) ? radius * 0.6 : radius),
+        ));
+
+const _cardShape = RoundedSuperellipseBorder(borderRadius: BorderRadius.all(Radius.circular(16)));
+const _sheetShape = RoundedSuperellipseBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28)));
+const _dialogShape = RoundedSuperellipseBorder(borderRadius: BorderRadius.all(Radius.circular(28)));
+
 /// The app's Material 3 theme, seeded with the wallpaper colour when the user
-/// enabled dynamic colour on Android 12+ and with indigo otherwise.
+/// enabled dynamic colour on Android 12+ and with indigo otherwise. Surfaces
+/// use superellipse ("squircle") corners.
 ThemeData buildTheme(Brightness brightness, {Color? seedColor}) {
   final colorScheme = ColorScheme.fromSeed(seedColor: seedColor ?? Colors.indigo, brightness: brightness);
   return ThemeData(
@@ -56,6 +68,14 @@ ThemeData buildTheme(Brightness brightness, {Color? seedColor}) {
     colorScheme: colorScheme,
     brightness: brightness,
     extensions: [brightness == Brightness.light ? BudgetColors.light : BudgetColors.dark],
+    cardTheme: const CardThemeData(shape: _cardShape),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(shape: _cardShape),
+    bottomSheetTheme: const BottomSheetThemeData(shape: _sheetShape),
+    dialogTheme: const DialogThemeData(shape: _dialogShape),
+    filledButtonTheme: FilledButtonThemeData(style: ButtonStyle(shape: _pressableShape(20))),
+    elevatedButtonTheme: ElevatedButtonThemeData(style: ButtonStyle(shape: _pressableShape(20))),
+    outlinedButtonTheme: OutlinedButtonThemeData(style: ButtonStyle(shape: _pressableShape(20))),
+    textButtonTheme: TextButtonThemeData(style: ButtonStyle(shape: _pressableShape(20))),
     // The 2024 Material 3 look for progress indicators and sliders (rounded
     // track with a gap and a stop indicator). The flag is Flutter's official
     // opt-in and is marked deprecated only because it will become the default.

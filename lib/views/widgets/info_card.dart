@@ -37,9 +37,9 @@ class InfoCard extends StatelessWidget {
       color: color,
       clipBehavior: Clip.antiAlias,
       shape: isOutlined
-          ? RoundedRectangleBorder(
+          ? RoundedSuperellipseBorder(
         side: BorderSide(color: colorScheme.outlineVariant),
-        borderRadius: const BorderRadius.all(Radius.circular(12)),
+        borderRadius: const BorderRadius.all(Radius.circular(16)),
       )
           : null,
       child: InkWell(
