@@ -11,13 +11,15 @@ import '../../tools/formatters.dart';
 import 'category_style.dart';
 
 /// The month's cash flow as a Sankey diagram: the sources on the left, the
-/// budget in the middle, the categories and the leftover on the right, each
-/// node as tall as its amount. The links are translucent bands shaded from
-/// one end's colour to the other's; a category keeps the colour it has
-/// everywhere else in the app, incomes are the primary colour, the leftover
-/// the "saved" green. Every node has a label with its amount beside it, in
-/// the node's colour; labels of small nodes move down rather than overlap.
-/// A tap on a category (its node, label or band) calls [onCategoryTap].
+/// budget at a third of the width, the categories and the leftover on the
+/// right, each node as tall as its amount. The links are translucent bands
+/// shaded from one end's colour to the other's; a category keeps the colour
+/// it has everywhere else in the app, incomes are the primary colour, the
+/// leftover the "saved" green. Every node has a label with its amount, in
+/// the node's colour: on the roomy right side name and amount share one
+/// line, on the left the amount goes under the name. Labels of small nodes
+/// move down rather than overlap. A tap on a category (its node, label or
+/// band) calls [onCategoryTap].
 class CashFlowChart extends StatelessWidget {
   const CashFlowChart({
     super.key,
@@ -83,7 +85,10 @@ class CashFlowChart extends StatelessWidget {
     };
     final text = _TextStyles(
       name: theme.textTheme.labelMedium!,
-      amount: theme.textTheme.labelSmall!.copyWith(
+      amountInline: theme.textTheme.labelMedium!.copyWith(
+        color: scheme.onSurfaceVariant,
+      ),
+      amountBelow: theme.textTheme.labelSmall!.copyWith(
         color: scheme.onSurfaceVariant,
       ),
       direction: Directionality.of(context),
@@ -133,12 +138,18 @@ class _NodeStyle {
 class _TextStyles {
   const _TextStyles({
     required this.name,
-    required this.amount,
+    required this.amountInline,
+    required this.amountBelow,
     required this.direction,
   });
 
   final TextStyle name;
-  final TextStyle amount;
+
+  /// The amount on the name's line: the name's size, muted.
+  final TextStyle amountInline;
+
+  /// The amount under the name: a size smaller.
+  final TextStyle amountBelow;
   final TextDirection direction;
 }
 
@@ -157,13 +168,15 @@ class _LinkBand {
   final Path path;
 }
 
-/// A node's label, laid out and placed: the name, and the amount under it
-/// when the node is tall enough for two lines.
+/// A node's label, laid out and placed. [inline] puts the name and the
+/// amount on one line, the amount at the node's edge and the name before
+/// it; otherwise the amount goes under the name.
 class _PlacedLabel {
   _PlacedLabel({
     required this.box,
     required this.name,
     required this.amount,
+    required this.inline,
     required this.alignRight,
     required this.x,
     required this.top,
@@ -172,17 +185,48 @@ class _PlacedLabel {
   final _NodeBox box;
   final TextPainter name;
   final TextPainter? amount;
+  final bool inline;
 
   /// Whether [x] is the right edge of the text (a label left of its node).
   final bool alignRight;
   final double x;
   double top;
 
-  double get height => name.height + (amount?.height ?? 0);
-  double get width => math.max(name.width, amount?.width ?? 0);
+  static const inlineGap = 6.0;
+
+  double get height => inline
+      ? math.max(name.height, amount?.height ?? 0)
+      : name.height + (amount?.height ?? 0);
+
+  double get width => inline
+      ? name.width + (amount == null ? 0 : inlineGap + amount!.width)
+      : math.max(name.width, amount?.width ?? 0);
 
   Rect get rect =>
       Rect.fromLTWH(alignRight ? x - width : x, top, width, height);
+
+  void paint(Canvas canvas) {
+    final amount = this.amount;
+    if (inline) {
+      if (alignRight) {
+        var right = x;
+        if (amount != null) {
+          amount.paint(canvas, Offset(right - amount.width, top));
+          right -= amount.width + inlineGap;
+        }
+        name.paint(canvas, Offset(right - name.width, top));
+      } else {
+        name.paint(canvas, Offset(x, top));
+        amount?.paint(canvas, Offset(x + name.width + inlineGap, top));
+      }
+      return;
+    }
+    var y = top;
+    for (final painter in [name, if (amount != null) amount]) {
+      painter.paint(canvas, Offset(alignRight ? x - painter.width : x, y));
+      y += painter.height;
+    }
+  }
 }
 
 /// Where everything sits: three columns of nodes, the bands between them
@@ -210,14 +254,18 @@ class _Geometry {
   static const nodeGap = 8.0;
   static const minNodeHeight = 2.0;
 
+  /// Where the budget stands: a third of the way across, so the categories'
+  /// side, which has the most labels, gets the most room.
+  static const budgetFraction = 1 / 3;
+
   /// Room between a node and its label.
   static const labelGap = 8.0;
 
-  /// Room between two labels in a column.
+  /// Room between two labels on one side.
   static const labelSpacing = 2.0;
 
-  /// A node this tall gets its amount under its name.
-  static const twoLineHeight = 28.0;
+  /// A side at least this wide fits a name and its amount on one line.
+  static const inlineWidth = 120.0;
 
   factory _Geometry.compute(
     CashFlowDiagram diagram,
@@ -254,7 +302,7 @@ class _Geometry {
     final sources = column(diagram.sources, 0);
     final budget = column([
       diagram.budget,
-    ], (size.width - nodeWidth) / 2)
+    ], size.width * budgetFraction - nodeWidth / 2)
         .single;
     final sinks = column(diagram.sinks, size.width - nodeWidth);
 
@@ -300,52 +348,59 @@ class _Geometry {
       outY += h;
     }
 
-    // Labels: a source's to the right of its node, a sink's to the left, the
-    // budget's at the top of its node (which spans the height, so its label
-    // would otherwise sit level with the salary's). Those beside the sources
-    // and the budget share the gap between their columns; a sink's label has
-    // the whole gap on its side.
-    final leftLabelWidth = math.max(
-      (budget.rect.left - nodeWidth) / 2 - labelGap * 1.5,
+    // Labels. The sources' labels (right of their nodes) and the budget's
+    // (left of its node, at the top, since the node spans the height) share
+    // the narrow left side, so they are placed together and keep out of
+    // each other's way. The sinks' labels have the wide right side.
+    final leftWidth = math.max(
+      budget.rect.left - nodeWidth - 2 * labelGap,
       0.0,
     );
-    final rightLabelWidth = math.max(
+    final rightWidth = math.max(
       size.width - nodeWidth - budget.rect.right - 2 * labelGap,
       0.0,
     );
-    final labels = <_PlacedLabel>[
-      ..._placeColumn(
-        sources,
-        styles,
-        text,
-        maxWidth: leftLabelWidth,
-        alignRight: false,
-        x: nodeWidth + labelGap,
-        height: size.height,
-      ),
-      ..._placeColumn(
-        sinks,
-        styles,
-        text,
-        maxWidth: rightLabelWidth,
-        alignRight: true,
-        x: size.width - nodeWidth - labelGap,
-        height: size.height,
-      ),
-    ];
-    if (leftLabelWidth >= 24) {
-      final style = styles[budget.node]!;
-      labels.add(
-        _PlacedLabel(
-          box: budget,
-          name: _layout(
-              style.name, text.name, style.labelColor, text, leftLabelWidth),
-          amount:
-              _layout(style.amount, text.amount, null, text, leftLabelWidth),
-          alignRight: true,
-          x: budget.rect.left - labelGap,
-          top: budget.rect.top + 2,
-        ),
+    final labels = <_PlacedLabel>[];
+    if (leftWidth >= 24) {
+      labels.addAll(
+        _settle([
+          _label(
+            budget,
+            styles,
+            text,
+            maxWidth: leftWidth,
+            inline: false,
+            alignRight: true,
+            x: budget.rect.left - labelGap,
+            top: budget.rect.top + 2,
+          ),
+          for (final box in sources)
+            _label(
+              box,
+              styles,
+              text,
+              maxWidth: leftWidth,
+              inline: false,
+              alignRight: false,
+              x: nodeWidth + labelGap,
+            ),
+        ], size.height),
+      );
+    }
+    if (rightWidth >= 24) {
+      labels.addAll(
+        _settle([
+          for (final box in sinks)
+            _label(
+              box,
+              styles,
+              text,
+              maxWidth: rightWidth,
+              inline: rightWidth >= inlineWidth,
+              alignRight: true,
+              x: size.width - nodeWidth - labelGap,
+            ),
+        ], size.height),
       );
     }
 
@@ -359,36 +414,76 @@ class _Geometry {
     );
   }
 
-  /// One column's labels, each centred on its node where it can be: a label
-  /// that would overlap the one above moves down, and the whole run moves
-  /// back up when the last one would run off the bottom.
-  static List<_PlacedLabel> _placeColumn(
-    List<_NodeBox> boxes,
+  /// A node's label laid out to fit [maxWidth], at [top] or else centred on
+  /// its node. Inline, the amount is measured first and the name gets what
+  /// is left; when that is next to nothing the amount goes under the name
+  /// after all.
+  static _PlacedLabel _label(
+    _NodeBox box,
     Map<CashFlowNode, _NodeStyle> styles,
     _TextStyles text, {
     required double maxWidth,
+    required bool inline,
     required bool alignRight,
     required double x,
-    required double height,
+    double? top,
   }) {
-    if (maxWidth < 24) return const [];
-    final labels = <_PlacedLabel>[];
-    var nextTop = 0.0;
-    for (final box in boxes) {
-      final style = styles[box.node]!;
-      final label = _PlacedLabel(
-        box: box,
-        name: _layout(style.name, text.name, style.labelColor, text, maxWidth),
-        amount: box.rect.height >= twoLineHeight
-            ? _layout(style.amount, text.amount, null, text, maxWidth)
-            : null,
-        alignRight: alignRight,
-        x: x,
-        top: 0,
+    final style = styles[box.node]!;
+    TextPainter? amount;
+    TextPainter? name;
+    if (inline) {
+      final inlineAmount = _layout(
+        style.amount,
+        text.amountInline,
+        null,
+        text,
+        maxWidth,
       );
-      label.top = math.max(box.rect.center.dy - label.height / 2, nextTop);
+      final nameWidth = maxWidth - inlineAmount.width - _PlacedLabel.inlineGap;
+      if (nameWidth >= 40) {
+        amount = inlineAmount;
+        name =
+            _layout(style.name, text.name, style.labelColor, text, nameWidth);
+      } else {
+        inline = false;
+      }
+    }
+    name ??= _layout(style.name, text.name, style.labelColor, text, maxWidth);
+    amount ??= _layout(style.amount, text.amountBelow, null, text, maxWidth);
+    final label = _PlacedLabel(
+      box: box,
+      name: name,
+      amount: amount,
+      inline: inline,
+      alignRight: alignRight,
+      x: x,
+      top: 0,
+    );
+    label.top = top ?? box.rect.center.dy - label.height / 2;
+    return label;
+  }
+
+  /// Keeps one side's labels apart: in order from the top, a label that
+  /// would overlap the one above moves down, and the whole run moves back
+  /// up when the last one would run off the bottom. When even stacked
+  /// tightly they do not fit (a short window with many small categories),
+  /// the smallest nodes go without a label; they stay tappable.
+  static List<_PlacedLabel> _settle(List<_PlacedLabel> labels, double height) {
+    double needed() =>
+        labels.fold(0.0, (sum, l) => sum + l.height) +
+        math.max(labels.length - 1, 0) * labelSpacing;
+    while (labels.length > 1 && needed() > height) {
+      labels.remove(
+        labels.reduce(
+          (a, b) => a.box.node.value <= b.box.node.value ? a : b,
+        ),
+      );
+    }
+    labels.sort((a, b) => a.top.compareTo(b.top));
+    var nextTop = 0.0;
+    for (final label in labels) {
+      label.top = math.max(label.top, nextTop);
       nextTop = label.top + label.height + labelSpacing;
-      labels.add(label);
     }
     final overflow = nextTop - labelSpacing - height;
     if (overflow > 0) {
@@ -489,15 +584,7 @@ class _SankeyPainter extends CustomPainter {
       );
     }
     for (final label in geometry.labels) {
-      var y = label.top;
-      for (final painter in [
-        label.name,
-        if (label.amount != null) label.amount!,
-      ]) {
-        final dx = label.alignRight ? label.x - painter.width : label.x;
-        painter.paint(canvas, Offset(dx, y));
-        y += painter.height;
-      }
+      label.paint(canvas);
     }
   }
 

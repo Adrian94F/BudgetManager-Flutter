@@ -165,10 +165,41 @@ class _CashFlowView extends StatelessWidget {
           ),
         ),
         if (flow.recurringExpenses > 0)
-          SwitchListTile(
-            title: Text(l10n.includeRecurringExpenses),
-            value: includeRecurring,
-            onChanged: onIncludeRecurringChanged,
+          // Right-aligned, by the switch, so the text reads with its control
+          // however wide the window; the text toggles it too.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: MergeSemantics(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () => onIncludeRecurringChanged(!includeRecurring),
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(start: 12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            l10n.includeRecurringExpenses,
+                            style: Theme.of(context).textTheme.bodyLarge,
+                            textAlign: TextAlign.end,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Switch(
+                          value: includeRecurring,
+                          onChanged: onIncludeRecurringChanged,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
       ],
     );
