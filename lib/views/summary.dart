@@ -28,7 +28,7 @@ class SummaryScreen extends StatelessWidget {
       builder: (context, orientation) {
         final chart = _buildChartCard(context, months.burndown, orientation);
         final cards = [
-          _BalanceCard(summary: summary),
+          _HeroBalance(summary: summary),
           const SizedBox(height: 16),
           _buildExpensesCard(context, summary),
           const SizedBox(height: 16),
@@ -131,56 +131,124 @@ class SummaryScreen extends StatelessWidget {
   }
 }
 
-/// Balance after planned savings, with the savings and the actual balance
-/// underneath when savings apply, and the day figures for the current month.
-class _BalanceCard extends StatelessWidget {
-  const _BalanceCard({required this.summary});
+/// The headline: balance after planned savings in display type, a status
+/// pill (on track, over budget, or saved for a closed month), the savings
+/// detail when it applies, and for the current month a meter of today's
+/// spending against the daily allowance.
+class _HeroBalance extends StatelessWidget {
+  const _HeroBalance({required this.summary});
 
   final MonthSummary summary;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final budgetColors = BudgetColors.of(context);
     String money(double amount) => Formatters.moneyOf(context, amount);
 
-    final Color background;
-    final Color foreground;
-    if (summary.balance < 0) {
-      background = colorScheme.errorContainer;
-      foreground = colorScheme.onErrorContainer;
-    } else if (summary.isActual) {
-      background = colorScheme.primaryContainer;
-      foreground = colorScheme.onPrimaryContainer;
-    } else {
-      background = budgetColors.successContainer;
-      foreground = budgetColors.onSuccessContainer;
-    }
+    final (background, foreground, statusIcon, statusText) = switch ((summary.balance < 0, summary.isActual)) {
+      (true, _) => (scheme.errorContainer, scheme.onErrorContainer, Icons.trending_down_rounded, l10n.statusOverBudget),
+      (false, true) => (scheme.primaryContainer, scheme.onPrimaryContainer, Icons.check_circle_outline_rounded, l10n.statusOnTrack),
+      (false, false) => (budgetColors.successContainer, budgetColors.onSuccessContainer, Icons.savings_outlined, l10n.statusSaved),
+    };
+    final secondary = foreground.withValues(alpha: 0.8);
 
-    final rows = <Widget>[];
-    if (summary.plannedSavings > 0) {
-      rows.add(SummaryScreen.detailRow(l10n.plannedSavings, money(summary.plannedSavings), valueColor: foreground));
-      rows.add(SummaryScreen.detailRow(l10n.actualBalance, money(summary.actualBalance), valueColor: foreground));
-    }
-    if (summary.isActual) {
-      final maxDaily = summary.maxDaily;
-      if (maxDaily != null && maxDaily > 0) {
-        rows.add(SummaryScreen.detailRow(l10n.maxDailyExpense, money(maxDaily), valueColor: foreground));
-      }
-      var spentToday = money(summary.todaySpendings);
-      final percent = summary.todayPercent;
-      if (percent != null) spentToday += ' (${percent.round()}%)';
-      rows.add(SummaryScreen.detailRow(l10n.spentToday, spentToday, valueColor: foreground));
-      rows.add(SummaryScreen.detailRow(l10n.daysLeft, '${summary.daysLeft}', valueColor: foreground));
-    }
+    final maxDaily = summary.maxDaily;
+    final hasAllowance = summary.isActual && maxDaily != null && maxDaily > 0;
+    final overDaily = hasAllowance && summary.todaySpendings > maxDaily;
+    final progress = hasAllowance ? (summary.todaySpendings / maxDaily).clamp(0.0, 1.0) : 0.0;
+    var spentToday = money(summary.todaySpendings);
+    if (summary.todayPercent != null) spentToday += ' (${summary.todayPercent!.round()}%)';
 
-    return InfoCard(
-      title: l10n.balance,
-      amount: summary.balance,
+    return Card.filled(
       color: background,
-      textColor: foreground,
-      children: rows,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.balance.toUpperCase(),
+                    style: theme.textTheme.labelLarge?.copyWith(color: foreground, letterSpacing: 0.8),
+                  ),
+                ),
+                _StatusPill(icon: statusIcon, text: statusText, color: foreground),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              money(summary.balance),
+              style: theme.textTheme.displaySmall?.copyWith(color: foreground, fontWeight: FontWeight.w700, letterSpacing: -0.5),
+            ),
+            if (summary.plannedSavings > 0) ...[
+              const SizedBox(height: 4),
+              Text(
+                '${l10n.actualBalance} ${money(summary.actualBalance)} · ${l10n.plannedSavings} ${money(summary.plannedSavings)}',
+                style: theme.textTheme.bodySmall?.copyWith(color: secondary),
+              ),
+            ],
+            if (summary.isActual) ...[
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(child: Text(l10n.spentToday, style: theme.textTheme.labelLarge?.copyWith(color: foreground))),
+                  Text(spentToday, style: theme.textTheme.labelLarge?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                ],
+              ),
+              if (hasAllowance) ...[
+                const SizedBox(height: 8),
+                LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 8,
+                  color: overDaily ? scheme.error : scheme.primary,
+                  backgroundColor: foreground.withValues(alpha: 0.12),
+                ),
+              ],
+              const SizedBox(height: 8),
+              Text(
+                [
+                  if (hasAllowance) '${l10n.maxDaily} ${money(maxDaily)}',
+                  l10n.daysLeftCount(summary.daysLeft),
+                ].join(' · '),
+                style: theme.textTheme.bodySmall?.copyWith(color: secondary),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.icon, required this.text, required this.color});
+
+  final IconData icon;
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(text, style: theme.textTheme.labelMedium?.copyWith(color: color, fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }

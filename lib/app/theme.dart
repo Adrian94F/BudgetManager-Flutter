@@ -56,6 +56,13 @@ ThemeData buildTheme(Brightness brightness, {Color? seedColor}) {
     colorScheme: colorScheme,
     brightness: brightness,
     extensions: [brightness == Brightness.light ? BudgetColors.light : BudgetColors.dark],
+    // The 2024 Material 3 look for progress indicators and sliders (rounded
+    // track with a gap and a stop indicator). The flag is Flutter's official
+    // opt-in and is marked deprecated only because it will become the default.
+    // ignore: deprecated_member_use
+    progressIndicatorTheme: const ProgressIndicatorThemeData(year2023: false),
+    // ignore: deprecated_member_use
+    sliderTheme: const SliderThemeData(year2023: false),
     // Predictive back on Android 14+: the page peeks out as the gesture
     // starts, with the manifest's enableOnBackInvokedCallback.
     pageTransitionsTheme: const PageTransitionsTheme(

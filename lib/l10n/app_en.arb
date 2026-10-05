@@ -98,6 +98,18 @@
   "errorInvalidCredentials": "Wrong username or password.",
   "sessionExpired": "Your session has expired. Please log in again.",
   "noMonths": "No month yet. Create your first one to start tracking.",
+  "statusOnTrack": "On track",
+  "statusOverBudget": "Over budget",
+  "statusSaved": "Saved",
+  "maxDaily": "Max daily",
+  "daysLeftCount": "{count, plural, =1{1 day left} other{{count} days left}}",
+  "@daysLeftCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "plannedSavings": "Planned savings",
   "actualBalance": "Actual balance",
   "forDailyExpenses": "For daily expenses",
