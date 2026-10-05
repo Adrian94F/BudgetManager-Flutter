@@ -28,6 +28,32 @@ void main() {
     expect(find.textContaining('4,880.00'), findsOneWidget);
   });
 
+  testWidgets('opens on the month that has today in it, not a month made ahead',
+      (tester) async {
+    final server = FakeServer();
+    // A month created ahead of time, which the server would hand out as its
+    // default (its newest).
+    final today = Dates.today();
+    server.months.add({
+      'id': 12,
+      'start_date': Dates.formatApi(DateTime(today.year, today.month + 1, 1)),
+      'end_date': Dates.formatApi(DateTime(today.year, today.month + 2, 0)),
+    });
+    server.defaultMonthId = 12;
+    await pumpApp(tester, server, loggedIn: true);
+
+    final currentTitle = DateFormat.MMMM('en')
+        .format(Dates.parseApi(server.currentMonth['start_date'] as String));
+    expect(find.text(currentTitle), findsOneWidget);
+    expect(find.textContaining('4,880.00'), findsOneWidget);
+    // The default came first, then the current month by id.
+    final monthRequests = server.requests
+        .where((r) => r.method == 'GET' && r.url.path == '/api/month/')
+        .map((r) => r.url.queryParameters['month_id'])
+        .toList();
+    expect(monthRequests, [null, '11']);
+  });
+
   testWidgets(
       'in landscape the chart fills its column and the sums keep to the right edge',
       (tester) async {

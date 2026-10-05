@@ -74,7 +74,9 @@ class MonthController extends ChangeNotifier {
     return index < 0 ? null : index;
   }
 
-  /// Loads [monthId], or the server's default month when null.
+  /// Loads [monthId], or, when null, the month that has today in it: the
+  /// server's own default is its newest month, which may be one made ahead
+  /// of time, and the app should open on the current one.
   Future<void> load({int? monthId}) async {
     final sequence = ++_loadSequence;
     _requestedMonthId = monthId;
@@ -86,7 +88,13 @@ class MonthController extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final data = await _api.fetchMonth(monthId: monthId);
+      var data = await _api.fetchMonth(monthId: monthId);
+      if (monthId == null) {
+        final current = _monthWithToday(data.months);
+        if (current != null && current.id != data.month?.id) {
+          data = await _api.fetchMonth(monthId: current.id);
+        }
+      }
       if (sequence != _loadSequence) return;
       _data = data;
       _summary = null;
@@ -102,6 +110,14 @@ class MonthController extends ChangeNotifier {
         notifyListeners();
       }
     }
+  }
+
+  static Month? _monthWithToday(List<Month> months) {
+    final today = DateTime.now();
+    for (final month in months) {
+      if (month.isActual(today)) return month;
+    }
+    return null;
   }
 
   /// Reloads the month on screen.
