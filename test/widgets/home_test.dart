@@ -90,6 +90,34 @@ void main() {
     expect(server.monthLoads, loadsBefore + 1);
   });
 
+  testWidgets('a phone in landscape gets a compact bar, rail actions and a menu that fits', (tester) async {
+    tester.view.physicalSize = const Size(800, 360);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+
+    // One-line bar with the date range beside the name, no large title.
+    expect(tester.widget<SliverAppBar>(find.byType(SliverAppBar)).expandedHeight, isNull);
+    final range = server.currentMonth['start_date'] as String;
+    expect(find.textContaining(Dates.parseApi(range).day.toString()), findsWidgets);
+
+    // Month picker and Settings live in the rail, not in the bar.
+    final rail = find.byType(NavigationRail);
+    expect(find.descendant(of: rail, matching: find.byTooltip('Select month')), findsOneWidget);
+    expect(find.descendant(of: rail, matching: find.byTooltip('Settings')), findsOneWidget);
+    expect(find.descendant(of: find.byType(SliverAppBar), matching: find.byTooltip('Settings')), findsNothing);
+    expect(tester.widget<NavigationRail>(rail).labelType, NavigationRailLabelType.none);
+
+    // The summary's action sheet shows every action without overflowing.
+    await tester.tap(find.byIcon(Icons.menu_rounded));
+    await tester.pumpAndSettle();
+    expect(find.text('Add expense'), findsOneWidget);
+    expect(find.text('Create new'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('opens Settings from the top bar', (tester) async {
     final server = FakeServer();
     await pumpApp(tester, server, loggedIn: true);

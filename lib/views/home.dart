@@ -224,6 +224,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _currentIndex == _expensesTab &&
         _expensesView == _ExpensesView.list &&
         !_filter.isActive;
+    // Medium width and up gets a rail, which also takes the month picker and
+    // Settings; a compact height (a phone in landscape) gets a one-line bar
+    // instead of the large collapsing title.
+    final useRail = constraints.maxWidth >= 600;
+    final compactHeader = constraints.maxHeight < 480;
 
     // The header collapses as the tab's list scrolls under it; a tab with its
     // own scroll controllers (the table) simply keeps the header expanded.
@@ -242,19 +247,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               : null,
           actions: [
             if (showSearch) ExpenseSearchButton(data: data),
-            IconButton(
-              icon: const Icon(Icons.calendar_month_outlined),
-              tooltip: l10n.selectMonth,
-              onPressed: () => _showMonthPicker(data),
-            ),
-            IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              tooltip: l10n.settings,
-              onPressed: _openSettings,
-            ),
+            if (!useRail) ...[
+              _monthPickerButton(l10n, data),
+              _settingsButton(l10n),
+            ],
             const SizedBox(width: 4),
           ],
           showProgress: months.isRefreshing,
+          compact: compactHeader,
         ),
         if (months.error != null)
           SliverToBoxAdapter(child: ErrorBanner(error: months.error!, onRetry: months.refresh)),
@@ -262,10 +262,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       body: RefreshIndicator(key: _refreshKey, onRefresh: _refreshHard, child: content),
     );
 
-    if (constraints.maxWidth >= 600) {
+    if (useRail) {
       return Row(
         children: [
-          _navigationRail(l10n, fab),
+          _navigationRail(l10n, fab, data, compact: compactHeader, height: constraints.maxHeight),
           Expanded(child: Scaffold(body: body)),
         ],
       );
@@ -308,18 +308,56 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     ];
   }
 
-  NavigationRail _navigationRail(AppLocalizations l10n, Widget? fab) {
-    return NavigationRail(
+  IconButton _monthPickerButton(AppLocalizations l10n, MonthData data) {
+    return IconButton(
+      icon: const Icon(Icons.calendar_month_outlined),
+      tooltip: l10n.selectMonth,
+      onPressed: () => _showMonthPicker(data),
+    );
+  }
+
+  IconButton _settingsButton(AppLocalizations l10n) {
+    return IconButton(
+      icon: const Icon(Icons.settings_outlined),
+      tooltip: l10n.settings,
+      onPressed: _openSettings,
+    );
+  }
+
+  /// The rail of a wide window: the tab's FAB on top, the destinations, and
+  /// the month picker with Settings at the bottom. A compact height drops
+  /// the labels, and the rail scrolls rather than overflowing when even that
+  /// is too tall.
+  Widget _navigationRail(AppLocalizations l10n, Widget? fab, MonthData data, {required bool compact, required double height}) {
+    final rail = NavigationRail(
       selectedIndex: _currentIndex,
       onDestinationSelected: _onDestinationSelected,
-      groupAlignment: 0,
+      groupAlignment: -1,
       leading: fab ?? const SizedBox.square(dimension: 56),
-      labelType: NavigationRailLabelType.all,
+      labelType: compact ? NavigationRailLabelType.none : NavigationRailLabelType.all,
       destinations: [
         NavigationRailDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: Text(l10n.summary)),
         NavigationRailDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: Text(l10n.expenses)),
         NavigationRailDestination(icon: const Icon(Icons.savings_outlined), selectedIcon: const Icon(Icons.savings), label: Text(l10n.incomes)),
       ],
+      trailing: Expanded(
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [_monthPickerButton(l10n, data), _settingsButton(l10n)],
+            ),
+          ),
+        ),
+      ),
+    );
+    return SingleChildScrollView(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: height),
+        child: IntrinsicHeight(child: rail),
+      ),
     );
   }
 

@@ -106,45 +106,52 @@ class FabMenu extends StatelessWidget {
         showModalBottomSheet(
           context: context,
           showDragHandle: true,
+          // The default sheet stops at 9/16 of the screen height, which on a
+          // phone in landscape is less than these two groups need: take the
+          // whole height when needed and scroll beyond that.
+          isScrollControlled: true,
+          useSafeArea: true,
           builder: (BuildContext context) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: Text(
-                      AppLocalizations.of(context)!.transactions,
-                      style: Theme.of(context).textTheme.titleMedium,
+            return SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        AppLocalizations.of(context)!.transactions,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                     ),
-                  ),
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 8,
-                    children: [
-                      buildAddExpenseButton(context),
-                      buildAddIncomeButton(context),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: Text(
-                      AppLocalizations.of(context)!.month,
-                      style: Theme.of(context).textTheme.titleMedium,
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 8,
+                      children: [
+                        buildAddExpenseButton(context),
+                        buildAddIncomeButton(context),
+                      ],
                     ),
-                  ),
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 8,
-                    children: [
-                      buildMonthDetailsButton(context),
-                      buildNewMonthButton(context),
-                    ],
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        AppLocalizations.of(context)!.month,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 8,
+                      children: [
+                        buildMonthDetailsButton(context),
+                        buildNewMonthButton(context),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             );
           },

@@ -15,6 +15,7 @@ class MonthSliverAppBar extends StatelessWidget {
     this.leading,
     this.actions = const [],
     this.showProgress = false,
+    this.compact = false,
   });
 
   final String title;
@@ -26,11 +27,30 @@ class MonthSliverAppBar extends StatelessWidget {
   /// Shows a thin progress line under the bar while the month reloads.
   final bool showProgress;
 
+  /// A one-line toolbar instead of the large collapsing title, for windows
+  /// of compact height (a phone in landscape); the date range then sits
+  /// next to the month name.
+  final bool compact;
+
   /// Height of the expanded bar, without the status bar.
   static const expandedHeight = 152.0;
 
   @override
   Widget build(BuildContext context) {
+    final progress = showProgress
+        ? const PreferredSize(preferredSize: Size.fromHeight(2), child: LinearProgressIndicator(minHeight: 2))
+        : null;
+    if (compact) {
+      return SliverAppBar(
+        pinned: true,
+        automaticallyImplyLeading: false,
+        leading: leading,
+        titleSpacing: leading == null ? 12 : 0,
+        title: _InlineTitle(title: title, subtitle: subtitle, onTap: onTitleTap),
+        actions: actions,
+        bottom: progress,
+      );
+    }
     return SliverAppBar(
       pinned: true,
       expandedHeight: expandedHeight,
@@ -44,9 +64,50 @@ class MonthSliverAppBar extends StatelessWidget {
         hasLeading: leading != null,
         trailingWidth: 48.0 * actions.length,
       ),
-      bottom: showProgress
-          ? const PreferredSize(preferredSize: Size.fromHeight(2), child: LinearProgressIndicator(minHeight: 2))
-          : null,
+      bottom: progress,
+    );
+  }
+}
+
+/// The compact bar's title: the month name with the date range beside it.
+class _InlineTitle extends StatelessWidget {
+  const _InlineTitle({required this.title, required this.subtitle, required this.onTap});
+
+  final String title;
+  final String? subtitle;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Flexible(child: Text(title, style: theme.textTheme.titleLarge, maxLines: 1, overflow: TextOverflow.ellipsis)),
+              if (subtitle != null) ...[
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    subtitle!,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
