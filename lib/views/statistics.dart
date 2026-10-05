@@ -43,83 +43,165 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final services = AppScope.of(context);
     final months = services.months;
     final settings = services.settings;
-    return Scaffold(
-      appBar: AppBar(
-        // The view switch is the title: it says what the screen shows and
-        // takes no height from the charts. A phone's bar is too narrow for
-        // three labels, so there the icons stand alone, with tooltips.
-        centerTitle: true,
-        title: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            final withLabels = width >= 330;
-            final withIcons = !withLabels || width >= 520;
-            ButtonSegment<StatisticsView> segment(
-              StatisticsView value,
-              IconData icon,
-              String label,
-            ) =>
-                ButtonSegment(
-                  value: value,
-                  icon: withIcons ? Icon(icon) : null,
-                  label: withLabels ? Text(label) : null,
-                  tooltip: withLabels ? null : label,
-                );
-            return SegmentedButton<StatisticsView>(
-              showSelectedIcon: false,
-              style: const ButtonStyle(visualDensity: VisualDensity.compact),
-              segments: [
-                segment(
-                  StatisticsView.burndown,
-                  Icons.show_chart_rounded,
-                  l10n.burndown,
+    return ListenableBuilder(
+      listenable: Listenable.merge([months, settings]),
+      builder: (context, _) {
+        final flow = months.cashFlow;
+        final recurringToggle =
+            _view == StatisticsView.cashFlow && flow.recurringExpenses > 0;
+        return Scaffold(
+          appBar: AppBar(
+            // The bar holds the controls, so the charts get the height: the
+            // view switch at the end and, on the cash flow, the recurring
+            // expenses toggle at the start.
+            title: recurringToggle
+                ? _RecurringToggle(
+                    value: settings.includeRecurringInFlow,
+                    onChanged: settings.setIncludeRecurringInFlow,
+                  )
+                : null,
+            actions: [
+              Padding(
+                padding: const EdgeInsetsDirectional.only(end: 8),
+                child: _ViewSwitch(
+                  view: _view,
+                  onChanged: (view) => setState(() => _view = view),
                 ),
-                segment(
-                  StatisticsView.cashFlow,
-                  Icons.account_tree_outlined,
-                  l10n.cashFlow,
-                ),
-                segment(
-                  StatisticsView.history,
-                  Icons.bar_chart_rounded,
-                  l10n.history,
-                ),
-              ],
-              selected: {_view},
-              onSelectionChanged: (selection) =>
-                  setState(() => _view = selection.first),
-            );
-          },
-        ),
-      ),
-      body: SafeArea(
-        child: ListenableBuilder(
-          listenable: Listenable.merge([months, settings]),
-          builder: (context, _) => AnimatedSwitcher(
-            duration: Durations.short4,
-            child: KeyedSubtree(
-              key: ValueKey(_view),
-              child: switch (_view) {
-                StatisticsView.burndown => _BurndownView(
-                    series: months.burndown,
-                  ),
-                StatisticsView.cashFlow => _CashFlowView(
-                    flow: months.cashFlow,
-                    includeRecurring: settings.includeRecurringInFlow,
-                    onIncludeRecurringChanged:
-                        settings.setIncludeRecurringInFlow,
-                    onCategoryTap: _showCategory,
-                  ),
-                StatisticsView.history => _HistoryView(months: months),
-              },
+              ),
+            ],
+          ),
+          body: SafeArea(
+            child: AnimatedSwitcher(
+              duration: Durations.short4,
+              child: KeyedSubtree(
+                key: ValueKey(_view),
+                child: switch (_view) {
+                  StatisticsView.burndown => _BurndownView(
+                      series: months.burndown,
+                    ),
+                  StatisticsView.cashFlow => _CashFlowView(
+                      flow: flow,
+                      includeRecurring: settings.includeRecurringInFlow,
+                      onCategoryTap: _showCategory,
+                    ),
+                  StatisticsView.history => _HistoryView(months: months),
+                },
+              ),
             ),
           ),
+        );
+      },
+    );
+  }
+}
+
+/// The segmented switch between the views, sized to the window: a phone in
+/// portrait has room for the icons alone (named by their tooltips), a wider
+/// window for the labels, a wide one for both.
+class _ViewSwitch extends StatelessWidget {
+  const _ViewSwitch({required this.view, required this.onChanged});
+
+  final StatisticsView view;
+  final ValueChanged<StatisticsView> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final width = MediaQuery.sizeOf(context).width;
+    final withLabels = width >= 480;
+    // Icons next to the labels only where the bar can also fit the
+    // recurring toggle with its text beside them.
+    final withIcons = !withLabels || width >= 900;
+    ButtonSegment<StatisticsView> segment(
+      StatisticsView value,
+      IconData icon,
+      String label,
+    ) =>
+        ButtonSegment(
+          value: value,
+          icon: withIcons ? Icon(icon) : null,
+          label: withLabels ? Text(label) : null,
+          tooltip: withLabels ? null : label,
+        );
+    return SegmentedButton<StatisticsView>(
+      showSelectedIcon: false,
+      style: const ButtonStyle(visualDensity: VisualDensity.compact),
+      segments: [
+        segment(
+          StatisticsView.burndown,
+          Icons.show_chart_rounded,
+          l10n.burndown,
         ),
-      ),
+        segment(
+          StatisticsView.cashFlow,
+          Icons.account_tree_outlined,
+          l10n.cashFlow,
+        ),
+        segment(StatisticsView.history, Icons.bar_chart_rounded, l10n.history),
+      ],
+      selected: {view},
+      onSelectionChanged: (selection) => onChanged(selection.first),
+    );
+  }
+}
+
+/// Whether the cash flow has the recurring expenses in, as a control in the
+/// bar: its text with a switch where the bar has the room, otherwise a
+/// toggle icon button named by its tooltip.
+class _RecurringToggle extends StatelessWidget {
+  const _RecurringToggle({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 260) {
+          return Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: IconButton(
+              isSelected: value,
+              icon: const Icon(Icons.event_repeat_outlined),
+              selectedIcon: const Icon(Icons.event_repeat),
+              tooltip: l10n.includeRecurringExpenses,
+              onPressed: () => onChanged(!value),
+            ),
+          );
+        }
+        return Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: MergeSemantics(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => onChanged(!value),
+              child: Padding(
+                padding: const EdgeInsetsDirectional.only(start: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        l10n.includeRecurringExpenses,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Switch(value: value, onChanged: onChanged),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -154,19 +236,16 @@ class _BurndownView extends StatelessWidget {
   }
 }
 
-/// The cash flow diagram with, when the month has recurring expenses, the
-/// switch that takes them in or out of the picture.
+/// The cash flow diagram; the recurring expenses toggle is in the bar.
 class _CashFlowView extends StatelessWidget {
   const _CashFlowView({
     required this.flow,
     required this.includeRecurring,
-    required this.onIncludeRecurringChanged,
     required this.onCategoryTap,
   });
 
   final CashFlow flow;
   final bool includeRecurring;
-  final ValueChanged<bool> onIncludeRecurringChanged;
   final ValueChanged<Category> onCategoryTap;
 
   @override
@@ -179,59 +258,15 @@ class _CashFlowView extends StatelessWidget {
         hint: l10n.noFlowDataHint,
       );
     }
-    final diagram = flow.diagram(includeRecurring: includeRecurring);
-    return Column(
-      children: [
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            // A pinch stretches the expenses column, so more labels fit, and
-            // one finger scrolls it; incomes and the budget stay put.
-            child: CashFlowChart(
-              diagram: diagram,
-              includeRecurring: includeRecurring,
-              onCategoryTap: onCategoryTap,
-            ),
-          ),
-        ),
-        if (flow.recurringExpenses > 0)
-          // Right-aligned, by the switch, so the text reads with its control
-          // however wide the window; the text toggles it too.
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: MergeSemantics(
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(20),
-                  onTap: () => onIncludeRecurringChanged(!includeRecurring),
-                  child: Padding(
-                    padding: const EdgeInsetsDirectional.only(start: 12),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            l10n.includeRecurringExpenses,
-                            style: Theme.of(context).textTheme.bodyLarge,
-                            textAlign: TextAlign.end,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Switch(
-                          value: includeRecurring,
-                          onChanged: onIncludeRecurringChanged,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      // A pinch stretches the expenses column, so more labels fit, and one
+      // finger scrolls it; incomes and the budget stay put.
+      child: CashFlowChart(
+        diagram: flow.diagram(includeRecurring: includeRecurring),
+        includeRecurring: includeRecurring,
+        onCategoryTap: onCategoryTap,
+      ),
     );
   }
 }

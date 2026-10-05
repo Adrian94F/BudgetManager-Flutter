@@ -373,7 +373,12 @@ void main() {
     expect(chart.diagram.sinks.last.kind, CashFlowNodeKind.leftover);
 
     // Leaving the recurring expenses out takes them off the salary.
-    await tester.tap(find.text('Include recurring expenses'));
+    // In the bar: a labelled switch where there is room, else an icon with
+    // that label as its tooltip.
+    final toggle = find.text('Include recurring expenses').evaluate().isEmpty
+        ? find.byTooltip('Include recurring expenses')
+        : find.text('Include recurring expenses');
+    await tester.tap(toggle);
     await tester.pumpAndSettle();
     chart = tester.widget<CashFlowChart>(find.byType(CashFlowChart));
     expect(chart.diagram.sources.map((n) => n.value).toList(), [4500]);
