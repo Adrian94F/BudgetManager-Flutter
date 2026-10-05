@@ -52,15 +52,22 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         final flow = months.cashFlow;
         final recurringToggle =
             _view == StatisticsView.cashFlow && flow.recurringExpenses > 0;
+        // The toggle fits the bar, with its text, only on a wide window,
+        // centred between the back arrow and the view switch; a phone in
+        // portrait shows it in a row above the diagram instead.
+        final toggleInBar =
+            recurringToggle && MediaQuery.sizeOf(context).width >= 700;
         return Scaffold(
           appBar: AppBar(
             // The bar holds the controls, so the charts get the height: the
-            // view switch at the end and, on the cash flow, the recurring
-            // expenses toggle at the start.
-            title: recurringToggle
+            // view switch at the end and, on the cash flow of a wide window,
+            // the recurring expenses toggle in the middle.
+            centerTitle: true,
+            title: toggleInBar
                 ? _RecurringToggle(
                     value: settings.includeRecurringInFlow,
                     onChanged: settings.setIncludeRecurringInFlow,
+                    alignment: AlignmentDirectional.center,
                   )
                 : null,
             actions: [
@@ -85,6 +92,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   StatisticsView.cashFlow => _CashFlowView(
                       flow: flow,
                       includeRecurring: settings.includeRecurringInFlow,
+                      onIncludeRecurringChanged: recurringToggle && !toggleInBar
+                          ? settings.setIncludeRecurringInFlow
+                          : null,
                       onCategoryTap: _showCategory,
                     ),
                   StatisticsView.history => _HistoryView(months: months),
@@ -152,10 +162,15 @@ class _ViewSwitch extends StatelessWidget {
 /// bar: its text with a switch where the bar has the room, otherwise a
 /// toggle icon button named by its tooltip.
 class _RecurringToggle extends StatelessWidget {
-  const _RecurringToggle({required this.value, required this.onChanged});
+  const _RecurringToggle({
+    required this.value,
+    required this.onChanged,
+    required this.alignment,
+  });
 
   final bool value;
   final ValueChanged<bool> onChanged;
+  final AlignmentGeometry alignment;
 
   @override
   Widget build(BuildContext context) {
@@ -164,7 +179,7 @@ class _RecurringToggle extends StatelessWidget {
       builder: (context, constraints) {
         if (constraints.maxWidth < 260) {
           return Align(
-            alignment: AlignmentDirectional.centerStart,
+            alignment: alignment,
             child: IconButton(
               isSelected: value,
               icon: const Icon(Icons.event_repeat_outlined),
@@ -175,7 +190,7 @@ class _RecurringToggle extends StatelessWidget {
           );
         }
         return Align(
-          alignment: AlignmentDirectional.centerStart,
+          alignment: alignment,
           child: MergeSemantics(
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
@@ -236,16 +251,21 @@ class _BurndownView extends StatelessWidget {
   }
 }
 
-/// The cash flow diagram; the recurring expenses toggle is in the bar.
+/// The cash flow diagram, with the recurring expenses toggle in a row above
+/// it when the bar has no room for it ([onIncludeRecurringChanged] set).
 class _CashFlowView extends StatelessWidget {
   const _CashFlowView({
     required this.flow,
     required this.includeRecurring,
+    required this.onIncludeRecurringChanged,
     required this.onCategoryTap,
   });
 
   final CashFlow flow;
   final bool includeRecurring;
+
+  /// Shows the toggle above the diagram; null when the bar has it.
+  final ValueChanged<bool>? onIncludeRecurringChanged;
   final ValueChanged<Category> onCategoryTap;
 
   @override
@@ -258,7 +278,7 @@ class _CashFlowView extends StatelessWidget {
         hint: l10n.noFlowDataHint,
       );
     }
-    return Padding(
+    final chart = Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       // A pinch stretches the expenses column, so more labels fit, and one
       // finger scrolls it; incomes and the budget stay put.
@@ -267,6 +287,22 @@ class _CashFlowView extends StatelessWidget {
         includeRecurring: includeRecurring,
         onCategoryTap: onCategoryTap,
       ),
+    );
+    final onChanged = onIncludeRecurringChanged;
+    if (onChanged == null) return chart;
+    return Column(
+      children: [
+        // Under the view switch, which sits at the bar's end.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+          child: _RecurringToggle(
+            value: includeRecurring,
+            onChanged: onChanged,
+            alignment: AlignmentDirectional.centerEnd,
+          ),
+        ),
+        Expanded(child: chart),
+      ],
     );
   }
 }
