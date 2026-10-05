@@ -18,8 +18,8 @@ import 'widgets/fab_menu.dart';
 import 'widgets/month_app_bar.dart';
 
 /// The signed-in shell: a collapsing top bar with the month's title, the
-/// month picker and Settings, and four tabs below (Summary, List, Table,
-/// Incomes).
+/// month picker and Settings, and three tabs below (Summary, Expenses as a
+/// list or a table, Incomes).
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -34,9 +34,15 @@ class _Tab {
   final Widget? fab;
 }
 
+enum _ExpensesView { list, table }
+
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  var _currentIndex = 0;
-  int? _previousIndex;
+  static const _summaryTab = 0;
+  static const _expensesTab = 1;
+  static const _incomesTab = 2;
+
+  var _currentIndex = _summaryTab;
+  _ExpensesView _expensesView = _ExpensesView.list;
   ExpensesFilter _filter = const ExpensesFilter();
   bool _wasInBackground = false;
 
@@ -80,11 +86,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// From a table cell: the list narrowed to that day and/or category.
+  /// Back returns to the table.
   void _openFilteredExpensesList(ExpensesFilter filter) {
     setState(() {
       _filter = filter;
-      _previousIndex = _currentIndex;
-      _currentIndex = 1;
+      _expensesView = _ExpensesView.list;
+    });
+  }
+
+  void _clearFilter() {
+    setState(() {
+      _filter = const ExpensesFilter();
+      _expensesView = _ExpensesView.table;
     });
   }
 
@@ -101,15 +115,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _selectTab(int index) {
     setState(() {
       _filter = const ExpensesFilter();
-      _previousIndex = null;
       _currentIndex = index;
     });
   }
 
-  void _returnToPreviousTab() {
+  void _showExpenses(_ExpensesView view) {
     setState(() {
-      _currentIndex = _previousIndex!;
-      _previousIndex = null;
+      _filter = const ExpensesFilter();
+      _currentIndex = _expensesTab;
+      _expensesView = view;
     });
   }
 
@@ -150,9 +164,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
         return PopScope(
-          canPop: _previousIndex == null,
+          canPop: !_filter.isActive,
           onPopInvokedWithResult: (didPop, _) {
-            if (!didPop && _previousIndex != null) _returnToPreviousTab();
+            if (!didPop && _filter.isActive) _clearFilter();
           },
           child: LayoutBuilder(
             builder: (context, constraints) => _buildScaffold(context, constraints, months, data),
@@ -171,6 +185,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ? tabs[_currentIndex].screen
         : NoMonthView(message: data.message, onCreate: _createMonth);
     final fab = tabs?[_currentIndex].fab;
+    final showSearch = month != null &&
+        _currentIndex == _expensesTab &&
+        _expensesView == _ExpensesView.list &&
+        !_filter.isActive;
 
     // The header collapses as the tab's list scrolls under it; a tab with its
     // own scroll controllers (the table) simply keeps the header expanded.
@@ -183,11 +201,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             title: month?.title(locale) ?? 'Budget Manager',
             subtitle: month?.rangeTitle(locale),
             onTitleTap: month == null ? null : () => _showMonthPicker(data),
-            leading: _previousIndex != null
-                ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _returnToPreviousTab)
+            leading: _filter.isActive
+                ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _clearFilter)
                 : null,
             actions: [
-              if (month != null && _currentIndex == 1 && !_filter.isActive) ExpenseSearchButton(data: data),
+              if (showSearch) ExpenseSearchButton(data: data),
               IconButton(
                 icon: const Icon(Icons.calendar_month_outlined),
                 tooltip: l10n.selectMonth,
@@ -227,16 +245,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<_Tab> _buildTabs(MonthData data) {
     return [
       _Tab(
-        SummaryScreen(onShowExpenses: () => _selectTab(1), onShowIncomes: () => _selectTab(3)),
+        SummaryScreen(
+          onShowExpenses: () => _showExpenses(_ExpensesView.list),
+          onShowIncomes: () => _selectTab(_incomesTab),
+        ),
         const FabMenu(),
       ),
       _Tab(
-        ExpensesListView(data: data, filter: _filter, onClearFilter: _returnToPreviousTab),
+        _ExpensesTab(
+          data: data,
+          view: _expensesView,
+          filter: _filter,
+          onViewChanged: _showExpenses,
+          onOpenFiltered: _openFilteredExpensesList,
+          onClearFilter: _clearFilter,
+        ),
         const FabMenu(fabType: FabType.expense),
-      ),
-      _Tab(
-        ExpensesTableView(data: data, onOpenFiltered: _openFilteredExpensesList),
-        null,
       ),
       _Tab(
         IncomesScreen(data: data),
@@ -251,11 +275,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       onDestinationSelected: _selectTab,
       groupAlignment: 0,
       leading: fab ?? const SizedBox.square(dimension: 56),
-      labelType: NavigationRailLabelType.selected,
+      labelType: NavigationRailLabelType.all,
       destinations: [
         NavigationRailDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: Text(l10n.summary)),
-        NavigationRailDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: Text(l10n.expensesListShort)),
-        NavigationRailDestination(icon: const Icon(Icons.grid_on_outlined), selectedIcon: const Icon(Icons.grid_on), label: Text(l10n.expensesTableShort)),
+        NavigationRailDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: Text(l10n.expenses)),
         NavigationRailDestination(icon: const Icon(Icons.savings_outlined), selectedIcon: const Icon(Icons.savings), label: Text(l10n.incomes)),
       ],
     );
@@ -267,11 +290,68 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       onDestinationSelected: _selectTab,
       destinations: [
         NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: l10n.summary),
-        NavigationDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: l10n.expensesListShort),
-        NavigationDestination(icon: const Icon(Icons.grid_on_outlined), selectedIcon: const Icon(Icons.grid_on), label: l10n.expensesTableShort),
+        NavigationDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: l10n.expenses),
         NavigationDestination(icon: const Icon(Icons.savings_outlined), selectedIcon: const Icon(Icons.savings), label: l10n.incomes),
       ],
     );
   }
 }
 
+/// The Expenses tab: a List / Table switch above the chosen view. While a
+/// table drill-down filter is active the switch hides and the list shows
+/// the filter chip instead.
+class _ExpensesTab extends StatelessWidget {
+  const _ExpensesTab({
+    required this.data,
+    required this.view,
+    required this.filter,
+    required this.onViewChanged,
+    required this.onOpenFiltered,
+    required this.onClearFilter,
+  });
+
+  final MonthData data;
+  final _ExpensesView view;
+  final ExpensesFilter filter;
+  final ValueChanged<_ExpensesView> onViewChanged;
+  final ValueChanged<ExpensesFilter> onOpenFiltered;
+  final VoidCallback onClearFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Column(
+      children: [
+        if (!filter.isActive)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<_ExpensesView>(
+                showSelectedIcon: false,
+                segments: [
+                  ButtonSegment(
+                    value: _ExpensesView.list,
+                    icon: const Icon(Icons.view_list_outlined),
+                    label: Text(l10n.expensesListShort),
+                  ),
+                  ButtonSegment(
+                    value: _ExpensesView.table,
+                    icon: const Icon(Icons.grid_on_outlined),
+                    label: Text(l10n.expensesTableShort),
+                  ),
+                ],
+                selected: {view},
+                onSelectionChanged: (selection) => onViewChanged(selection.first),
+              ),
+            ),
+          ),
+        Expanded(
+          child: view == _ExpensesView.list
+              ? ExpensesListView(data: data, filter: filter, onClearFilter: onClearFilter)
+              : ExpensesTableView(data: data, onOpenFiltered: onOpenFiltered),
+        ),
+      ],
+    );
+  }
+}
