@@ -122,7 +122,7 @@ class _IncomeFormScreenState extends State<IncomeFormScreen> {
             : null,
       ),
       body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+        padding: EdgeInsets.fromLTRB(24, 16, 24, 16 + MediaQuery.paddingOf(context).bottom),
         children: [
           if (_error != null) ...[
             FormErrorBox(message: _error!),

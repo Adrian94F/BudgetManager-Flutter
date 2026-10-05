@@ -97,7 +97,7 @@ class IncomesScreen extends StatelessWidget {
         onDelete: () => _delete(context, income),
       ));
     }
-    return ListView(padding: const EdgeInsets.only(bottom: 88), children: items);
+    return ListView(padding: EdgeInsets.only(bottom: 88 + MediaQuery.paddingOf(context).bottom), children: items);
   }
 }
 

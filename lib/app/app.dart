@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
@@ -65,9 +66,25 @@ class _BudgetManagerAppState extends State<BudgetManagerApp> {
             theme: buildTheme(Brightness.light, seedColor: seed),
             darkTheme: buildTheme(Brightness.dark, seedColor: seed),
             themeMode: services.settings.themeMode,
-            home: ListenableBuilder(
-              listenable: services.auth,
-              builder: (context, _) => services.auth.isLoggedIn ? const HomeScreen() : const LoginScreen(),
+            home: Builder(
+              builder: (context) {
+                // Transparent system bars with icons readable on the theme.
+                final light = Theme.of(context).brightness == Brightness.light;
+                final icons = light ? Brightness.dark : Brightness.light;
+                return AnnotatedRegion<SystemUiOverlayStyle>(
+                  value: SystemUiOverlayStyle(
+                    statusBarColor: Colors.transparent,
+                    statusBarIconBrightness: icons,
+                    systemNavigationBarColor: Colors.transparent,
+                    systemNavigationBarIconBrightness: icons,
+                    systemNavigationBarContrastEnforced: false,
+                  ),
+                  child: ListenableBuilder(
+                    listenable: services.auth,
+                    builder: (context, _) => services.auth.isLoggedIn ? const HomeScreen() : const LoginScreen(),
+                  ),
+                );
+              },
             ),
           );
         },

@@ -56,7 +56,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       body: ListenableBuilder(
         listenable: settings,
         builder: (context, _) => ListView(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          padding: EdgeInsets.only(top: 8, bottom: 8 + MediaQuery.paddingOf(context).bottom),
           children: [
             _SectionTitle(l10n.appereance),
             Padding(

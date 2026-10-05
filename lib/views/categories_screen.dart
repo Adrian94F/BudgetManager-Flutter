@@ -158,7 +158,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           Expanded(
             child: ReorderableListView.builder(
               buildDefaultDragHandles: false,
-              padding: const EdgeInsets.only(bottom: 88),
+              padding: EdgeInsets.only(bottom: 88 + MediaQuery.paddingOf(context).bottom),
               itemCount: categories.length,
               onReorderItem: _busy ? (_, __) {} : _reorder,
               itemBuilder: (context, index) {

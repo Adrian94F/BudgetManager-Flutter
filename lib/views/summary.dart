@@ -56,8 +56,8 @@ class SummaryScreen extends StatelessWidget {
           );
         }
         return ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          children: [chart, const SizedBox(height: 16), ...cards, const SizedBox(height: 70)],
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 78 + MediaQuery.paddingOf(context).bottom),
+          children: [chart, const SizedBox(height: 16), ...cards],
         );
       },
     );

@@ -165,7 +165,7 @@ class ExpensesListView extends StatelessWidget {
       }
       items.add(_expenseTile(context, expense, showDate: false, locale: locale));
     }
-    return ListView(padding: const EdgeInsets.only(bottom: 88), children: items);
+    return ListView(padding: EdgeInsets.only(bottom: 88 + MediaQuery.paddingOf(context).bottom), children: items);
   }
 
   Widget _expenseTile(BuildContext context, Expense expense, {required bool showDate, required String locale}) {
