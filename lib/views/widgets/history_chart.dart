@@ -14,8 +14,9 @@ import '../../tools/formatters.dart';
 /// months at a time and a tablet or a landscape window many more. The plot
 /// scrolls sideways and opens at the newest month; the Y axis stays put on
 /// the right, and its range follows the months in view, easing from one
-/// range to the next. A dashed line marks a new year. A tap on a month
-/// shows its figures.
+/// range to the next. A dashed line marks a new year, with the year on each
+/// side of it; a year whose line has scrolled off stays pinned to the edge
+/// it went out by. A tap on a month shows its figures.
 class HistoryChart extends StatefulWidget {
   const HistoryChart({super.key, required this.history});
 
@@ -204,42 +205,70 @@ class _HistoryChartState extends State<HistoryChart> {
           builder: (context, range, _) => Row(
             children: [
               Expanded(
-                child: SingleChildScrollView(
-                  controller: _scroll,
-                  scrollDirection: Axis.horizontal,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTapUp: (details) => _select(details.localPosition),
-                    child: SizedBox(
-                      key: const ValueKey('history-plot'),
-                      width: _contentWidth,
-                      height: constraints.maxHeight,
-                      child: CustomPaint(
-                        painter: _PlotPainter(
-                          points: _points,
-                          range: range,
-                          selected: _selected,
-                          palette: palette,
-                          labelStyle: labelStyle,
-                          monthLabel: (p) => p.month == null
-                              ? p.label
-                              : _capitalize(
-                                  monthFormat.format(p.month!.startDate)),
-                          title: (p) => p.month == null
-                              ? p.label
-                              : _capitalize(
-                                  titleFormat.format(p.month!.startDate)),
-                          money: (v) =>
-                              Formatters.money(v, locale, currency: currency),
-                          words: (
-                            incomes: l10n.incomes,
-                            expenses: l10n.expenses,
-                            balance: l10n.balance,
+                child: Stack(
+                  children: [
+                    SingleChildScrollView(
+                      controller: _scroll,
+                      scrollDirection: Axis.horizontal,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTapUp: (details) => _select(details.localPosition),
+                        child: SizedBox(
+                          key: const ValueKey('history-plot'),
+                          width: _contentWidth,
+                          height: constraints.maxHeight,
+                          child: CustomPaint(
+                            painter: _PlotPainter(
+                              points: _points,
+                              range: range,
+                              selected: _selected,
+                              palette: palette,
+                              labelStyle: labelStyle,
+                              // The month alone; the year is in the strip
+                              // above. Lower case where the language has it.
+                              monthLabel: (p) => p.month == null
+                                  ? p.label
+                                  : monthFormat.format(p.month!.startDate),
+                              title: (p) => p.month == null
+                                  ? p.label
+                                  : _capitalize(
+                                      titleFormat.format(p.month!.startDate),
+                                    ),
+                              money: (v) => Formatters.money(
+                                v,
+                                locale,
+                                currency: currency,
+                              ),
+                              words: (
+                                incomes: l10n.incomes,
+                                expenses: l10n.expenses,
+                                balance: l10n.balance,
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
+                    // The years, in the viewport's own coordinates so they
+                    // can pin to its edges; redrawn as the plot scrolls.
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      height: _topPad,
+                      child: IgnorePointer(
+                        child: CustomPaint(
+                          painter: _YearsPainter(
+                            points: _points,
+                            scroll: _scroll,
+                            contentWidth: _contentWidth,
+                            labelStyle: labelStyle,
+                            color: palette.label,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               SizedBox(
@@ -358,6 +387,9 @@ class _Palette {
 const _topPad = 20.0;
 const _bottomPad = 22.0;
 
+/// Room between a year label and the viewport's edge or the year's line.
+const _yearGap = 4.0;
+
 Rect _plotRect(Size size) =>
     Rect.fromLTRB(0, _topPad, size.width, size.height - _bottomPad);
 
@@ -374,14 +406,48 @@ String _compact(double value) {
       : '${thousands.toStringAsFixed(1)}k';
 }
 
-TextPainter _text(String text, TextStyle style, Color color,
-        {double? maxWidth}) =>
+TextPainter _text(
+  String text,
+  TextStyle style,
+  Color color, {
+  double? maxWidth,
+}) =>
     TextPainter(
       text: TextSpan(text: text, style: style.copyWith(color: color)),
       textDirection: ui.TextDirection.ltr,
       maxLines: 1,
       ellipsis: '…',
     )..layout(maxWidth: maxWidth ?? double.infinity);
+
+/// A run of consecutive months of one year, as columns of the plot.
+class _YearSpan {
+  const _YearSpan(this.year, this.first, this.end);
+
+  final int year;
+
+  /// Index of the first month, and one past the last.
+  final int first;
+  final int end;
+
+  double get left => first * HistoryChart.monthWidth;
+  double get right => end * HistoryChart.monthWidth;
+}
+
+/// The years' runs in [points], in order; months without a date are left
+/// out, so a history the app could not match to its months has none.
+List<_YearSpan> _yearSpans(List<HistoryPoint> points) {
+  final spans = <_YearSpan>[];
+  for (var i = 0; i < points.length; i++) {
+    final year = points[i].month?.startDate.year;
+    if (year == null) continue;
+    if (spans.isNotEmpty && spans.last.year == year && spans.last.end == i) {
+      spans[spans.length - 1] = _YearSpan(year, spans.last.first, i + 1);
+    } else {
+      spans.add(_YearSpan(year, i, i + 1));
+    }
+  }
+  return spans;
+}
 
 class _PlotPainter extends CustomPainter {
   const _PlotPainter({
@@ -416,7 +482,7 @@ class _PlotPainter extends CustomPainter {
     double y(double v) => _yFor(v, range, plot);
 
     _paintGrid(canvas, plot, y);
-    _paintYears(canvas, plot);
+    _paintYearLines(canvas, plot);
     _paintBars(canvas, y);
     _paintLine(canvas, y, (p) => p.expenses, palette.expenses);
     _paintLine(canvas, y, (p) => p.incomes, palette.incomes);
@@ -441,28 +507,21 @@ class _PlotPainter extends CustomPainter {
     }
   }
 
-  /// A dashed line where a new year starts, with the year above it; the
-  /// first month gets its year too.
-  void _paintYears(Canvas canvas, Rect plot) {
+  /// A dashed line where a new year starts; the years themselves are in the
+  /// strip above the plot (see [_YearsPainter]).
+  void _paintYearLines(Canvas canvas, Rect plot) {
     final paint = Paint()
       ..color = palette.divider
       ..strokeWidth = 1;
-    for (var i = 0; i < points.length; i++) {
-      final year = points[i].month?.startDate.year;
-      if (year == null) continue;
-      final previous = i == 0 ? null : points[i - 1].month?.startDate.year;
-      if (i > 0 && previous == year) continue;
-      final x = i * _width;
-      if (i > 0) {
-        for (var dy = plot.top; dy < plot.bottom; dy += 6) {
-          canvas.drawLine(
-            Offset(x, dy),
-            Offset(x, math.min(dy + 3, plot.bottom)),
-            paint,
-          );
-        }
+    for (final span in _yearSpans(points).skip(1)) {
+      final x = span.left;
+      for (var dy = plot.top; dy < plot.bottom; dy += 6) {
+        canvas.drawLine(
+          Offset(x, dy),
+          Offset(x, math.min(dy + 3, plot.bottom)),
+          paint,
+        );
       }
-      _text('$year', labelStyle, palette.label).paint(canvas, Offset(x + 4, 2));
     }
   }
 
@@ -523,10 +582,7 @@ class _PlotPainter extends CustomPainter {
         palette.label,
         maxWidth: _width - 6,
       );
-      label.paint(
-        canvas,
-        Offset(_x(i) - label.width / 2, plot.bottom + 5),
-      );
+      label.paint(canvas, Offset(_x(i) - label.width / 2, plot.bottom + 5));
     }
   }
 
@@ -562,17 +618,11 @@ class _PlotPainter extends CustomPainter {
     final boxWidth = text.width + padding * 2;
     final boxHeight = text.height + padding * 2;
     final left = (x - boxWidth / 2)
-        .clamp(
-          0.0,
-          math.max(0.0, size.width - boxWidth),
-        )
+        .clamp(0.0, math.max(0.0, size.width - boxWidth))
         .toDouble();
     final anchor = math.min(y(point.incomes), y(point.expenses));
     final top = (anchor - boxHeight - 12)
-        .clamp(
-          _topPad,
-          math.max(_topPad, plot.bottom - boxHeight),
-        )
+        .clamp(_topPad, math.max(_topPad, plot.bottom - boxHeight))
         .toDouble();
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -591,6 +641,65 @@ class _PlotPainter extends CustomPainter {
       oldDelegate.selected != selected ||
       oldDelegate.palette != palette ||
       oldDelegate.labelStyle != labelStyle;
+}
+
+/// The years above the plot, in the viewport's coordinates. Each year's run
+/// of months gets its year at its start (right of the line that opens it)
+/// and at its end (left of the line that closes it); a label whose line is
+/// off screen pins to the edge the line went out by, so the year of the
+/// months in view is always there. The newest run has no closing line and
+/// no end label.
+class _YearsPainter extends CustomPainter {
+  _YearsPainter({
+    required this.points,
+    required this.scroll,
+    required this.contentWidth,
+    required this.labelStyle,
+    required this.color,
+  }) : super(repaint: scroll);
+
+  final List<HistoryPoint> points;
+  final ScrollController scroll;
+  final double contentWidth;
+  final TextStyle labelStyle;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final viewport = size.width;
+    final offset = scroll.hasClients
+        ? scroll.offset
+        : math.max(contentWidth - viewport, 0.0);
+    final spans = _yearSpans(points);
+    for (var i = 0; i < spans.length; i++) {
+      final span = spans[i];
+      final left = span.left - offset;
+      final right = span.right - offset;
+      if (right <= 0 || left >= viewport) continue;
+      final label = _text('${span.year}', labelStyle, color);
+
+      // At the run's start, or pinned to the left edge once that is gone.
+      final startX = math.max(left, 0.0) + _yearGap;
+      // At the run's end, or pinned to the right edge once that is gone;
+      // none for the newest run, which has no line after it.
+      final endX = i == spans.length - 1
+          ? null
+          : math.min(right, viewport) - _yearGap - label.width;
+
+      label.paint(canvas, Offset(startX, 2));
+      if (endX != null && endX >= startX + label.width + _yearGap) {
+        label.paint(canvas, Offset(endX, 2));
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_YearsPainter oldDelegate) =>
+      oldDelegate.points != points ||
+      oldDelegate.scroll != scroll ||
+      oldDelegate.contentWidth != contentWidth ||
+      oldDelegate.labelStyle != labelStyle ||
+      oldDelegate.color != color;
 }
 
 /// The Y axis: a hairline on its left and the ticks' values beside it, for
