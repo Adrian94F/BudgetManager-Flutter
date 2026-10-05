@@ -116,5 +116,6 @@
   "noExpenses": "No expenses in this month yet.",
   "noResults": "Nothing found.",
   "invalidAmount": "Enter a valid amount.",
-  "noCategories": "Add a category in Budget settings first."
+  "noCategories": "Add a category in Budget settings first.",
+  "noIncomes": "No incomes in this month yet."
 }

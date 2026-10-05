@@ -9,6 +9,7 @@ import '../models/models.dart';
 import '../tools/dates.dart';
 import '../tools/formatters.dart';
 import 'expense_form.dart';
+import 'widgets/day_header.dart';
 import 'widgets/error_views.dart';
 
 /// A day and/or category narrowing the list, set from the expenses table.
@@ -71,14 +72,6 @@ class _ExpensesListViewState extends State<ExpensesListView> {
       ].join('\n').toLowerCase();
       return haystack.contains(query);
     }).toList();
-  }
-
-  String _dayLabel(DateTime day, DateTime today, AppLocalizations l10n, String locale) {
-    if (Dates.isSameDay(day, today)) return l10n.today;
-    if (Dates.isSameDay(day, Dates.addDays(today, -1))) return l10n.yesterday;
-    final format = day.year == today.year ? DateFormat.MMMMEEEEd(locale) : DateFormat.yMMMMEEEEd(locale);
-    final text = format.format(day);
-    return text.isEmpty ? text : text[0].toUpperCase() + text.substring(1);
   }
 
   String _filterTitle(AppLocalizations l10n, String locale) {
@@ -209,7 +202,7 @@ class _ExpensesListViewState extends State<ExpensesListView> {
     for (final expense in current) {
       if (lastDay == null || !Dates.isSameDay(lastDay, expense.date)) {
         lastDay = expense.date;
-        items.add(_DayHeader(label: _dayLabel(expense.date, today, l10n, locale)));
+        items.add(DayHeader(label: dayLabel(expense.date, today, l10n, locale)));
       }
       items.add(_expenseTile(expense, showDate: false, locale: locale));
     }
@@ -225,24 +218,6 @@ class _ExpensesListViewState extends State<ExpensesListView> {
       onEdit: () => _edit(expense),
       onCopy: () => _copy(expense),
       onDelete: () => _confirmDelete(expense),
-    );
-  }
-}
-
-class _DayHeader extends StatelessWidget {
-  const _DayHeader({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
-      child: Text(
-        label,
-        style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary),
-      ),
     );
   }
 }

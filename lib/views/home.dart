@@ -273,7 +273,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         null,
       ),
       _Tab(
-        IncomesScreen(data: raw, refreshParent: _refresh),
+        IncomesScreen(data: data),
         FabMenu(onRefresh: _refresh, fabType: FabType.income),
       ),
       const _Tab(SettingsScreen(), null),

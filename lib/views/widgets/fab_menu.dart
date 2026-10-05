@@ -5,7 +5,7 @@ import '../../app/app_scope.dart';
 import '../../domain/domain.dart';
 import '../../tools/dates.dart';
 import '../expense_form.dart';
-import '../income_details.dart';
+import '../income_form.dart';
 import '../month_details.dart';
 
 enum FabType { full, expense, income }
@@ -44,17 +44,7 @@ class FabMenu extends StatelessWidget {
 
   void addIncomeFabAction(BuildContext context, {bool inModal = true}) {
     if (inModal) Navigator.pop(context);
-    final month = AppScope.of(context).months.month!;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => IncomeDetails(
-          income: null,
-          monthId: month.id,
-          preferredDate: BudgetRules.defaultEntryDate(month),
-        ),
-      ),
-    ).then((_) => onRefresh());
+    IncomeFormScreen.open(context);
   }
 
   void monthDetailsFabAction(BuildContext context) {
