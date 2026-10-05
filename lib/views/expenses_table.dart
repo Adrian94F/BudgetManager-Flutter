@@ -5,6 +5,7 @@ import '../domain/domain.dart';
 import '../models/models.dart';
 import '../tools/dates.dart';
 import 'expenses_list.dart';
+import 'widgets/category_style.dart';
 import 'widgets/custom_data_table.dart';
 
 /// Category × day grid of the month's expenses with a sum row and column.
@@ -150,14 +151,25 @@ class ExpensesTableView extends StatelessWidget {
         color: scheme.surface,
         child: InkWell(
           onTap: () => onOpenFiltered(ExpensesFilter(category: category)),
-          child: Container(
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-            child: Text(
-              cell.text,
-              maxLines: 1,
-              overflow: TextOverflow.clip,
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 10, color: scheme.onSurface),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(color: CategoryStyle.of(context, cell.text).accent, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    cell.text,
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 10, color: scheme.onSurface),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

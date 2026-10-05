@@ -84,7 +84,8 @@ void main() {
 
     await tester.enterText(find.byType(TextField).last, 'weekly');
     await tester.pumpAndSettle();
-    final result = find.ancestor(of: find.byIcon(Icons.receipt_long_outlined), matching: find.byType(ListTile));
+    // The result tile joins the date and the comment in one line.
+    final result = find.ancestor(of: find.textContaining('· Weekly shop'), matching: find.byType(ListTile));
     expect(result, findsOneWidget);
 
     await tester.tap(result);

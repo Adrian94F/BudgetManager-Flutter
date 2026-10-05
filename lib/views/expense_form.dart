@@ -7,6 +7,7 @@ import '../api/api.dart';
 import '../app/app_scope.dart';
 import '../domain/domain.dart';
 import '../models/models.dart';
+import 'widgets/category_style.dart';
 import 'widgets/error_views.dart';
 
 /// Full-screen dialog to add or edit an expense. Opened with [expense] it
@@ -203,6 +204,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                 for (final id in _suggestedCategoryIds)
                   if (data.categoryById(id) case final category?)
                     ChoiceChip(
+                      avatar: Icon(CategoryStyle.iconFor(category.name), size: 18),
                       label: Text(category.name),
                       selected: _categoryId == id,
                       onSelected: _saving ? null : (_) => setState(() => _categoryId = id),
@@ -222,7 +224,12 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             leadingIcon: const Icon(Icons.category_outlined),
             inputDecorationTheme: InputDecorationTheme(border: border),
             dropdownMenuEntries: [
-              for (final category in data.categories) DropdownMenuEntry(value: category.id, label: category.name),
+              for (final category in data.categories)
+                DropdownMenuEntry(
+                  value: category.id,
+                  label: category.name,
+                  leadingIcon: Icon(CategoryStyle.iconFor(category.name)),
+                ),
             ],
             onSelected: (value) {
               if (value != null) setState(() => _categoryId = value);

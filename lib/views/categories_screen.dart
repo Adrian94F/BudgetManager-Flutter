@@ -4,6 +4,7 @@ import 'package:budget_manager/l10n/app_localizations.dart';
 import '../api/api.dart';
 import '../app/app_scope.dart';
 import '../models/models.dart';
+import 'widgets/category_style.dart';
 import 'widgets/error_views.dart';
 
 /// Add, rename, reorder and delete expense categories. Deleting a category
@@ -164,15 +165,24 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 final category = categories[index];
                 return ListTile(
                   key: ValueKey(category.id),
-                  leading: ReorderableDragStartListener(
-                    index: index,
-                    child: const Icon(Icons.drag_handle_rounded),
-                  ),
+                  leading: CategoryAvatar(name: category.name),
                   title: Text(category.name),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    tooltip: l10n.deleteCategory,
-                    onPressed: _busy ? null : () => _delete(category),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded),
+                        tooltip: l10n.deleteCategory,
+                        onPressed: _busy ? null : () => _delete(category),
+                      ),
+                      ReorderableDragStartListener(
+                        index: index,
+                        child: const Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Icon(Icons.drag_handle_rounded),
+                        ),
+                      ),
+                    ],
                   ),
                   onTap: _busy ? null : () => _edit(category: category),
                 );

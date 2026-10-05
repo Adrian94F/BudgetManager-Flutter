@@ -5,6 +5,7 @@ import 'package:budget_manager/l10n/app_localizations.dart';
 import '../models/models.dart';
 import '../tools/formatters.dart';
 import 'expense_form.dart';
+import 'widgets/category_style.dart';
 
 /// Whether [expense] matches a search [query]: by category name, comment,
 /// amount (formatted or raw) or date (short or long form).
@@ -95,9 +96,13 @@ class _ResultTile extends StatelessWidget {
       if (comment != null && comment.isNotEmpty) comment,
     ].join(' · ');
     return ListTile(
-      leading: Icon(expense.isMonthly ? Icons.repeat_rounded : Icons.receipt_long_outlined),
+      leading: CategoryAvatar(name: categoryName),
       title: Row(
         children: [
+          if (expense.isMonthly) ...[
+            Icon(Icons.repeat_rounded, size: 18, color: theme.colorScheme.primary),
+            const SizedBox(width: 6),
+          ],
           Expanded(child: Text(categoryName, maxLines: 1, overflow: TextOverflow.ellipsis)),
           const SizedBox(width: 12),
           Text(

@@ -9,6 +9,7 @@ import '../models/models.dart';
 import '../tools/dates.dart';
 import '../tools/formatters.dart';
 import 'expense_form.dart';
+import 'widgets/category_style.dart';
 import 'widgets/day_header.dart';
 import 'widgets/error_views.dart';
 
@@ -238,6 +239,7 @@ class _ExpenseTile extends StatelessWidget {
       ),
       child: ListTile(
         onTap: onEdit,
+        leading: CategoryAvatar(name: categoryName),
         title: Row(
           children: [
             if (expense.isMonthly) ...[
