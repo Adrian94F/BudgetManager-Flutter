@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../services/auth_service.dart';
+import '../api/api.dart';
+import '../app/app_scope.dart';
+import '../tools/dates.dart';
 import '../tools/fading_text.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
@@ -70,24 +72,40 @@ class _ExpenseDetailsState extends State<ExpenseDetails> {
     });
 
     try {
-      final authService = AuthService();
-      final requestData = {
-        'value': double.tryParse(_valueController.text.replaceAll(',', '.')) ?? 0.0, // Handle both comma and dot
-        'date': _dateController.text,
-        'is_monthly': _isRecurrent,
-        'comment': _commentController.text,
-        'category': _categoryId,
-        'month': widget.monthId
-      };
-
-      if (widget.expense != null && widget.expense!['id'] != null) {
-        requestData['id'] = widget.expense!['id'];
+      final api = AppScope.of(context).api;
+      final value = double.tryParse(_valueController.text.replaceAll(',', '.')) ?? 0.0;
+      final date = Dates.parseApi(_dateController.text);
+      final id = widget.expense?['id'] as int?;
+      if (id != null) {
+        await api.updateExpense(
+          id: id,
+          monthId: widget.monthId,
+          value: value,
+          date: date,
+          categoryId: _categoryId,
+          comment: _commentController.text,
+          isMonthly: _isRecurrent,
+        );
+      } else {
+        await api.createExpense(
+          monthId: widget.monthId,
+          value: value,
+          date: date,
+          categoryId: _categoryId,
+          comment: _commentController.text,
+          isMonthly: _isRecurrent,
+        );
       }
-
-      await authService.post("expense/", requestData);
 
       if (mounted) {
         Navigator.pop(context, true);
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.isNetwork ? AppLocalizations.of(context)!.errorServerUnavailable : e.message;
+        });
       }
     } catch (e) {
       if (mounted) {

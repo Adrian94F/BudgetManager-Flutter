@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
-import '../services/auth_service.dart';
+import '../api/api.dart';
+import '../app/app_scope.dart';
 
 class MonthDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> month;
@@ -17,7 +18,6 @@ class MonthDetailsScreen extends StatefulWidget {
 }
 
 class _MonthDetailsScreenState extends State<MonthDetailsScreen> {
-  final _authService = AuthService();
   late DateTime _startDate;
   late DateTime _endDate;
   bool _isLoading = false;
@@ -56,17 +56,23 @@ class _MonthDetailsScreenState extends State<MonthDetailsScreen> {
     });
 
     try {
-      final format = DateFormat("yyyy-MM-dd");
-      final requestData = {
-        'id': widget.month['id'],
-        'start_date': format.format(_startDate),
-        'end_date': format.format(_endDate),
-      };
-
-      await _authService.post("month/", requestData);
+      final api = AppScope.of(context).api;
+      final id = widget.month['id'] as int?;
+      if (id != null) {
+        await api.updateMonth(id: id, start: _startDate, end: _endDate);
+      } else {
+        await api.createMonth(start: _startDate, end: _endDate);
+      }
 
       if (mounted) {
         Navigator.pop(context, true);
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.isNetwork ? AppLocalizations.of(context)!.errorServerUnavailable : e.message;
+        });
       }
     } catch (e) {
       if (mounted) {

@@ -67,13 +67,18 @@ class ApiClient {
 
   // MARK: - Months
 
-  Future<MonthData> fetchMonth({int? monthId}) async {
+  Future<MonthData> fetchMonth({int? monthId}) async =>
+      MonthData.fromJson(await fetchMonthJson(monthId: monthId));
+
+  /// The month response as the server sent it. Screens still reading the
+  /// raw JSON use it; it goes away once every screen uses [MonthData].
+  Future<Map<String, dynamic>> fetchMonthJson({int? monthId}) async {
     final response = await _send(
       'GET',
       'month/',
       query: monthId == null ? null : {'month_id': '$monthId'},
     );
-    return MonthData.fromJson(_decode(response) as Map<String, dynamic>);
+    return _decode(response) as Map<String, dynamic>;
   }
 
   Future<void> createMonth({required DateTime start, required DateTime end}) =>

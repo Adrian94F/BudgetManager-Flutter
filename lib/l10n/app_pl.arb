@@ -79,5 +79,11 @@
     "shortSaturday": "S",
     "shortSunday": "N",
     "transactions": "Transakcje",
-    "month": "Miesiąc"
+    "month": "Miesiąc",
+    "retry": "Ponów",
+    "errorLoadingData": "Nie udało się wczytać danych.",
+    "errorServerUnavailable": "Serwer jest niedostępny. Sprawdź połączenie.",
+    "errorInvalidCredentials": "Nieprawidłowa nazwa użytkownika lub hasło.",
+    "sessionExpired": "Sesja wygasła. Zaloguj się ponownie.",
+    "noMonths": "Nie ma jeszcze żadnego miesiąca. Utwórz pierwszy, aby zacząć."
 }

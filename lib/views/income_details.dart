@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../services/auth_service.dart';
+import '../api/api.dart';
+import '../app/app_scope.dart';
+import '../tools/dates.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
 class IncomeDetails extends StatefulWidget {
@@ -61,23 +63,38 @@ class _IncomeDetailsState extends State<IncomeDetails> {
     });
 
     try {
-      final authService = AuthService();
-      final requestData = {
-        'value': double.tryParse(_valueController.text.replaceAll(',', '.')) ?? 0.0,
-        'date': _dateController.text,
-        'is_salary': _isSalary,
-        'comment': _commentController.text,
-        'month': widget.monthId
-      };
-
-      if (widget.income != null && widget.income!['id'] != null) {
-        requestData['id'] = widget.income!['id'];
+      final api = AppScope.of(context).api;
+      final value = double.tryParse(_valueController.text.replaceAll(',', '.')) ?? 0.0;
+      final date = Dates.parseApi(_dateController.text);
+      final id = widget.income?['id'] as int?;
+      if (id != null) {
+        await api.updateIncome(
+          id: id,
+          monthId: widget.monthId,
+          value: value,
+          date: date,
+          comment: _commentController.text,
+          isSalary: _isSalary,
+        );
+      } else {
+        await api.createIncome(
+          monthId: widget.monthId,
+          value: value,
+          date: date,
+          comment: _commentController.text,
+          isSalary: _isSalary,
+        );
       }
-
-      await authService.post("income/", requestData);
 
       if (mounted) {
         Navigator.pop(context, true);
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.isNetwork ? AppLocalizations.of(context)!.errorServerUnavailable : e.message;
+        });
       }
     } catch (e) {
       if (mounted) {

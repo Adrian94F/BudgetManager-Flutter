@@ -220,6 +220,13 @@ void main() {
       expect(next.end, DateTime(2026, 11, 25));
     });
 
+    test('proposes the current calendar month as the first month', () {
+      final first = BudgetRules.firstMonthRange(today: DateTime(2026, 2, 14));
+
+      expect(first.start, DateTime(2026, 2, 1));
+      expect(first.end, DateTime(2026, 2, 28));
+    });
+
     test('defaults a new entry to today inside the month', () {
       final month = Month(id: 1, startDate: DateTime(2026, 9, 26), endDate: DateTime(2026, 10, 25));
 

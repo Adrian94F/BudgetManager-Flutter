@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
-import '../services/auth_service.dart';
+import '../app/app_scope.dart';
 import '../tools/formatters.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
@@ -327,6 +327,7 @@ class _ExpensesListViewState extends State<ExpensesListView> {
 
   void _showExpenseRemovalDialog(Map<String, dynamic> expense) async {
     final title = AppLocalizations.of(context)!.alert;
+    final api = AppScope.of(context).api;
 
     bool isLoading = false;
     String? errorMessage;
@@ -366,12 +367,7 @@ class _ExpensesListViewState extends State<ExpensesListView> {
                     });
 
                     try {
-                      final authService = AuthService();
-                      final requestData = {
-                        'id': expense['id']
-                      };
-
-                      await authService.delete("expense/", requestData);
+                      await api.deleteExpense(expense['id'] as int);
                       if (!context.mounted) return;
                       Navigator.pop(context);
                       widget.refreshParent();

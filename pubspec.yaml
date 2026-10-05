@@ -42,8 +42,6 @@ dependencies:
   community_charts_flutter: ^1.0.4
   flutter_localizations:
     sdk: flutter
-  jiffy: ^6.3.2
-
 dev_dependencies:
   flutter_test:
     sdk: flutter

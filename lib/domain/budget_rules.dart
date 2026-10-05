@@ -31,6 +31,16 @@ class BudgetRules {
         end: Dates.addMonths(last.endDate, 1),
       );
 
+  /// The dates for a user's very first month: the current calendar month,
+  /// as the web onboarding proposes.
+  static ({DateTime start, DateTime end}) firstMonthRange({DateTime? today}) {
+    final now = today ?? DateTime.now();
+    return (
+      start: DateTime(now.year, now.month, 1),
+      end: DateTime(now.year, now.month + 1, 0),
+    );
+  }
+
   /// The default date for a new entry: today, moved inside [month] when
   /// today falls outside it.
   static DateTime defaultEntryDate(Month month, {DateTime? today}) => month.clamp(today ?? DateTime.now());

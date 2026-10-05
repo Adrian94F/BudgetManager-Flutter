@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'package:budget_manager/l10n/app_localizations.dart';
+import '../../domain/domain.dart';
+import '../../models/models.dart';
+import '../../tools/dates.dart';
 import '../month_details.dart';
 import '../expense_details.dart';
 import '../income_details.dart';
@@ -77,13 +80,15 @@ class FabMenu extends StatelessWidget {
 
   void newMonthFabAction(BuildContext context) {
     Navigator.pop(context);
-    var newStartDate = DateTime.parse(loadedData['month']['end_date'])
-        .add(const Duration(days: 1));
-    var newEndDate = newStartDate.add(const Duration(days: 30));
-    var newMonth = {
+    // The proposal follows the newest month, as the web app does.
+    final months = loadedData['months'] as List<dynamic>;
+    final range = months.isEmpty
+        ? BudgetRules.firstMonthRange()
+        : BudgetRules.nextMonthRange(Month.fromJson(months.first as Map<String, dynamic>));
+    final newMonth = {
       'id': null,
-      'start_date': newStartDate.toString(),
-      'end_date': newEndDate.toString(),
+      'start_date': Dates.formatApi(range.start),
+      'end_date': Dates.formatApi(range.end),
     };
     Navigator.push(
       context,

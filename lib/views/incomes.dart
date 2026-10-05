@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
-import '../services/auth_service.dart';
+import '../app/app_scope.dart';
 import '../tools/formatters.dart';
 import 'income_details.dart';
 
@@ -154,6 +154,7 @@ class _IncomesScreenState extends State<IncomesScreen> {
 
   void _showIncomeRemovalDialog(Map<String, dynamic> income) {
     final title = AppLocalizations.of(context)!.alert;
+    final api = AppScope.of(context).api;
 
     bool isLoading = false;
     String? errorMessage;
@@ -193,12 +194,7 @@ class _IncomesScreenState extends State<IncomesScreen> {
                     });
 
                     try {
-                      final authService = AuthService();
-                      final requestData = {
-                        'id': income['id']
-                      };
-
-                      await authService.delete("income/", requestData);
+                      await api.deleteIncome(income['id'] as int);
                       if (!context.mounted) return;
                       Navigator.pop(context);
                       widget.refreshParent();
