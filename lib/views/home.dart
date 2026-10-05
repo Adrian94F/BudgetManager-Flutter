@@ -149,6 +149,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
+  /// From the cash flow on the Statistics screen: the Expenses tab, as the
+  /// list narrowed to one category.
+  void _showCategoryExpenses(int categoryId) {
+    _updateView(() {
+      _filter = ExpensesFilter(category: categoryId);
+      _expensesView = _ExpensesView.list;
+      _currentIndex = _expensesTab;
+    });
+  }
+
   void _clearFilter() {
     _updateView(() {
       _filter = const ExpensesFilter();
@@ -400,6 +410,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           child: SummaryScreen(
             onShowExpenses: () => _showExpenses(_ExpensesView.list),
             onShowIncomes: () => _selectTab(_incomesTab),
+            onShowCategoryExpenses: (category) =>
+                _showCategoryExpenses(category.id),
           ),
         ),
         const FabMenu(),

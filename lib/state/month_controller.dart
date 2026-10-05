@@ -24,6 +24,7 @@ class MonthController extends ChangeNotifier {
   int _loadSequence = 0;
   MonthSummary? _summary;
   BurndownSeries? _burndown;
+  CashFlow? _cashFlow;
 
   MonthData? get data => _data;
 
@@ -47,6 +48,9 @@ class MonthController extends ChangeNotifier {
 
   BurndownSeries get burndown => _burndown ??=
       _data == null ? BurndownSeries.empty : BurndownSeries.compute(_data!);
+
+  CashFlow get cashFlow =>
+      _cashFlow ??= _data == null ? CashFlow.empty : CashFlow.compute(_data!);
 
   /// The month before the one on screen (months are kept newest first).
   Month? get previousMonth {
@@ -87,6 +91,7 @@ class MonthController extends ChangeNotifier {
       _data = data;
       _summary = null;
       _burndown = null;
+      _cashFlow = null;
     } on ApiException catch (e) {
       if (sequence != _loadSequence) return;
       _error = e;
@@ -125,6 +130,7 @@ class MonthController extends ChangeNotifier {
     _requestedMonthId = null;
     _summary = null;
     _burndown = null;
+    _cashFlow = null;
     notifyListeners();
   }
 

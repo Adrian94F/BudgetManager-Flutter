@@ -15,6 +15,7 @@ class SessionStore {
   static const themeModeKey = 'theme_mode';
   static const dynamicColorKey = 'dynamic_color';
   static const localeKey = 'locale';
+  static const flowRecurringKey = 'flow_include_recurring';
 
   Future<String?> accessToken() => _store.read(accessTokenKey);
 
@@ -72,4 +73,12 @@ class SessionStore {
   Future<void> setLocale(String? languageTag) => languageTag == null
       ? _store.delete(localeKey)
       : _store.write(localeKey, languageTag);
+
+  /// Whether the cash flow diagram has the recurring expenses in; on until
+  /// the user turns it off.
+  Future<bool> flowIncludesRecurring() async =>
+      await _store.read(flowRecurringKey) != 'false';
+
+  Future<void> setFlowIncludesRecurring(bool enabled) =>
+      _store.write(flowRecurringKey, enabled.toString());
 }
