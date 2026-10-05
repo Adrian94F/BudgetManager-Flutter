@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
 import '../app/app_scope.dart';
+import '../app/theme.dart';
 import '../domain/domain.dart';
-import '../models/models.dart';
 import '../tools/formatters.dart';
 import 'chart_view.dart';
 import 'widgets/info_card.dart';
@@ -21,15 +21,12 @@ class SummaryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final months = AppScope.of(context).months;
-    final data = months.data;
-    final raw = months.rawJson;
-    final month = data?.month;
-    if (data == null || raw == null || month == null) return const SizedBox.shrink();
+    if (months.month == null) return const SizedBox.shrink();
     final summary = months.summary;
 
     return OrientationBuilder(
       builder: (context, orientation) {
-        final chart = _buildChartCard(context, raw, month, orientation);
+        final chart = _buildChartCard(context, months.burndown, orientation);
         final cards = [
           _BalanceCard(summary: summary),
           const SizedBox(height: 16),
@@ -63,25 +60,20 @@ class SummaryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildChartCard(BuildContext context, Map<String, dynamic> raw, Month month, Orientation orientation) {
+  Widget _buildChartCard(BuildContext context, BurndownSeries series, Orientation orientation) {
     final isVertical = orientation == Orientation.portrait;
     return SizedBox(
       height: isVertical ? 200 : 300,
       child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => ChartViewScreen(data: raw)),
+          MaterialPageRoute(builder: (context) => const ChartViewScreen()),
         ),
         child: AbsorbPointer(
           child: Padding(
             padding: const EdgeInsets.only(left: 8),
-            child: MonthBurndownChart(
-              incomes: raw['incomes'] as List<dynamic>,
-              expenses: raw['expenses'] as List<dynamic>,
-              startDate: month.startDate,
-              endDate: month.endDate,
-              isSimplified: true,
-            ),
+            child: MonthBurndownChart(series: series, isSimplified: true),
           ),
         ),
       ),
@@ -147,7 +139,7 @@ class _BalanceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
-    final isLight = Theme.of(context).brightness == Brightness.light;
+    final budgetColors = BudgetColors.of(context);
     final money = Formatters.currencyFormatter.format;
 
     final Color background;
@@ -159,8 +151,8 @@ class _BalanceCard extends StatelessWidget {
       background = colorScheme.primaryContainer;
       foreground = colorScheme.onPrimaryContainer;
     } else {
-      background = isLight ? Colors.green.shade100 : Colors.green.shade900;
-      foreground = isLight ? Colors.green.shade800 : Colors.green.shade100;
+      background = budgetColors.successContainer;
+      foreground = budgetColors.onSuccessContainer;
     }
 
     final rows = <Widget>[];

@@ -100,5 +100,6 @@
   "noMonths": "No month yet. Create your first one to start tracking.",
   "plannedSavings": "Planned savings",
   "actualBalance": "Actual balance",
-  "forDailyExpenses": "For daily expenses"
+  "forDailyExpenses": "For daily expenses",
+  "plannedLine": "Plan"
 }

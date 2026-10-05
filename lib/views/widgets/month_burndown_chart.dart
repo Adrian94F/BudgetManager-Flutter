@@ -1,318 +1,209 @@
 import 'dart:math';
 
-import 'package:community_charts_flutter/community_charts_flutter.dart';
+import 'package:community_charts_flutter/community_charts_flutter.dart' as charts;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-class MonthBurndownChart extends StatelessWidget {
-  final List<dynamic> incomes;
-  final List<dynamic> expenses;
-  final DateTime startDate;
-  final DateTime endDate;
-  final bool isSimplified;
-  final bool animate = true;
+import '../../app/theme.dart';
+import '../../domain/domain.dart';
 
-  const MonthBurndownChart({
-    super.key,
-    required this.incomes,
-    required this.expenses,
-    required this.startDate,
-    required this.endDate,
-    this.isSimplified = false
-  });
+/// The month's burndown: remaining balance per day against the ideal line
+/// that runs straight to the planned savings target, with weekends and today
+/// shaded. The full view adds the daily and recurring expenses as bars.
+///
+/// Line colour follows the iOS app: error below zero, tertiary when the
+/// current month is below its savings target, primary otherwise; a closed
+/// month is green when money was left and red when not.
+class MonthBurndownChart extends StatelessWidget {
+  const MonthBurndownChart({super.key, required this.series, this.isSimplified = false});
+
+  final BurndownSeries series;
+  final bool isSimplified;
+
+  static charts.Color _c(Color color) => charts.ColorUtil.fromDartColor(color);
+
+  Color _balanceColor(ColorScheme scheme, BudgetColors budget) {
+    final latest = series.latestBalance;
+    if (series.isActual) {
+      if (latest < 0) return scheme.error;
+      if (latest < series.plannedSavingsTarget) return scheme.tertiary;
+      return scheme.primary;
+    }
+    return latest < 0 ? scheme.error : budget.success;
+  }
+
+  /// Y range in whole thousands. The simplified view bottoms out at the
+  /// savings target when the balance stays above it, so the card shows the
+  /// part of the range that matters.
+  ({double lower, double upper, List<double> ticks}) _yRange() {
+    final values = [
+      ...series.balances,
+      ...series.ideals,
+      if (!isSimplified) ...series.dailyExpenses,
+      if (!isSimplified) ...series.monthlyExpenses,
+    ];
+    final minValue = values.reduce(min);
+    final maxValue = values.reduce(max);
+    final target = series.plannedSavingsTarget;
+    var lower = (minValue / 1000).floor() * 1000.0;
+    if (isSimplified && series.minBalance >= target && target > 0) {
+      lower = (target / 1000).floor() * 1000.0;
+    }
+    final upper = max((maxValue / 1000).ceil() * 1000.0, lower + 1000);
+    final ticks = [upper, lower, if (lower < 0 && upper > 0) 0.0];
+    return (lower: lower, upper: upper, ticks: ticks);
+  }
+
+  static String _formatTick(num? value, {required bool hideZero}) {
+    if (value == null || value == 0) return hideZero ? '' : '0';
+    final thousands = value / 1000;
+    return thousands % 1 == 0 ? '${thousands.toInt()}k' : '${thousands.toStringAsFixed(1)}k';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final chartData = _prepareChartData();
-    final seriesList = _createSeries(context, chartData);
-    final widgetWidth = MediaQuery.of(context).orientation == Orientation.portrait
-        ? MediaQuery.of(context).size.width
-        : MediaQuery.of(context).size.width * 3 / 5;
-    final segmentWidth = widgetWidth / (chartData.dateLabels.length);
+    if (series.isEmpty) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    final budget = BudgetColors.of(context);
+    final points = series.points;
+    final dayFormat = DateFormat('d.MM');
+    final labels = [for (final p in points) p.isStart ? 'start' : dayFormat.format(p.day!)];
+    String label(BurndownPoint p) => labels[p.index];
+    final range = _yRange();
+    final balanceColor = _balanceColor(scheme, budget);
 
-    final allValues = [
-      ...chartData.burndownValues,
-      ...chartData.idealBurndownValues,
-      ...chartData.dailyExpensesValues,
-      ...chartData.monthlyExpensesValues,
+    final seriesList = <charts.Series<BurndownPoint, String>>[
+      if (!isSimplified)
+        charts.Series<BurndownPoint, String>(
+          id: 'Monthly',
+          colorFn: (_, __) => _c(scheme.tertiary.withValues(alpha: 0.45)),
+          domainFn: (p, _) => label(p),
+          measureFn: (p, _) => p.monthlyExpenses,
+          data: points,
+        )..setAttribute(charts.rendererIdKey, 'bars'),
+      if (!isSimplified)
+        charts.Series<BurndownPoint, String>(
+          id: 'Daily',
+          colorFn: (_, __) => _c(scheme.primary.withValues(alpha: 0.45)),
+          domainFn: (p, _) => label(p),
+          measureFn: (p, _) => p.dailyExpenses,
+          data: points,
+        )..setAttribute(charts.rendererIdKey, 'bars'),
+      charts.Series<BurndownPoint, String>(
+        id: 'Ideal',
+        colorFn: (_, __) => _c(scheme.outline),
+        strokeWidthPxFn: (_, __) => 1,
+        dashPatternFn: (_, __) => const [4, 3],
+        domainFn: (p, _) => label(p),
+        measureFn: (p, _) => p.ideal,
+        data: points,
+      ),
+      charts.Series<BurndownPoint, String>(
+        id: 'Balance',
+        colorFn: (_, __) => _c(balanceColor),
+        strokeWidthPxFn: (_, __) => 2,
+        domainFn: (p, _) => label(p),
+        measureFn: (p, _) => p.balance,
+        data: points,
+      )..setAttribute(charts.rendererIdKey, 'balance'),
     ];
-    final minVal = allValues.reduce(min);
-    final maxVal = allValues.reduce(max);
-    final double axisMin = (minVal / 1000).floor() * 1000;
-    final double axisMax = (maxVal / 1000).ceil() * 1000;
-    final tickValues = <TickSpec<num>>[
-      TickSpec(axisMax),
-    ];
-    if (axisMin < 0) {
-      tickValues.add(TickSpec(axisMin));
-    }
-    if (axisMin < 0 && axisMax > 0 || axisMin == 0) {
-      tickValues.add(const TickSpec(0));
-    }
 
-    return OrdinalComboChart(
-      seriesList,
-      primaryMeasureAxis: NumericAxisSpec(
-        tickProviderSpec: isSimplified
-            ? StaticNumericTickProviderSpec(tickValues)
-            : null,
-        tickFormatterSpec: BasicNumericTickFormatterSpec(
-          (num? number) {
-            if (number == null || number == 0) {
-              return isSimplified ? "" : "0";
-            } else {
-              return "${(number / 1000.0).toStringAsFixed(0)}k";
-            }
-          }
-        ),
-        renderSpec: GridlineRendererSpec(
-          labelStyle: TextStyleSpec(
-            color: Theme.of(context).brightness == Brightness.light
-                ? MaterialPalette.gray.shade900
-                : MaterialPalette.gray.shade300,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final segmentWidth = constraints.maxWidth / labels.length;
+        final segments = <charts.LineAnnotationSegment<String>>[
+          for (final p in points)
+            if (p.isWeekend)
+              charts.LineAnnotationSegment<String>(
+                label(p),
+                charts.RangeAnnotationAxisType.domain,
+                strokeWidthPx: segmentWidth,
+                color: _c(scheme.surfaceContainerHighest.withValues(alpha: 0.7)),
+              ),
+          if (series.todayIndex != null)
+            charts.LineAnnotationSegment<String>(
+              labels[series.todayIndex!],
+              charts.RangeAnnotationAxisType.domain,
+              strokeWidthPx: segmentWidth,
+              color: _c(scheme.primaryContainer),
+            ),
+        ];
+
+        return charts.OrdinalComboChart(
+          seriesList,
+          animate: !isSimplified,
+          defaultRenderer: charts.LineRendererConfig(),
+          customSeriesRenderers: [
+            charts.LineRendererConfig(customRendererId: 'balance', includeArea: true, areaOpacity: 0.12),
+            charts.BarRendererConfig(
+              customRendererId: 'bars',
+              groupingType: charts.BarGroupingType.stacked,
+              stackedBarPaddingPx: 0,
+            ),
+          ],
+          primaryMeasureAxis: charts.NumericAxisSpec(
+            viewport: charts.NumericExtents(range.lower, range.upper),
+            tickProviderSpec: isSimplified
+                ? charts.StaticNumericTickProviderSpec([for (final t in range.ticks) charts.TickSpec(t)])
+                : null,
+            tickFormatterSpec: charts.BasicNumericTickFormatterSpec(
+              (value) => _formatTick(value, hideZero: isSimplified),
+            ),
+            renderSpec: charts.GridlineRendererSpec(
+              labelStyle: charts.TextStyleSpec(color: _c(scheme.onSurfaceVariant), fontSize: 11),
+              lineStyle: charts.LineStyleSpec(color: _c(scheme.outlineVariant)),
+            ),
           ),
-          lineStyle: LineStyleSpec(
-            color: Theme.of(context).brightness == Brightness.light
-                ? MaterialPalette.gray.shade200
-                : MaterialPalette.gray.shade900,
+          domainAxis: const charts.OrdinalAxisSpec(
+            showAxisLine: false,
+            renderSpec: charts.NoneRenderSpec(),
           ),
-        ),
-      ),
-      domainAxis: const OrdinalAxisSpec(
-        showAxisLine: false,
-        renderSpec: NoneRenderSpec(),
-      ),
-      animate: animate,
-      defaultRenderer: LineRendererConfig(),
-      customSeriesRenderers: [
-        BarRendererConfig(
-          stackedBarPaddingPx: 0,
-          customRendererId: 'customStackedBar',
-          groupingType: BarGroupingType.stacked,
-        ),
-      ],
-      behaviors: [
-        RangeAnnotation(_getSegments(context, chartData, segmentWidth)),
-      ],
+          behaviors: [charts.RangeAnnotation(segments)],
+        );
+      },
     );
-  }
-
-  _ChartData _prepareChartData() {
-    final normalizedStart = _normalizeDate(startDate);
-    final normalizedEnd = _normalizeDate(endDate);
-
-    final dates = <DateTime>[];
-    DateTime current = normalizedStart;
-
-    while (current.isBefore(normalizedEnd) || current.isAtSameMomentAs(normalizedEnd)) {
-      dates.add(current);
-      current = _addDay(current);
-    }
-
-    final dailyExpensesMap = <String, double>{};
-    final monthlyExpensesMap = <String, double>{};
-    double totalMonthlyExpenses = 0.0;
-    double totalIncome = 0.0;
-
-    for (var expense in expenses) {
-      final value = (expense['value'] as num).toDouble();
-      final dateStr = expense['date'] as String;
-      final expenseDate = _normalizeDate(DateTime.parse(dateStr));
-      final dateKey = _dateToKey(expenseDate);
-
-      if (expense['is_monthly'] == true) {
-        monthlyExpensesMap[dateKey] = (monthlyExpensesMap[dateKey] ?? 0.0) + value;
-        totalMonthlyExpenses += value;
-      } else {
-        dailyExpensesMap[dateKey] = (dailyExpensesMap[dateKey] ?? 0.0) + value;
-      }
-    }
-
-    for (var income in incomes) {
-      totalIncome += (income['value'] as num).toDouble();
-    }
-
-    final availableBudget = totalIncome - totalMonthlyExpenses;
-    final idealDailyBurn = availableBudget / dates.length;
-
-    final dateLabels = <String>[];
-    final burndownValues = <double>[];
-    final idealBurndownValues = <double>[];
-    final dailyExpensesValues = <double>[];
-    final monthlyExpensesValues = <double>[];
-
-    dateLabels.add("start");
-    burndownValues.add(availableBudget);
-    idealBurndownValues.add(availableBudget);
-    dailyExpensesValues.add(0.0);
-    monthlyExpensesValues.add(0.0);
-
-    final formatter = DateFormat('d.MM');
-    double currentBudget = availableBudget;
-    double currentIdeal = availableBudget;
-
-    for (int i = 0; i < dates.length; i++) {
-      final date = dates[i];
-      final dateKey = _dateToKey(date);
-      final label = formatter.format(date);
-
-      final dailyExpense = dailyExpensesMap[dateKey] ?? 0.0;
-      final monthlyExpense = isSimplified
-          ? 0.0
-          : monthlyExpensesMap[dateKey] ?? 0.0;
-
-      currentBudget -= dailyExpense;
-      currentIdeal -= idealDailyBurn;
-      if (currentIdeal < 0) currentIdeal = 0;
-
-      dateLabels.add(label);
-      burndownValues.add(currentBudget);
-      idealBurndownValues.add(currentIdeal);
-      dailyExpensesValues.add(dailyExpense);
-      monthlyExpensesValues.add(monthlyExpense);
-    }
-
-    return _ChartData(
-      dateLabels: dateLabels,
-      dates: [normalizedStart, ...dates],
-      burndownValues: burndownValues,
-      idealBurndownValues: idealBurndownValues,
-      dailyExpensesValues: dailyExpensesValues,
-      monthlyExpensesValues: monthlyExpensesValues,
-    );
-  }
-
-  List<Series<_DataPoint, String>> _createSeries(
-    BuildContext context,
-    _ChartData chartData,
-  ) {
-    final lightMode = Theme.of(context).brightness == Brightness.light;
-
-    return [
-      Series<_DataPoint, String>(
-        id: 'Monthly',
-        colorFn: (_, __) => lightMode
-            ? MaterialPalette.indigo.makeShades(5)[4]
-            : MaterialPalette.indigo.makeShades(5)[4].darker.darker.darker.darker,
-        domainFn: (_DataPoint point, _) => point.label,
-        measureFn: (_DataPoint point, _) => point.value,
-        data: List.generate(
-          chartData.dateLabels.length,
-          (i) => _DataPoint(chartData.dateLabels[i], chartData.monthlyExpensesValues[i]),
-        ),
-      )..setAttribute(rendererIdKey, 'customStackedBar'),
-      Series<_DataPoint, String>(
-        id: 'Daily',
-        colorFn: (_, __) => lightMode
-            ? MaterialPalette.indigo.makeShades(5)[3]
-            : MaterialPalette.indigo.makeShades(5)[3].darker.darker,
-        domainFn: (_DataPoint point, _) => point.label,
-        measureFn: (_DataPoint point, _) => point.value,
-        data: List.generate(
-          chartData.dateLabels.length,
-          (i) => _DataPoint(chartData.dateLabels[i], chartData.dailyExpensesValues[i]),
-        ),
-      )..setAttribute(rendererIdKey, 'customStackedBar'),
-      Series<_DataPoint, String>(
-        id: 'Ideal burndown',
-        colorFn: (_, __) => MaterialPalette.indigo.makeShades(5)[2],
-        strokeWidthPxFn: (_, __) => 0.5,
-        dashPatternFn: (_, __) => [2, 2],
-        domainFn: (_DataPoint point, _) => point.label,
-        measureFn: (_DataPoint point, _) => point.value,
-        data: List.generate(
-          chartData.dateLabels.length,
-          (i) => _DataPoint(chartData.dateLabels[i], chartData.idealBurndownValues[i]),
-        ),
-      ),
-      Series<_DataPoint, String>(
-        id: 'Burndown',
-        colorFn: (_, __) => MaterialPalette.indigo.shadeDefault,
-        domainFn: (_DataPoint point, _) => point.label,
-        measureFn: (_DataPoint point, _) => point.value,
-        data: List.generate(
-          chartData.dateLabels.length,
-          (i) => _DataPoint(chartData.dateLabels[i], chartData.burndownValues[i]),
-        ),
-      ),
-    ];
-  }
-
-  List<LineAnnotationSegment<Object>> _getSegments(
-    BuildContext context,
-    _ChartData chartData,
-    double segmentWidth,
-  ) {
-    final segments = <LineAnnotationSegment<Object>>[];
-    final lightMode = Theme.of(context).brightness == Brightness.light;
-    final today = _normalizeDate(DateTime.now());
-
-    for (int i = 1; i < chartData.dates.length; i++) {
-      final date = chartData.dates[i];
-      final label = chartData.dateLabels[i];
-
-      if (date.weekday == DateTime.saturday || date.weekday == DateTime.sunday) {
-        segments.add(LineAnnotationSegment(
-          label,
-          RangeAnnotationAxisType.domain,
-          strokeWidthPx: segmentWidth,
-          color: lightMode
-              ? MaterialPalette.gray.shade100
-              : MaterialPalette.gray.shade900.darker,
-        ));
-      }
-
-      if (date.year == today.year &&
-          date.month == today.month &&
-          date.day == today.day) {
-        segments.add(LineAnnotationSegment(
-          label,
-          RangeAnnotationAxisType.domain,
-          strokeWidthPx: segmentWidth,
-          color: lightMode
-              ? MaterialPalette.indigo.makeShades(10)[9]
-              : MaterialPalette.indigo.shadeDefault.darker.darker.darker.darker.darker,
-        ));
-      }
-    }
-
-    return segments;
-  }
-
-  DateTime _normalizeDate(DateTime date) {
-    return DateTime.utc(date.year, date.month, date.day);
-  }
-
-  DateTime _addDay(DateTime date) {
-    return DateTime.utc(date.year, date.month, date.day + 1);
-  }
-
-  String _dateToKey(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 }
 
-class _ChartData {
-  final List<String> dateLabels;
-  final List<DateTime> dates;
-  final List<double> burndownValues;
-  final List<double> idealBurndownValues;
-  final List<double> dailyExpensesValues;
-  final List<double> monthlyExpensesValues;
+/// Legend for the full chart.
+class BurndownLegend extends StatelessWidget {
+  const BurndownLegend({super.key, required this.series, required this.labels});
 
-  _ChartData({
-    required this.dateLabels,
-    required this.dates,
-    required this.burndownValues,
-    required this.idealBurndownValues,
-    required this.dailyExpensesValues,
-    required this.monthlyExpensesValues,
-  });
-}
+  final BurndownSeries series;
 
-class _DataPoint {
-  final String label;
-  final double value;
+  /// Balance, plan, daily, recurring.
+  final ({String balance, String plan, String daily, String recurring}) labels;
 
-  _DataPoint(this.label, this.value);
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final budget = BudgetColors.of(context);
+    final balanceColor = MonthBurndownChart(series: series)._balanceColor(scheme, budget);
+    Widget item(Color color, String text, {bool dashed = false}) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 18,
+              height: dashed ? 2 : 10,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(text, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        );
+    return Wrap(
+      spacing: 16,
+      runSpacing: 4,
+      alignment: WrapAlignment.center,
+      children: [
+        item(balanceColor, labels.balance),
+        item(scheme.outline, labels.plan, dashed: true),
+        item(scheme.primary.withValues(alpha: 0.45), labels.daily),
+        item(scheme.tertiary.withValues(alpha: 0.45), labels.recurring),
+      ],
+    );
+  }
 }

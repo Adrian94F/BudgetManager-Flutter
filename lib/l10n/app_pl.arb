@@ -88,5 +88,6 @@
     "noMonths": "Nie ma jeszcze żadnego miesiąca. Utwórz pierwszy, aby zacząć.",
     "plannedSavings": "Planowane oszczędności",
     "actualBalance": "Rzeczywisty bilans",
-    "forDailyExpenses": "Na codzienne wydatki"
+    "forDailyExpenses": "Na codzienne wydatki",
+    "plannedLine": "Plan"
 }
