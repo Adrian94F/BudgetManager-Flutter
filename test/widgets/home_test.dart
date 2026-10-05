@@ -143,6 +143,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('App settings'), findsOneWidget);
+    expect(find.text('Budget settings'), findsOneWidget);
     expect(find.text('Manage categories'), findsOneWidget);
     expect(find.text('Change password'), findsOneWidget);
     expect(find.text('Log out'), findsOneWidget);
@@ -172,14 +173,14 @@ void main() {
     expect(find.text('App settings'), findsOneWidget);
   });
 
-  testWidgets('changes the currency from App settings', (tester) async {
+  testWidgets('changes the currency from Budget settings', (tester) async {
     final server = FakeServer();
     await pumpApp(tester, server, loggedIn: true);
     expect(find.textContaining('zł'), findsWidgets);
 
     await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('App settings'));
+    await tester.tap(find.text('Budget settings'));
     await tester.pumpAndSettle();
     expect(find.text('PLN · zł'), findsOneWidget);
 

@@ -3,11 +3,12 @@ import 'package:budget_manager/l10n/app_localizations.dart';
 
 import '../app/app_scope.dart';
 import 'app_settings.dart';
+import 'budget_settings.dart';
 import 'categories_screen.dart';
 import 'change_password_screen.dart';
 
-/// Settings, opened from the top bar: app settings, categories, password
-/// and sign-out.
+/// Settings, opened from the top bar: app settings, budget settings,
+/// categories, password and sign-out.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -25,6 +26,12 @@ class SettingsScreen extends StatelessWidget {
             title: Text(l10n.appSettings),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => push(const AppSettingsScreen()),
+          ),
+          ListTile(
+            leading: const Icon(Icons.account_balance_wallet_outlined),
+            title: Text(l10n.budgetSettings),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => push(const BudgetSettingsScreen()),
           ),
           ListTile(
             leading: const Icon(Icons.category_outlined),
