@@ -287,12 +287,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _clearFilter)
                 : null,
             actions: [
+              if (showSearch) ExpenseSearchButton(data: data),
               if (switchInBar)
                 Padding(
-                  padding: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.only(left: 4, right: 8),
                   child: _ExpensesViewSwitch(view: _expensesView, onChanged: _showExpenses, dense: true),
                 ),
-              if (showSearch) ExpenseSearchButton(data: data),
               if (!useRail) ...[
                 _monthPickerButton(l10n, data),
                 _settingsButton(l10n),
