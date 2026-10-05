@@ -51,6 +51,38 @@ class CashFlowChart extends StatelessWidget {
     return hsl.withSaturation(hsl.saturation * (1 - categoryMuting)).toColor();
   }
 
+  /// The content height at which every node is tall enough for its label
+  /// (one line beside a sink, two beside a source), so a zoom need go no
+  /// further; zero for an empty diagram.
+  static double heightToLabelAll(
+      BuildContext context, CashFlowDiagram diagram) {
+    final total = diagram.budget.value;
+    if (total <= 0) return 0;
+    final theme = Theme.of(context);
+    final direction = Directionality.of(context);
+    double lineHeight(TextStyle style) => (TextPainter(
+            text: TextSpan(text: '0', style: style), textDirection: direction)
+          ..layout())
+        .height;
+    final oneLine = lineHeight(theme.textTheme.labelMedium!);
+    final twoLines = oneLine + lineHeight(theme.textTheme.labelSmall!);
+    var needed = 0.0;
+    void consider(CashFlowNode node, double label) {
+      if (node.value <= 0) return;
+      needed =
+          math.max(needed, total * (label - 2 * labelOverhang) / node.value);
+    }
+
+    for (final node in diagram.sinks) {
+      consider(node, oneLine);
+    }
+    for (final node in diagram.sources) {
+      consider(node, twoLines);
+    }
+    final nodes = math.max(diagram.sources.length, diagram.sinks.length);
+    return needed + math.max(nodes - 1, 0) * _Geometry.nodeGap;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;

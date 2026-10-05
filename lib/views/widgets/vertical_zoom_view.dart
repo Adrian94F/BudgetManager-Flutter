@@ -5,13 +5,25 @@ import 'package:flutter/material.dart';
 /// is laid out taller, not scaled as a picture, so a chart can show what it
 /// had no room for), and one finger scrolls what no longer fits, with the
 /// platform's scroll physics. The height goes from the viewport's own (no
-/// zoom) to [maxZoom] times it; the content under the fingers stays under
-/// them while they pinch.
+/// zoom) up to [maxHeight], or [maxZoom] times the viewport when no height
+/// is given; the content under the fingers stays under them while they
+/// pinch.
 class VerticalZoomView extends StatefulWidget {
-  const VerticalZoomView({super.key, this.maxZoom = 8, required this.child});
+  const VerticalZoomView({
+    super.key,
+    this.maxZoom = 8,
+    this.maxHeight,
+    required this.child,
+  });
 
-  /// How many times the viewport's height the content may be stretched to.
+  /// How many times the viewport's height the content may be stretched to
+  /// at the very most, whatever [maxHeight] says.
   final double maxZoom;
+
+  /// The tallest the content needs to be, in logical pixels, e.g. the
+  /// height at which a chart has room for everything; the zoom stops
+  /// there. Never less than the viewport's height.
+  final double? maxHeight;
   final Widget child;
 
   @override
@@ -31,6 +43,13 @@ class _VerticalZoomViewState extends State<VerticalZoomView> {
   double _startZoom = 1;
   double _startOffset = 0;
   double _startFocalY = 0;
+
+  /// The zoom the viewport allows now.
+  double get _maxZoom {
+    final height = widget.maxHeight;
+    if (height == null || _viewport <= 0) return widget.maxZoom;
+    return (height / _viewport).clamp(1.0, widget.maxZoom);
+  }
 
   @override
   void dispose() {
@@ -73,10 +92,7 @@ class _VerticalZoomViewState extends State<VerticalZoomView> {
       }
     }
     if (_pointers >= 2) {
-      final zoom = (_startZoom * details.verticalScale).clamp(
-        1.0,
-        widget.maxZoom,
-      );
+      final zoom = (_startZoom * details.verticalScale).clamp(1.0, _maxZoom);
       if (zoom == _zoom) return;
       // The point of the content that was under the fingers when they came
       // down stretches with it; scrolling there keeps it under them.
@@ -118,6 +134,8 @@ class _VerticalZoomViewState extends State<VerticalZoomView> {
     return LayoutBuilder(
       builder: (context, constraints) {
         _viewport = constraints.maxHeight;
+        // A new limit (the content changed) may be below the zoom reached.
+        _zoom = _zoom.clamp(1.0, _maxZoom);
         return GestureDetector(
           // Measure the pinch from where the fingers came down, not from
           // where the gesture was told apart from a tap, so the content

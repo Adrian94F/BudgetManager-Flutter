@@ -327,31 +327,52 @@ void main() {
       'a pinch stretches the cash flow upwards and one finger scrolls it',
       (tester) async {
     final server = FakeServer();
+    // A tiny category: its label needs a tall chart, so the stretch has far
+    // to go before every label fits.
+    server.expenses[11]!.add({
+      'id': 2,
+      'value': 15.0,
+      'date': server.currentMonth['start_date'],
+      'comment': 'Ticket',
+      'category': 2,
+      'is_monthly': false,
+    });
     await pumpApp(tester, server, loggedIn: true);
     await tester.tap(find.byType(MonthBurndownChart), warnIfMissed: false);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Cash flow'));
     await tester.pumpAndSettle();
     final chart = find.byType(CashFlowChart);
-    final heightBefore = tester.getSize(chart).height;
-    final centre = tester.getCenter(chart);
+    final viewport = tester.getSize(chart).height;
+    final limit = CashFlowChart.heightToLabelAll(
+      tester.element(chart),
+      tester.widget<CashFlowChart>(chart).diagram,
+    );
+    expect(limit, greaterThan(viewport * 3));
 
     // Two fingers 80 px apart move to 240 px apart: three times the height.
-    final upper = await tester.startGesture(centre - const Offset(0, 40));
-    final lower = await tester.startGesture(centre + const Offset(0, 40));
-    await tester.pump();
-    for (var i = 0; i < 10; i++) {
-      await upper.moveBy(const Offset(0, -8));
-      await lower.moveBy(const Offset(0, 8));
-      await tester.pump(const Duration(milliseconds: 16));
+    Future<void> pinch() async {
+      final centre = tester.getCenter(chart);
+      final upper = await tester.startGesture(centre - const Offset(0, 40));
+      final lower = await tester.startGesture(centre + const Offset(0, 40));
+      await tester.pump();
+      for (var i = 0; i < 10; i++) {
+        await upper.moveBy(const Offset(0, -8));
+        await lower.moveBy(const Offset(0, 8));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await upper.up();
+      await lower.up();
+      await tester.pumpAndSettle();
     }
-    await upper.up();
-    await lower.up();
-    await tester.pumpAndSettle();
-    expect(
-      tester.getSize(chart).height,
-      closeTo(heightBefore * 3, heightBefore * 0.1),
-    );
+
+    await pinch();
+    expect(tester.getSize(chart).height, closeTo(viewport * 3, viewport * 0.1));
+
+    // Another one would make it nine times; the stretch stops where the
+    // smallest category fits its label.
+    await pinch();
+    expect(tester.getSize(chart).height, closeTo(limit, 1));
 
     // What no longer fits scrolls with one finger.
     final topBefore = tester.getTopLeft(chart).dy;

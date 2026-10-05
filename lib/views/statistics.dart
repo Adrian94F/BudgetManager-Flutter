@@ -148,6 +148,7 @@ class _CashFlowView extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     if (flow.isEmpty) return const _EmptyFlow();
+    final diagram = flow.diagram(includeRecurring: includeRecurring);
     return Column(
       children: [
         Expanded(
@@ -156,11 +157,14 @@ class _CashFlowView extends StatelessWidget {
             // A pinch stretches the diagram upwards, so more labels fit, and one
             // finger scrolls it; the two variants cross-fade rather than snap.
             child: VerticalZoomView(
+              // Up to the height at which every category has its label.
+              maxZoom: 100,
+              maxHeight: CashFlowChart.heightToLabelAll(context, diagram),
               child: AnimatedSwitcher(
                 duration: Durations.medium1,
                 child: CashFlowChart(
                   key: ValueKey(includeRecurring),
-                  diagram: flow.diagram(includeRecurring: includeRecurring),
+                  diagram: diagram,
                   includeRecurring: includeRecurring,
                   onCategoryTap: onCategoryTap,
                 ),
