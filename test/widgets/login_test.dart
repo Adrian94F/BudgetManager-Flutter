@@ -5,7 +5,8 @@ import '../helpers/fake_server.dart';
 import '../helpers/pump_app.dart';
 
 void main() {
-  testWidgets('shows the login page without a session and signs in', (tester) async {
+  testWidgets('shows the login page without a session and signs in',
+      (tester) async {
     final server = FakeServer();
     final services = await pumpApp(tester, server);
 
@@ -22,7 +23,8 @@ void main() {
     expect(server.requests.first.url.path, '/api/token/');
   });
 
-  testWidgets('says when the credentials are wrong and stays on the page', (tester) async {
+  testWidgets('says when the credentials are wrong and stays on the page',
+      (tester) async {
     final server = FakeServer();
     final services = await pumpApp(tester, server);
 
@@ -45,6 +47,7 @@ void main() {
     await tester.tap(find.text('LOGIN'));
     await tester.pumpAndSettle();
 
-    expect(await services.session.savedCredentials(), (username: 'adrian', password: 'secret'));
+    expect(await services.session.savedCredentials(),
+        (username: 'adrian', password: 'secret'));
   });
 }

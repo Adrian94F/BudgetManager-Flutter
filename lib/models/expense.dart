@@ -31,7 +31,12 @@ class Expense {
 
   bool get isDaily => !isMonthly;
 
-  Expense copyWith({double? value, DateTime? date, String? comment, int? categoryId, bool? isMonthly}) =>
+  Expense copyWith(
+          {double? value,
+          DateTime? date,
+          String? comment,
+          int? categoryId,
+          bool? isMonthly}) =>
       Expense(
         id: id,
         value: value ?? this.value,
@@ -42,5 +47,6 @@ class Expense {
       );
 
   @override
-  String toString() => 'Expense($id, $value, ${Dates.formatApi(date)}, category $categoryId, monthly: $isMonthly)';
+  String toString() =>
+      'Expense($id, $value, ${Dates.formatApi(date)}, category $categoryId, monthly: $isMonthly)';
 }

@@ -39,7 +39,8 @@ class Month {
 
   /// Days from [today] to the end date, today included; never negative.
   int daysLeft([DateTime? today]) {
-    final left = Dates.daysBetween(Dates.dateOnly(today ?? DateTime.now()), endDate) + 1;
+    final left =
+        Dates.daysBetween(Dates.dateOnly(today ?? DateTime.now()), endDate) + 1;
     return left < 0 ? 0 : left;
   }
 
@@ -89,5 +90,6 @@ class Month {
   int get hashCode => Object.hash(id, startDate, endDate);
 
   @override
-  String toString() => 'Month($id, ${Dates.formatApi(startDate)}..${Dates.formatApi(endDate)})';
+  String toString() =>
+      'Month($id, ${Dates.formatApi(startDate)}..${Dates.formatApi(endDate)})';
 }

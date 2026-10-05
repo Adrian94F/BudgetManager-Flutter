@@ -16,33 +16,43 @@ class Formatters {
   static final _letterThenDigit = RegExp(r'(?<=\p{L})(?=\d)', unicode: true);
   static final _digitThenLetter = RegExp(r'(?<=\d)(?=\p{L})', unicode: true);
 
-  static String money(double amount, String locale, {String currency = defaultCurrency}) {
-    final format = _formats['$locale|$currency'] ??= NumberFormat.simpleCurrency(locale: locale, name: currency);
-    return format.format(amount).replaceAll(_letterThenDigit, ' ').replaceAll(_digitThenLetter, ' ');
+  static String money(double amount, String locale,
+      {String currency = defaultCurrency}) {
+    final format = _formats['$locale|$currency'] ??=
+        NumberFormat.simpleCurrency(locale: locale, name: currency);
+    return format
+        .format(amount)
+        .replaceAll(_letterThenDigit, ' ')
+        .replaceAll(_digitThenLetter, ' ');
   }
 
   /// [money] in the locale of [context] and the currency of the nearest
   /// [CurrencyScope].
   static String moneyOf(BuildContext context, double amount) =>
-      money(amount, Localizations.localeOf(context).toString(), currency: CurrencyScope.of(context));
+      money(amount, Localizations.localeOf(context).toString(),
+          currency: CurrencyScope.of(context));
 
   /// The symbol of [currency] in [locale] ("zł", "€"), or its code when the
   /// locale has no shorter form ("CHF").
   static String currencySymbol(String currency, String locale) =>
-      NumberFormat.simpleCurrency(locale: locale, name: currency).currencySymbol;
+      NumberFormat.simpleCurrency(locale: locale, name: currency)
+          .currencySymbol;
 }
 
 /// The currency amounts are shown in, from the signed-in user's settings. The
 /// app puts one above the navigator so every screen formats the same way and
 /// follows a change made in the settings.
 class CurrencyScope extends InheritedWidget {
-  const CurrencyScope({super.key, required this.currency, required super.child});
+  const CurrencyScope(
+      {super.key, required this.currency, required super.child});
 
   final String currency;
 
   static String of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<CurrencyScope>()?.currency ?? defaultCurrency;
+      context.dependOnInheritedWidgetOfExactType<CurrencyScope>()?.currency ??
+      defaultCurrency;
 
   @override
-  bool updateShouldNotify(CurrencyScope oldWidget) => currency != oldWidget.currency;
+  bool updateShouldNotify(CurrencyScope oldWidget) =>
+      currency != oldWidget.currency;
 }

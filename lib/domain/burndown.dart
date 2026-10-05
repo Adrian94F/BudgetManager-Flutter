@@ -88,7 +88,13 @@ class BurndownSeries {
     final idealDailyBurn = totalDays > 0 ? (start - target) / totalDays : 0.0;
 
     final points = <BurndownPoint>[
-      BurndownPoint(index: 0, day: null, balance: start, ideal: start, dailyExpenses: 0, monthlyExpenses: 0),
+      BurndownPoint(
+          index: 0,
+          day: null,
+          balance: start,
+          ideal: start,
+          dailyExpenses: 0,
+          monthlyExpenses: 0),
     ];
     var balance = start;
     int? todayIndex;
@@ -123,11 +129,16 @@ class BurndownSeries {
   List<double> get balances => points.map((p) => p.balance).toList();
   List<double> get ideals => points.map((p) => p.ideal).toList();
   List<double> get dailyExpenses => points.map((p) => p.dailyExpenses).toList();
-  List<double> get monthlyExpenses => points.map((p) => p.monthlyExpenses).toList();
+  List<double> get monthlyExpenses =>
+      points.map((p) => p.monthlyExpenses).toList();
 
-  double get minBalance => points.isEmpty ? 0 : points.map((p) => p.balance).reduce((a, b) => a < b ? a : b);
+  double get minBalance => points.isEmpty
+      ? 0
+      : points.map((p) => p.balance).reduce((a, b) => a < b ? a : b);
 
   double get maxValue => points.isEmpty
       ? 0
-      : points.expand((p) => [p.balance, p.ideal]).reduce((a, b) => a > b ? a : b);
+      : points
+          .expand((p) => [p.balance, p.ideal])
+          .reduce((a, b) => a > b ? a : b);
 }

@@ -17,12 +17,32 @@ final Map<String, dynamic> sampleResponse = {
   ],
   'month': {'id': 11, 'start_date': '2026-09-26', 'end_date': '2026-10-25'},
   'incomes': [
-    {'id': 100, 'value': 6000.0, 'date': '2026-09-26', 'comment': 'Pay', 'is_salary': true},
+    {
+      'id': 100,
+      'value': 6000.0,
+      'date': '2026-09-26',
+      'comment': 'Pay',
+      'is_salary': true
+    },
     {'id': 101, 'value': 0, 'date': null, 'comment': null, 'is_salary': false},
   ],
   'expenses': [
-    {'id': 200, 'value': 1200.5, 'date': '2026-09-27', 'comment': 'Rent', 'category': 1, 'is_monthly': true},
-    {'id': 201, 'value': '45.20', 'date': '2026-10-05', 'comment': '', 'category': 2, 'is_monthly': false},
+    {
+      'id': 200,
+      'value': 1200.5,
+      'date': '2026-09-27',
+      'comment': 'Rent',
+      'category': 1,
+      'is_monthly': true
+    },
+    {
+      'id': 201,
+      'value': '45.20',
+      'date': '2026-10-05',
+      'comment': '',
+      'category': 2,
+      'is_monthly': false
+    },
   ],
   'planned_savings': 1500.0,
 };
@@ -47,8 +67,12 @@ void main() {
 
     test('reads the currency and defaults to PLN', () {
       expect(MonthData.fromJson(sampleResponse).currency, 'PLN');
-      expect(MonthData.fromJson({...sampleResponse, 'currency': 'EUR'}).currency, 'EUR');
-      expect(MonthData.fromJson(sampleResponse).copyWith(currency: 'CHF').currency, 'CHF');
+      expect(
+          MonthData.fromJson({...sampleResponse, 'currency': 'EUR'}).currency,
+          'EUR');
+      expect(
+          MonthData.fromJson(sampleResponse).copyWith(currency: 'CHF').currency,
+          'CHF');
     });
 
     test('accepts money as float, int and string', () {
@@ -92,7 +116,10 @@ void main() {
   });
 
   group('Month', () {
-    final month = Month(id: 1, startDate: DateTime(2026, 9, 26), endDate: DateTime(2026, 10, 25));
+    final month = Month(
+        id: 1,
+        startDate: DateTime(2026, 9, 26),
+        endDate: DateTime(2026, 10, 25));
 
     test('knows its length, whether it is current, and days left', () {
       expect(month.lengthInDays, 30);
@@ -119,14 +146,18 @@ void main() {
 
   group('Dates', () {
     test('counts days across a daylight-saving change', () {
-      expect(Dates.daysBetween(DateTime(2026, 3, 28), DateTime(2026, 3, 30)), 2);
-      expect(Dates.daysBetween(DateTime(2026, 10, 24), DateTime(2026, 10, 26)), 2);
-      expect(Dates.range(DateTime(2026, 10, 24), DateTime(2026, 10, 26)).length, 3);
+      expect(
+          Dates.daysBetween(DateTime(2026, 3, 28), DateTime(2026, 3, 30)), 2);
+      expect(
+          Dates.daysBetween(DateTime(2026, 10, 24), DateTime(2026, 10, 26)), 2);
+      expect(Dates.range(DateTime(2026, 10, 24), DateTime(2026, 10, 26)).length,
+          3);
     });
 
     test('adds months with day clamping', () {
       expect(Dates.addMonths(DateTime(2026, 1, 31), 1), DateTime(2026, 2, 28));
-      expect(Dates.addMonths(DateTime(2026, 10, 25), 1), DateTime(2026, 11, 25));
+      expect(
+          Dates.addMonths(DateTime(2026, 10, 25), 1), DateTime(2026, 11, 25));
       expect(Dates.addMonths(DateTime(2026, 12, 15), 1), DateTime(2027, 1, 15));
     });
 

@@ -81,7 +81,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// notification shade) does not count.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
       _wasInBackground = true;
     } else if (state == AppLifecycleState.resumed && _wasInBackground) {
       _wasInBackground = false;
@@ -98,7 +99,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  bool get _isTableShown => _currentIndex == _expensesTab && _expensesView == _ExpensesView.table;
+  bool get _isTableShown =>
+      _currentIndex == _expensesTab && _expensesView == _ExpensesView.table;
 
   /// Applies a change of tab or view and keeps the header in step with it.
   void _updateView(VoidCallback change) {
@@ -122,7 +124,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _animateHeader(double offset) {
-    _scrollController.animateTo(offset, duration: const Duration(milliseconds: 250), curve: Curves.easeOutCubic);
+    _scrollController.animateTo(offset,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic);
   }
 
   /// From a table cell: the list narrowed to that day and/or category.
@@ -168,7 +172,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // The table keeps the header collapsed and scrolls on its own.
     if (_scrollController.hasClients && !_isTableShown) {
       // The nested controller brings both the header and the list to the top.
-      await _scrollController.animateTo(0, duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
+      await _scrollController.animateTo(0,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic);
     }
     await _refreshKey.currentState?.show();
   }
@@ -211,7 +217,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _openSettings() {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+    Navigator.push(
+        context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
   }
 
   @override
@@ -230,7 +237,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               onLogout: AppScope.of(context).auth.logout,
             );
           }
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
         }
         return PopScope(
           canPop: !_filter.isActive,
@@ -238,14 +246,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             if (!didPop && _filter.isActive) _clearFilter();
           },
           child: LayoutBuilder(
-            builder: (context, constraints) => _buildScaffold(context, constraints, months, data),
+            builder: (context, constraints) =>
+                _buildScaffold(context, constraints, months, data),
           ),
         );
       },
     );
   }
 
-  Widget _buildScaffold(BuildContext context, BoxConstraints constraints, MonthController months, MonthData data) {
+  Widget _buildScaffold(BuildContext context, BoxConstraints constraints,
+      MonthController months, MonthData data) {
     final l10n = AppLocalizations.of(context)!;
     final locale = Localizations.localeOf(context).toString();
     final month = data.month;
@@ -254,17 +264,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // instead of the large collapsing title.
     final useRail = constraints.maxWidth >= 600;
     final compactHeader = constraints.maxHeight < 480;
-    final onExpenses = month != null && _currentIndex == _expensesTab && !_filter.isActive;
+    final onExpenses =
+        month != null && _currentIndex == _expensesTab && !_filter.isActive;
     // The List / Table switch sits in the bar when the window is wide enough
     // for it next to the title; on a phone it stays below the bar.
     final switchInBar = onExpenses && useRail;
     final showSearch = onExpenses && _expensesView == _ExpensesView.list;
-    final tabs = month == null ? null : _buildTabs(data, showSwitch: !switchInBar);
+    final tabs =
+        month == null ? null : _buildTabs(data, showSwitch: !switchInBar);
     final content = tabs != null
         ? tabs[_currentIndex].screen
         : NoMonthView(message: data.message, onCreate: _createMonth);
     final fab = tabs?[_currentIndex].fab;
-    final actionsWidth = (switchInBar ? 220.0 : 0.0) + (showSearch ? 48.0 : 0.0) + (useRail ? 0.0 : 96.0) + 4.0;
+    final actionsWidth = (switchInBar ? 220.0 : 0.0) +
+        (showSearch ? 48.0 : 0.0) +
+        (useRail ? 0.0 : 96.0) +
+        4.0;
 
     // The header collapses as the tab's list scrolls under it; a tab with its
     // own scroll controllers (the table) simply keeps the header expanded.
@@ -284,14 +299,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             subtitle: month?.rangeTitle(locale),
             onTitleTap: month == null ? null : () => _showMonthPicker(data),
             leading: _filter.isActive
-                ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _clearFilter)
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back), onPressed: _clearFilter)
                 : null,
             actions: [
               if (showSearch) ExpenseSearchButton(data: data),
               if (switchInBar)
                 Padding(
                   padding: const EdgeInsets.only(left: 4, right: 8),
-                  child: _ExpensesViewSwitch(view: _expensesView, onChanged: _showExpenses, dense: true),
+                  child: _ExpensesViewSwitch(
+                      view: _expensesView,
+                      onChanged: _showExpenses,
+                      dense: true),
                 ),
               if (!useRail) ...[
                 _monthPickerButton(l10n, data),
@@ -305,12 +324,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ),
         if (months.error != null)
-          SliverToBoxAdapter(child: ErrorBanner(error: months.error!, onRetry: months.refresh)),
+          SliverToBoxAdapter(
+              child:
+                  ErrorBanner(error: months.error!, onRetry: months.refresh)),
       ],
       body: Builder(
         builder: (context) => _OverlapPadding(
           handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-          child: RefreshIndicator(key: _refreshKey, onRefresh: _refreshHard, child: content),
+          child: RefreshIndicator(
+              key: _refreshKey, onRefresh: _refreshHard, child: content),
         ),
       ),
     );
@@ -318,7 +340,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (useRail) {
       return Row(
         children: [
-          _navigationRail(l10n, fab, data, height: constraints.maxHeight - MediaQuery.paddingOf(context).vertical),
+          _navigationRail(l10n, fab, data,
+              height: constraints.maxHeight -
+                  MediaQuery.paddingOf(context).vertical),
           Expanded(child: Scaffold(body: body)),
         ],
       );
@@ -389,8 +413,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     const fabBlock = 72.0;
     const labelled = 64.0;
     const iconOnly = 44.0;
-    if (height >= fabBlock + 3 * labelled + 128) return NavigationRailLabelType.all;
-    if (height >= fabBlock + labelled + 2 * iconOnly + 112) return NavigationRailLabelType.selected;
+    if (height >= fabBlock + 3 * labelled + 128) {
+      return NavigationRailLabelType.all;
+    }
+    if (height >= fabBlock + labelled + 2 * iconOnly + 112) {
+      return NavigationRailLabelType.selected;
+    }
     return NavigationRailLabelType.none;
   }
 
@@ -398,7 +426,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// the month picker with Settings pinned at the bottom. Labels follow the
   /// room there is ([_railLabelsFor]); the destinations scroll rather than
   /// overflow if the window is shorter than even the icon-only rail.
-  Widget _navigationRail(AppLocalizations l10n, Widget? fab, MonthData data, {required double height}) {
+  Widget _navigationRail(AppLocalizations l10n, Widget? fab, MonthData data,
+      {required double height}) {
     final labels = _railLabelsFor(height);
     final labelledActions = labels == NavigationRailLabelType.all;
     return NavigationRail(
@@ -410,9 +439,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       scrollable: true,
       trailingAtBottom: true,
       destinations: [
-        NavigationRailDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: Text(l10n.summary)),
-        NavigationRailDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: Text(l10n.expenses)),
-        NavigationRailDestination(icon: const Icon(Icons.savings_outlined), selectedIcon: const Icon(Icons.savings), label: Text(l10n.incomes)),
+        NavigationRailDestination(
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home),
+            label: Text(l10n.summary)),
+        NavigationRailDestination(
+            icon: const Icon(Icons.receipt_long_outlined),
+            selectedIcon: const Icon(Icons.receipt_long),
+            label: Text(l10n.expenses)),
+        NavigationRailDestination(
+            icon: const Icon(Icons.savings_outlined),
+            selectedIcon: const Icon(Icons.savings),
+            label: Text(l10n.incomes)),
       ],
       trailing: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -444,9 +482,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       selectedIndex: _currentIndex,
       onDestinationSelected: _onDestinationSelected,
       destinations: [
-        NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: l10n.summary),
-        NavigationDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: l10n.expenses),
-        NavigationDestination(icon: const Icon(Icons.savings_outlined), selectedIcon: const Icon(Icons.savings), label: l10n.incomes),
+        NavigationDestination(
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home),
+            label: l10n.summary),
+        NavigationDestination(
+            icon: const Icon(Icons.receipt_long_outlined),
+            selectedIcon: const Icon(Icons.receipt_long),
+            label: l10n.expenses),
+        NavigationDestination(
+            icon: const Icon(Icons.savings_outlined),
+            selectedIcon: const Icon(Icons.savings),
+            label: l10n.incomes),
       ],
     );
   }
@@ -490,7 +537,8 @@ class _ExpensesTab extends StatelessWidget {
           ),
         Expanded(
           child: view == _ExpensesView.list
-              ? ExpensesListView(data: data, filter: filter, onClearFilter: onClearFilter)
+              ? ExpensesListView(
+                  data: data, filter: filter, onClearFilter: onClearFilter)
               : ExpensesTableView(data: data, onOpenFiltered: onOpenFiltered),
         ),
       ],
@@ -501,7 +549,8 @@ class _ExpensesTab extends StatelessWidget {
 /// The List / Table switch of the Expenses tab: full width below the bar on
 /// a phone, a dense control inside the bar when the window is wide.
 class _ExpensesViewSwitch extends StatelessWidget {
-  const _ExpensesViewSwitch({required this.view, required this.onChanged, this.dense = false});
+  const _ExpensesViewSwitch(
+      {required this.view, required this.onChanged, this.dense = false});
 
   final _ExpensesView view;
   final ValueChanged<_ExpensesView> onChanged;
@@ -512,7 +561,9 @@ class _ExpensesViewSwitch extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     return SegmentedButton<_ExpensesView>(
       showSelectedIcon: false,
-      style: dense ? const ButtonStyle(visualDensity: VisualDensity.compact) : null,
+      style: dense
+          ? const ButtonStyle(visualDensity: VisualDensity.compact)
+          : null,
       segments: [
         ButtonSegment(
           value: _ExpensesView.list,
@@ -541,10 +592,13 @@ class _OverlapPadding extends SingleChildRenderObjectWidget {
   final SliverOverlapAbsorberHandle handle;
 
   @override
-  RenderObject createRenderObject(BuildContext context) => _RenderOverlapPadding(handle);
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderOverlapPadding(handle);
 
   @override
-  void updateRenderObject(BuildContext context, _RenderOverlapPadding renderObject) => renderObject.handle = handle;
+  void updateRenderObject(
+          BuildContext context, _RenderOverlapPadding renderObject) =>
+      renderObject.handle = handle;
 }
 
 class _RenderOverlapPadding extends RenderShiftedBox {
@@ -582,8 +636,10 @@ class _RenderOverlapPadding extends RenderShiftedBox {
       size = constraints.constrain(Size(0, top));
       return;
     }
-    child.layout(constraints.deflate(EdgeInsets.only(top: top)), parentUsesSize: true);
+    child.layout(constraints.deflate(EdgeInsets.only(top: top)),
+        parentUsesSize: true);
     (child.parentData! as BoxParentData).offset = Offset(0, top);
-    size = constraints.constrain(Size(child.size.width, child.size.height + top));
+    size =
+        constraints.constrain(Size(child.size.width, child.size.height + top));
   }
 }

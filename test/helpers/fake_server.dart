@@ -16,12 +16,26 @@ class FakeServer {
     final previousStart = DateTime(today.year, today.month - 1, 1);
     final previousEnd = DateTime(today.year, today.month, 0);
     months = [
-      {'id': 11, 'start_date': Dates.formatApi(currentStart), 'end_date': Dates.formatApi(currentEnd)},
-      {'id': 10, 'start_date': Dates.formatApi(previousStart), 'end_date': Dates.formatApi(previousEnd)},
+      {
+        'id': 11,
+        'start_date': Dates.formatApi(currentStart),
+        'end_date': Dates.formatApi(currentEnd)
+      },
+      {
+        'id': 10,
+        'start_date': Dates.formatApi(previousStart),
+        'end_date': Dates.formatApi(previousEnd)
+      },
     ];
     incomes = {
       11: [
-        {'id': 1, 'value': 5000.0, 'date': Dates.formatApi(currentStart), 'comment': '', 'is_salary': true},
+        {
+          'id': 1,
+          'value': 5000.0,
+          'date': Dates.formatApi(currentStart),
+          'comment': '',
+          'is_salary': true
+        },
       ],
       10: [],
     };
@@ -62,11 +76,14 @@ class FakeServer {
   final List<http.Request> requests = [];
 
   /// How many times a month was fetched.
-  int get monthLoads => requests.where((r) => r.method == 'GET' && r.url.path == '/api/month/').length;
+  int get monthLoads => requests
+      .where((r) => r.method == 'GET' && r.url.path == '/api/month/')
+      .length;
 
   http.Client get client => MockClient(_handle);
 
-  Map<String, dynamic> get currentMonth => months.firstWhere((m) => m['id'] == 11);
+  Map<String, dynamic> get currentMonth =>
+      months.firstWhere((m) => m['id'] == 11);
 
   Future<http.Response> _handle(http.Request request) async {
     requests.add(request);
@@ -74,7 +91,9 @@ class FakeServer {
     if (path == '/api/token/') {
       final body = jsonDecode(request.body) as Map<String, dynamic>;
       if (body['password'] != password) {
-        return _json({'detail': 'No active account found with the given credentials'}, 401);
+        return _json(
+            {'detail': 'No active account found with the given credentials'},
+            401);
       }
       return _json({'access': 'access-1', 'refresh': 'refresh-1'});
     }
@@ -82,7 +101,8 @@ class FakeServer {
       return _json({'access': 'access-2', 'refresh': 'refresh-2'});
     }
     if (request.headers['Authorization'] == null) {
-      return _json({'detail': 'Authentication credentials were not provided.'}, 401);
+      return _json(
+          {'detail': 'Authentication credentials were not provided.'}, 401);
     }
     switch (path) {
       case '/api/month/':
@@ -94,12 +114,15 @@ class FakeServer {
       case '/api/category/':
         return _json(categories);
       case '/api/planned-savings/':
-        plannedSavings = (jsonDecode(request.body)['planned_savings'] as num).toDouble();
+        plannedSavings =
+            (jsonDecode(request.body)['planned_savings'] as num).toDouble();
         return _json({'planned_savings': plannedSavings});
       case '/api/currency/':
         if (request.method == 'POST') {
           final code = jsonDecode(request.body)['currency'] as String?;
-          if (!currencyChoices.any((c) => c['code'] == code)) return _json({'detail': 'Invalid currency.'}, 400);
+          if (!currencyChoices.any((c) => c['code'] == code)) {
+            return _json({'detail': 'Invalid currency.'}, 400);
+          }
           currency = code!;
         }
         return _json({'currency': currency, 'choices': currencyChoices});
@@ -111,9 +134,13 @@ class FakeServer {
     if (request.method == 'GET') {
       final idParam = request.url.queryParameters['month_id'];
       final id = idParam == null ? defaultMonthId : int.parse(idParam);
-      final month = months.firstWhere((m) => m['id'] == id, orElse: () => const {});
-      if (month.isEmpty) return http.Response('<html>Server Error (500)</html>', 500);
-      final sorted = [...months]..sort((a, b) => (b['start_date'] as String).compareTo(a['start_date'] as String));
+      final month =
+          months.firstWhere((m) => m['id'] == id, orElse: () => const {});
+      if (month.isEmpty) {
+        return http.Response('<html>Server Error (500)</html>', 500);
+      }
+      final sorted = [...months]..sort((a, b) =>
+          (b['start_date'] as String).compareTo(a['start_date'] as String));
       return _json({
         'months': sorted,
         'categories': categories,
@@ -136,13 +163,22 @@ class FakeServer {
       return _json(month);
     }
     final id = _nextId++;
-    months.add({'id': id, 'start_date': body['start_date'], 'end_date': body['end_date']});
+    months.add({
+      'id': id,
+      'start_date': body['start_date'],
+      'end_date': body['end_date']
+    });
     incomes[id] = [];
     expenses[id] = [];
-    return _json({'id': id, 'start_date': body['start_date'], 'end_date': body['end_date']}, 201);
+    return _json({
+      'id': id,
+      'start_date': body['start_date'],
+      'end_date': body['end_date']
+    }, 201);
   }
 
-  http.Response _entry(http.Request request, Map<int, List<Map<String, dynamic>>> store) {
+  http.Response _entry(
+      http.Request request, Map<int, List<Map<String, dynamic>>> store) {
     final body = jsonDecode(request.body) as Map<String, dynamic>;
     if (request.method == 'DELETE') {
       for (final list in store.values) {
@@ -163,5 +199,6 @@ class FakeServer {
   }
 
   static http.Response _json(Object body, [int status = 200]) =>
-      http.Response(jsonEncode(body), status, headers: {'content-type': 'application/json'});
+      http.Response(jsonEncode(body), status,
+          headers: {'content-type': 'application/json'});
 }

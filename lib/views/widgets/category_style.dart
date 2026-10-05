@@ -30,8 +30,12 @@ class CategoryStyle {
     final hue = (hash % 360).toDouble();
     final light = brightness == Brightness.light;
     return CategoryStyle(
-      container: HSLColor.fromAHSL(1, hue, light ? 0.55 : 0.40, light ? 0.86 : 0.30).toColor(),
-      onContainer: HSLColor.fromAHSL(1, hue, light ? 0.60 : 0.55, light ? 0.28 : 0.86).toColor(),
+      container:
+          HSLColor.fromAHSL(1, hue, light ? 0.55 : 0.40, light ? 0.86 : 0.30)
+              .toColor(),
+      onContainer:
+          HSLColor.fromAHSL(1, hue, light ? 0.60 : 0.55, light ? 0.28 : 0.86)
+              .toColor(),
       accent: HSLColor.fromAHSL(1, hue, 0.60, light ? 0.48 : 0.64).toColor(),
       icon: iconFor(name, hash),
     );
@@ -57,25 +61,105 @@ class CategoryStyle {
   }
 
   static const _keywords = <({List<String> keys, IconData icon})>[
-    (keys: ['jedz', 'food', 'grocer', 'spoż', 'zakup', 'sklep', 'market'], icon: Icons.shopping_basket_outlined),
-    (keys: ['restaur', 'kaw', 'coffee', 'pizza', 'lunch', 'obiad', 'knajp'], icon: Icons.restaurant_outlined),
-    (keys: ['paliw', 'fuel', 'samoch', 'auto', 'car', 'parking'], icon: Icons.directions_car_outlined),
-    (keys: ['transport', 'bilet', 'bus', 'pociąg', 'train', 'metro', 'taxi', 'uber', 'komunik'], icon: Icons.directions_bus_outlined),
-    (keys: ['czynsz', 'rent', 'mieszk', 'dom', 'home', 'flat'], icon: Icons.home_outlined),
-    (keys: ['zdrow', 'health', 'apte', 'pharm', 'lekar', 'doctor', 'dentyst', 'leki'], icon: Icons.medical_services_outlined),
-    (keys: ['rozryw', 'kino', 'cinema', 'gry', 'game', 'entertain', 'koncert'], icon: Icons.theaters_outlined),
-    (keys: ['ubran', 'cloth', 'odzie', 'buty', 'shoe'], icon: Icons.checkroom_outlined),
-    (keys: ['sport', 'gym', 'siłow', 'fitness', 'basen'], icon: Icons.fitness_center_outlined),
-    (keys: ['eduk', 'szko', 'ksią', 'book', 'kurs', 'course', 'studi'], icon: Icons.school_outlined),
+    (
+      keys: ['jedz', 'food', 'grocer', 'spoż', 'zakup', 'sklep', 'market'],
+      icon: Icons.shopping_basket_outlined
+    ),
+    (
+      keys: ['restaur', 'kaw', 'coffee', 'pizza', 'lunch', 'obiad', 'knajp'],
+      icon: Icons.restaurant_outlined
+    ),
+    (
+      keys: ['paliw', 'fuel', 'samoch', 'auto', 'car', 'parking'],
+      icon: Icons.directions_car_outlined
+    ),
+    (
+      keys: [
+        'transport',
+        'bilet',
+        'bus',
+        'pociąg',
+        'train',
+        'metro',
+        'taxi',
+        'uber',
+        'komunik'
+      ],
+      icon: Icons.directions_bus_outlined
+    ),
+    (
+      keys: ['czynsz', 'rent', 'mieszk', 'dom', 'home', 'flat'],
+      icon: Icons.home_outlined
+    ),
+    (
+      keys: [
+        'zdrow',
+        'health',
+        'apte',
+        'pharm',
+        'lekar',
+        'doctor',
+        'dentyst',
+        'leki'
+      ],
+      icon: Icons.medical_services_outlined
+    ),
+    (
+      keys: ['rozryw', 'kino', 'cinema', 'gry', 'game', 'entertain', 'koncert'],
+      icon: Icons.theaters_outlined
+    ),
+    (
+      keys: ['ubran', 'cloth', 'odzie', 'buty', 'shoe'],
+      icon: Icons.checkroom_outlined
+    ),
+    (
+      keys: ['sport', 'gym', 'siłow', 'fitness', 'basen'],
+      icon: Icons.fitness_center_outlined
+    ),
+    (
+      keys: ['eduk', 'szko', 'ksią', 'book', 'kurs', 'course', 'studi'],
+      icon: Icons.school_outlined
+    ),
     (keys: ['prezent', 'gift'], icon: Icons.card_giftcard_outlined),
-    (keys: ['podró', 'travel', 'wakac', 'holiday', 'hotel', 'flight', 'urlop'], icon: Icons.flight_outlined),
-    (keys: ['prąd', 'energ', 'gaz', 'woda', 'water', 'electric', 'rachun', 'bill', 'opłat'], icon: Icons.bolt_outlined),
-    (keys: ['internet', 'telefon', 'phone', 'mobile', 'abonament'], icon: Icons.wifi_outlined),
-    (keys: ['subskryp', 'subscr', 'netflix', 'spotify', 'stream'], icon: Icons.subscriptions_outlined),
+    (
+      keys: ['podró', 'travel', 'wakac', 'holiday', 'hotel', 'flight', 'urlop'],
+      icon: Icons.flight_outlined
+    ),
+    (
+      keys: [
+        'prąd',
+        'energ',
+        'gaz',
+        'woda',
+        'water',
+        'electric',
+        'rachun',
+        'bill',
+        'opłat'
+      ],
+      icon: Icons.bolt_outlined
+    ),
+    (
+      keys: ['internet', 'telefon', 'phone', 'mobile', 'abonament'],
+      icon: Icons.wifi_outlined
+    ),
+    (
+      keys: ['subskryp', 'subscr', 'netflix', 'spotify', 'stream'],
+      icon: Icons.subscriptions_outlined
+    ),
     (keys: ['zwierz', 'pet', 'pies', 'dog'], icon: Icons.pets_outlined),
-    (keys: ['dzieci', 'kid', 'child', 'baby', 'niemowl'], icon: Icons.child_care_outlined),
-    (keys: ['uroda', 'beauty', 'fryzj', 'hair', 'kosmet'], icon: Icons.spa_outlined),
-    (keys: ['oszcz', 'saving', 'invest', 'inwest'], icon: Icons.savings_outlined),
+    (
+      keys: ['dzieci', 'kid', 'child', 'baby', 'niemowl'],
+      icon: Icons.child_care_outlined
+    ),
+    (
+      keys: ['uroda', 'beauty', 'fryzj', 'hair', 'kosmet'],
+      icon: Icons.spa_outlined
+    ),
+    (
+      keys: ['oszcz', 'saving', 'invest', 'inwest'],
+      icon: Icons.savings_outlined
+    ),
     (keys: ['praca', 'work', 'biuro', 'office'], icon: Icons.work_outline),
     (keys: ['inne', 'other', 'różne', 'misc'], icon: Icons.category_outlined),
   ];

@@ -6,7 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'fake_server.dart';
 
 /// Pumps the whole app against [server], signed in when [loggedIn].
-Future<AppServices> pumpApp(WidgetTester tester, FakeServer server, {bool loggedIn = false}) async {
+Future<AppServices> pumpApp(WidgetTester tester, FakeServer server,
+    {bool loggedIn = false}) async {
   final store = InMemoryKeyValueStore();
   if (loggedIn) {
     store.values[SessionStore.accessTokenKey] = 'access-1';

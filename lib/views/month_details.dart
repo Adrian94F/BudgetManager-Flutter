@@ -12,7 +12,8 @@ import 'widgets/error_views.dart';
 /// Full-screen dialog that edits a month's dates and the planned savings,
 /// deletes a month that has no incomes or expenses, or creates a new month.
 class MonthDetailsScreen extends StatefulWidget {
-  const MonthDetailsScreen._({this.month, required this.start, required this.end});
+  const MonthDetailsScreen._(
+      {this.month, required this.start, required this.end});
 
   /// The month being edited; null when creating one.
   final Month? month;
@@ -24,7 +25,8 @@ class MonthDetailsScreen extends StatefulWidget {
       context,
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (_) => MonthDetailsScreen._(month: month, start: month.startDate, end: month.endDate),
+        builder: (_) => MonthDetailsScreen._(
+            month: month, start: month.startDate, end: month.endDate),
       ),
     );
   }
@@ -33,12 +35,15 @@ class MonthDetailsScreen extends StatefulWidget {
   /// for an account without months.
   static Future<bool?> openCreate(BuildContext context) {
     final months = AppScope.of(context).months.data?.months ?? const <Month>[];
-    final range = months.isEmpty ? BudgetRules.firstMonthRange() : BudgetRules.nextMonthRange(months.first);
+    final range = months.isEmpty
+        ? BudgetRules.firstMonthRange()
+        : BudgetRules.nextMonthRange(months.first);
     return Navigator.push<bool>(
       context,
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (_) => MonthDetailsScreen._(start: range.start, end: range.end),
+        builder: (_) =>
+            MonthDetailsScreen._(start: range.start, end: range.end),
       ),
     );
   }
@@ -65,7 +70,8 @@ class _MonthDetailsScreenState extends State<MonthDetailsScreen> {
     _start = widget.start;
     _end = widget.end;
     _initialSavings = AppScope.of(context).months.data?.plannedSavings ?? 0;
-    _savingsController = TextEditingController(text: _initialSavings.round().toString());
+    _savingsController =
+        TextEditingController(text: _initialSavings.round().toString());
   }
 
   @override
@@ -79,11 +85,14 @@ class _MonthDetailsScreenState extends State<MonthDetailsScreen> {
   bool get _canDelete {
     final data = AppScope.of(context).months.data;
     final month = widget.month;
-    if (month == null || data == null || data.month?.id != month.id) return false;
+    if (month == null || data == null || data.month?.id != month.id) {
+      return false;
+    }
     return data.incomes.isEmpty && data.expenses.isEmpty;
   }
 
-  double? _parseSavings() => double.tryParse(_savingsController.text.replaceAll(',', '.').trim());
+  double? _parseSavings() =>
+      double.tryParse(_savingsController.text.replaceAll(',', '.').trim());
 
   void _adjustSavings(int delta) {
     final current = _parseSavings() ?? 0;
@@ -126,8 +135,11 @@ class _MonthDetailsScreenState extends State<MonthDetailsScreen> {
     });
     try {
       if (_isEditing) {
-        await months.updateMonth(id: widget.month!.id, start: _start, end: _end);
-        if (savings != _initialSavings) await months.savePlannedSavings(savings!);
+        await months.updateMonth(
+            id: widget.month!.id, start: _start, end: _end);
+        if (savings != _initialSavings) {
+          await months.savePlannedSavings(savings!);
+        }
       } else {
         await months.createMonth(start: _start, end: _end);
       }
@@ -150,10 +162,13 @@ class _MonthDetailsScreenState extends State<MonthDetailsScreen> {
         title: Text(l10n.deleteMonth),
         content: Text(l10n.deleteMonthConfirm),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.cancel)),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(l10n.cancel)),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+            style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error),
             child: Text(l10n.remove),
           ),
         ],
@@ -182,7 +197,8 @@ class _MonthDetailsScreenState extends State<MonthDetailsScreen> {
     final locale = Localizations.localeOf(context).toString();
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final border = OutlineInputBorder(borderRadius: BorderRadius.circular(12.0));
+    final border =
+        OutlineInputBorder(borderRadius: BorderRadius.circular(12.0));
 
     return Scaffold(
       appBar: AppBar(
@@ -195,11 +211,14 @@ class _MonthDetailsScreenState extends State<MonthDetailsScreen> {
           const SizedBox(width: 8),
         ],
         bottom: _busy
-            ? const PreferredSize(preferredSize: Size.fromHeight(2), child: LinearProgressIndicator(minHeight: 2))
+            ? const PreferredSize(
+                preferredSize: Size.fromHeight(2),
+                child: LinearProgressIndicator(minHeight: 2))
             : null,
       ),
       body: ListView(
-        padding: EdgeInsets.fromLTRB(24, 16, 24, 16 + MediaQuery.paddingOf(context).bottom),
+        padding: EdgeInsets.fromLTRB(
+            24, 16, 24, 16 + MediaQuery.paddingOf(context).bottom),
         children: [
           if (_error != null) ...[
             FormErrorBox(message: _error!),
@@ -224,7 +243,9 @@ class _MonthDetailsScreenState extends State<MonthDetailsScreen> {
             const SizedBox(height: 32),
             Text(l10n.plannedSavings, style: theme.textTheme.titleSmall),
             const SizedBox(height: 4),
-            Text(l10n.plannedSavingsHint, style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+            Text(l10n.plannedSavingsHint,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: scheme.onSurfaceVariant)),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -239,8 +260,11 @@ class _MonthDetailsScreenState extends State<MonthDetailsScreen> {
                     controller: _savingsController,
                     enabled: !_busy,
                     textAlign: TextAlign.center,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))
+                    ],
                     style: theme.textTheme.titleLarge,
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.savings_outlined),
@@ -257,7 +281,9 @@ class _MonthDetailsScreenState extends State<MonthDetailsScreen> {
               ],
             ),
             const SizedBox(height: 40),
-            Text(l10n.deleteMonthHint, style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+            Text(l10n.deleteMonthHint,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: scheme.onSurfaceVariant)),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: _canDelete && !_busy ? _delete : null,

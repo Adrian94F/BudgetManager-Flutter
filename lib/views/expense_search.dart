@@ -9,7 +9,8 @@ import 'widgets/category_style.dart';
 
 /// Whether [expense] matches a search [query]: by category name, comment,
 /// amount (formatted or raw) or date (short or long form).
-bool expenseMatches(Expense expense, String query, MonthData data, String locale) {
+bool expenseMatches(
+    Expense expense, String query, MonthData data, String locale) {
   final needle = query.trim().toLowerCase();
   if (needle.isEmpty) return true;
   final haystack = [
@@ -45,7 +46,9 @@ class ExpenseSearchButton extends StatelessWidget {
         final query = controller.text.trim();
         if (query.isEmpty) return const <Widget>[];
         final locale = Localizations.localeOf(context).toString();
-        final matches = data.expenses.where((e) => expenseMatches(e, query, data, locale)).toList()
+        final matches = data.expenses
+            .where((e) => expenseMatches(e, query, data, locale))
+            .toList()
           ..sort((a, b) {
             final byDate = b.date.compareTo(a.date);
             return byDate != 0 ? byDate : b.id.compareTo(a.id);
@@ -57,7 +60,8 @@ class ExpenseSearchButton extends StatelessWidget {
               child: Text(
                 l10n.noResults,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ),
           ];
@@ -80,7 +84,11 @@ class ExpenseSearchButton extends StatelessWidget {
 }
 
 class _ResultTile extends StatelessWidget {
-  const _ResultTile({required this.expense, required this.categoryName, required this.locale, required this.onTap});
+  const _ResultTile(
+      {required this.expense,
+      required this.categoryName,
+      required this.locale,
+      required this.onTap});
 
   final Expense expense;
   final String categoryName;
@@ -100,14 +108,18 @@ class _ResultTile extends StatelessWidget {
       title: Row(
         children: [
           if (expense.isMonthly) ...[
-            Icon(Icons.repeat_rounded, size: 18, color: theme.colorScheme.primary),
+            Icon(Icons.repeat_rounded,
+                size: 18, color: theme.colorScheme.primary),
             const SizedBox(width: 6),
           ],
-          Expanded(child: Text(categoryName, maxLines: 1, overflow: TextOverflow.ellipsis)),
+          Expanded(
+              child: Text(categoryName,
+                  maxLines: 1, overflow: TextOverflow.ellipsis)),
           const SizedBox(width: 12),
           Text(
             Formatters.moneyOf(context, expense.value),
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
       ),

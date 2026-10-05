@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
@@ -21,19 +22,30 @@ class AppSettingsScreen extends StatelessWidget {
       body: ListenableBuilder(
         listenable: settings,
         builder: (context, _) => ListView(
-          padding: EdgeInsets.only(top: 8, bottom: 8 + MediaQuery.paddingOf(context).bottom),
+          padding: EdgeInsets.only(
+              top: 8, bottom: 8 + MediaQuery.paddingOf(context).bottom),
           children: [
             _SectionTitle(l10n.appereance),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: SegmentedButton<ThemeMode>(
                 segments: [
-                  ButtonSegment(value: ThemeMode.light, icon: const Icon(Icons.light_mode_outlined), label: Text(l10n.lightTheme)),
-                  ButtonSegment(value: ThemeMode.dark, icon: const Icon(Icons.dark_mode_outlined), label: Text(l10n.darkTheme)),
-                  ButtonSegment(value: ThemeMode.system, icon: const Icon(Icons.brightness_auto_outlined), label: Text(l10n.systemTheme)),
+                  ButtonSegment(
+                      value: ThemeMode.light,
+                      icon: const Icon(Icons.light_mode_outlined),
+                      label: Text(l10n.lightTheme)),
+                  ButtonSegment(
+                      value: ThemeMode.dark,
+                      icon: const Icon(Icons.dark_mode_outlined),
+                      label: Text(l10n.darkTheme)),
+                  ButtonSegment(
+                      value: ThemeMode.system,
+                      icon: const Icon(Icons.brightness_auto_outlined),
+                      label: Text(l10n.systemTheme)),
                 ],
                 selected: {settings.themeMode},
-                onSelectionChanged: (selection) => settings.setThemeMode(selection.first),
+                onSelectionChanged: (selection) =>
+                    settings.setThemeMode(selection.first),
               ),
             ),
             if (isAndroid)
@@ -50,7 +62,10 @@ class AppSettingsScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: SegmentedButton<String>(
                 segments: [
-                  ButtonSegment(value: 'system', icon: const Icon(Icons.language_outlined), label: Text(l10n.languageSystem)),
+                  ButtonSegment(
+                      value: 'system',
+                      icon: const Icon(Icons.language_outlined),
+                      label: Text(l10n.languageSystem)),
                   const ButtonSegment(value: 'en', label: Text('English')),
                   const ButtonSegment(value: 'pl', label: Text('Polski')),
                 ],
@@ -66,7 +81,8 @@ class AppSettingsScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Text(
                 'Budget Manager',
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
             ),
           ],
@@ -86,7 +102,9 @@ class _SectionTitle extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Text(text, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
+      child: Text(text,
+          style: theme.textTheme.titleSmall
+              ?.copyWith(color: theme.colorScheme.primary)),
     );
   }
 }

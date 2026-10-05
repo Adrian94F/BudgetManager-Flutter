@@ -45,7 +45,8 @@ class SessionStore {
 
   Future<String?> savedUsername() => _store.read(usernameKey);
 
-  Future<void> saveCredentials({required String username, required String password}) async {
+  Future<void> saveCredentials(
+      {required String username, required String password}) async {
     await _store.write(usernameKey, username);
     await _store.write(passwordKey, password);
   }
@@ -59,13 +60,16 @@ class SessionStore {
 
   Future<void> setThemeMode(String mode) => _store.write(themeModeKey, mode);
 
-  Future<bool> dynamicColor() async => await _store.read(dynamicColorKey) == 'true';
+  Future<bool> dynamicColor() async =>
+      await _store.read(dynamicColorKey) == 'true';
 
-  Future<void> setDynamicColor(bool enabled) => _store.write(dynamicColorKey, enabled.toString());
+  Future<void> setDynamicColor(bool enabled) =>
+      _store.write(dynamicColorKey, enabled.toString());
 
   /// A language tag such as `pl`, or null to follow the system.
   Future<String?> locale() => _store.read(localeKey);
 
-  Future<void> setLocale(String? languageTag) =>
-      languageTag == null ? _store.delete(localeKey) : _store.write(localeKey, languageTag);
+  Future<void> setLocale(String? languageTag) => languageTag == null
+      ? _store.delete(localeKey)
+      : _store.write(localeKey, languageTag);
 }

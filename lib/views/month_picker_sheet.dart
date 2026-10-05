@@ -50,10 +50,12 @@ class MonthPickerSheet extends StatelessWidget {
     final locale = Localizations.localeOf(context).toString();
     final today = DateTime.now();
     final selectedIndex = months.indexWhere((m) => m.id == selectedId);
-    final initialOffset = selectedIndex > 2 ? (selectedIndex - 1) * _rowHeight : 0.0;
+    final initialOffset =
+        selectedIndex > 2 ? (selectedIndex - 1) * _rowHeight : 0.0;
 
     return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.85),
+      constraints:
+          BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.85),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -61,7 +63,9 @@ class MonthPickerSheet extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(24, 0, 16, 8),
             child: Row(
               children: [
-                Expanded(child: Text(l10n.selectMonth, style: theme.textTheme.titleLarge)),
+                Expanded(
+                    child: Text(l10n.selectMonth,
+                        style: theme.textTheme.titleLarge)),
                 FilledButton.tonalIcon(
                   onPressed: () {
                     Navigator.pop(context);
@@ -82,7 +86,8 @@ class MonthPickerSheet extends StatelessWidget {
               itemBuilder: (context, index) {
                 final month = months[index];
                 final year = month.startDate.year;
-                final showYearHeader = index == 0 || months[index - 1].startDate.year != year;
+                final showYearHeader =
+                    index == 0 || months[index - 1].startDate.year != year;
                 final isSelected = month.id == selectedId;
                 final isToday = month.contains(today);
                 return Column(
@@ -90,18 +95,24 @@ class MonthPickerSheet extends StatelessWidget {
                   children: [
                     if (showYearHeader)
                       Padding(
-                        padding: EdgeInsets.fromLTRB(24, index == 0 ? 4 : 16, 24, 4),
+                        padding:
+                            EdgeInsets.fromLTRB(24, index == 0 ? 4 : 16, 24, 4),
                         child: Text(
                           '$year',
-                          style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary),
+                          style: theme.textTheme.titleSmall
+                              ?.copyWith(color: theme.colorScheme.primary),
                         ),
                       ),
                     ListTile(
                       selected: isSelected,
-                      leading: Icon(isToday ? Icons.today_rounded : Icons.calendar_month_outlined),
-                      title: Text(month.title(locale, today: DateTime(year, 1, 1))),
+                      leading: Icon(isToday
+                          ? Icons.today_rounded
+                          : Icons.calendar_month_outlined),
+                      title: Text(
+                          month.title(locale, today: DateTime(year, 1, 1))),
                       subtitle: Text(month.rangeTitle(locale)),
-                      trailing: isSelected ? const Icon(Icons.check_rounded) : null,
+                      trailing:
+                          isSelected ? const Icon(Icons.check_rounded) : null,
                       onTap: () {
                         Navigator.pop(context);
                         onSelect(month.id);

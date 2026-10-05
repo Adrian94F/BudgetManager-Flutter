@@ -41,7 +41,8 @@ class ApiException implements Exception {
   factory ApiException.fromResponse(http.Response response) {
     Object? decoded;
     try {
-      decoded = jsonDecode(utf8.decode(response.bodyBytes, allowMalformed: true));
+      decoded =
+          jsonDecode(utf8.decode(response.bodyBytes, allowMalformed: true));
     } catch (_) {
       decoded = null;
     }
@@ -62,7 +63,12 @@ class ApiException implements Exception {
   bool get isNetwork => kind == ApiErrorKind.network;
   bool get isAuth => kind == ApiErrorKind.auth;
 
-  static const _preferredKeys = ['detail', 'error', 'message', 'non_field_errors'];
+  static const _preferredKeys = [
+    'detail',
+    'error',
+    'message',
+    'non_field_errors'
+  ];
 
   static String? extractMessage(Object? decoded) {
     if (decoded is Map) {

@@ -71,15 +71,25 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     final data = AppScope.of(context).months.data!;
     final month = data.month!;
     final source = widget.expense ?? widget.template;
-    _amountController = TextEditingController(text: source == null ? '' : source.value.toStringAsFixed(2));
+    _amountController = TextEditingController(
+        text: source == null ? '' : source.value.toStringAsFixed(2));
     _commentController = TextEditingController(text: source?.comment ?? '');
-    _date = widget.expense?.date ?? widget.template?.date ?? widget.initialDate ?? BudgetRules.defaultEntryDate(month);
+    _date = widget.expense?.date ??
+        widget.template?.date ??
+        widget.initialDate ??
+        BudgetRules.defaultEntryDate(month);
     // Only categories that still exist can be suggested or preselected.
     bool exists(int? id) => id != null && data.categoryById(id) != null;
-    _suggestedCategoryIds =
-        _isEditing ? const [] : BudgetRules.topCategoryIds(data.expenses).where(exists).toList();
-    final preferred = [source?.categoryId, widget.initialCategoryId, _suggestedCategoryIds.firstOrNull];
-    _categoryId = preferred.firstWhere(exists, orElse: () => data.categories.firstOrNull?.id);
+    _suggestedCategoryIds = _isEditing
+        ? const []
+        : BudgetRules.topCategoryIds(data.expenses).where(exists).toList();
+    final preferred = [
+      source?.categoryId,
+      widget.initialCategoryId,
+      _suggestedCategoryIds.firstOrNull
+    ];
+    _categoryId = preferred.firstWhere(exists,
+        orElse: () => data.categories.firstOrNull?.id);
     _isMonthly = source?.isMonthly ?? false;
   }
 
@@ -103,7 +113,8 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context)!;
     final months = AppScope.of(context).months;
-    final value = double.tryParse(_amountController.text.replaceAll(',', '.').trim());
+    final value =
+        double.tryParse(_amountController.text.replaceAll(',', '.').trim());
     if (value == null || value < 0) {
       setState(() => _error = l10n.invalidAmount);
       return;
@@ -143,7 +154,8 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final data = AppScope.of(context).months.data!;
-    final border = OutlineInputBorder(borderRadius: BorderRadius.circular(12.0));
+    final border =
+        OutlineInputBorder(borderRadius: BorderRadius.circular(12.0));
 
     return Scaffold(
       appBar: AppBar(
@@ -156,11 +168,14 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
           const SizedBox(width: 8),
         ],
         bottom: _saving
-            ? const PreferredSize(preferredSize: Size.fromHeight(2), child: LinearProgressIndicator(minHeight: 2))
+            ? const PreferredSize(
+                preferredSize: Size.fromHeight(2),
+                child: LinearProgressIndicator(minHeight: 2))
             : null,
       ),
       body: ListView(
-        padding: EdgeInsets.fromLTRB(24, 16, 24, 16 + MediaQuery.paddingOf(context).bottom),
+        padding: EdgeInsets.fromLTRB(
+            24, 16, 24, 16 + MediaQuery.paddingOf(context).bottom),
         children: [
           if (_error != null) ...[
             FormErrorBox(message: _error!),
@@ -171,7 +186,9 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             autofocus: !_isEditing,
             enabled: !_saving,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))
+            ],
             textInputAction: TextInputAction.next,
             style: theme.textTheme.titleLarge,
             decoration: InputDecoration(
@@ -184,7 +201,8 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
           TextField(
             readOnly: true,
             enabled: !_saving,
-            controller: TextEditingController(text: DateFormat.yMMMMEEEEd(locale).format(_date)),
+            controller: TextEditingController(
+                text: DateFormat.yMMMMEEEEd(locale).format(_date)),
             onTap: _pickDate,
             decoration: InputDecoration(
               labelText: l10n.date,
@@ -195,7 +213,9 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
           ),
           const SizedBox(height: 24),
           if (_suggestedCategoryIds.isNotEmpty) ...[
-            Text(l10n.quickSelectCategory, style: theme.textTheme.labelLarge?.copyWith(color: scheme.onSurfaceVariant)),
+            Text(l10n.quickSelectCategory,
+                style: theme.textTheme.labelLarge
+                    ?.copyWith(color: scheme.onSurfaceVariant)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8.0,
@@ -204,10 +224,13 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                 for (final id in _suggestedCategoryIds)
                   if (data.categoryById(id) case final category?)
                     ChoiceChip(
-                      avatar: Icon(CategoryStyle.iconFor(category.name), size: 18),
+                      avatar:
+                          Icon(CategoryStyle.iconFor(category.name), size: 18),
                       label: Text(category.name),
                       selected: _categoryId == id,
-                      onSelected: _saving ? null : (_) => setState(() => _categoryId = id),
+                      onSelected: _saving
+                          ? null
+                          : (_) => setState(() => _categoryId = id),
                     ),
               ],
             ),
@@ -251,7 +274,8 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
           const SizedBox(height: 8),
           SwitchListTile(
             value: _isMonthly,
-            onChanged: _saving ? null : (value) => setState(() => _isMonthly = value),
+            onChanged:
+                _saving ? null : (value) => setState(() => _isMonthly = value),
             secondary: const Icon(Icons.repeat_rounded),
             title: Text(l10n.recurrentExpense),
             contentPadding: EdgeInsets.zero,

@@ -28,7 +28,9 @@ void main() {
     await tester.tap(find.text('Add'));
     await tester.pumpAndSettle();
 
-    final created = server.requests.where((r) => r.method == 'POST' && r.url.path == '/api/expense/').single;
+    final created = server.requests
+        .where((r) => r.method == 'POST' && r.url.path == '/api/expense/')
+        .single;
     final body = jsonDecode(created.body) as Map<String, dynamic>;
     expect(body['value'], 42.5);
     expect(body['comment'], 'Lunch');
@@ -46,7 +48,9 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
-    final updated = server.requests.where((r) => r.method == 'POST' && r.url.path == '/api/expense/').last;
+    final updated = server.requests
+        .where((r) => r.method == 'POST' && r.url.path == '/api/expense/')
+        .last;
     expect(jsonDecode(updated.body)['id'], isNotNull);
     expect(find.textContaining('45.00'), findsOneWidget);
 
@@ -56,7 +60,10 @@ void main() {
     await tester.tap(find.text('Remove'));
     await tester.pumpAndSettle();
 
-    expect(server.requests.where((r) => r.method == 'DELETE' && r.url.path == '/api/expense/'), hasLength(1));
+    expect(
+        server.requests.where(
+            (r) => r.method == 'DELETE' && r.url.path == '/api/expense/'),
+        hasLength(1));
     expect(find.text('Lunch'), findsNothing);
     expect(find.text('Weekly shop'), findsOneWidget);
     expect(find.text('Expense deleted'), findsOneWidget);
@@ -64,7 +71,9 @@ void main() {
     // Undo re-creates it in the same month.
     await tester.tap(find.text('Undo'));
     await tester.pumpAndSettle();
-    final recreated = server.requests.where((r) => r.method == 'POST' && r.url.path == '/api/expense/').last;
+    final recreated = server.requests
+        .where((r) => r.method == 'POST' && r.url.path == '/api/expense/')
+        .last;
     expect(jsonDecode(recreated.body), containsPair('comment', 'Lunch'));
     expect(jsonDecode(recreated.body), containsPair('month', 11));
     expect(find.text('Lunch'), findsOneWidget);
@@ -85,7 +94,9 @@ void main() {
     await tester.enterText(find.byType(TextField).last, 'weekly');
     await tester.pumpAndSettle();
     // The result tile joins the date and the comment in one line.
-    final result = find.ancestor(of: find.textContaining('· Weekly shop'), matching: find.byType(ListTile));
+    final result = find.ancestor(
+        of: find.textContaining('· Weekly shop'),
+        matching: find.byType(ListTile));
     expect(result, findsOneWidget);
 
     await tester.tap(result);
@@ -94,7 +105,8 @@ void main() {
     expect(find.text('Weekly shop'), findsOneWidget);
   });
 
-  testWidgets('shows the server message when a save is rejected', (tester) async {
+  testWidgets('shows the server message when a save is rejected',
+      (tester) async {
     final server = FakeServer();
     server.categories.clear();
     await pumpApp(tester, server, loggedIn: true);
@@ -107,7 +119,8 @@ void main() {
     await tester.tap(find.text('Add'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Add a category in Budget settings first.'), findsOneWidget);
+    expect(
+        find.text('Add a category in Budget settings first.'), findsOneWidget);
     expect(server.requests.where((r) => r.method == 'POST'), isEmpty);
   });
 }

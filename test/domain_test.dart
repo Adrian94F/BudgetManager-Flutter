@@ -11,7 +11,8 @@ final rent = Category(id: 2, name: 'Rent', position: 1);
 /// Three-day month 2026-01-01..03: 2137 salary, 666 recurring rent on day 1,
 /// 69 and 67 daily food on days 1 and 2.
 MonthData threeDayMonth({double plannedSavings = 0}) {
-  final month = Month(id: 1, startDate: DateTime(2026, 1, 1), endDate: DateTime(2026, 1, 3));
+  final month = Month(
+      id: 1, startDate: DateTime(2026, 1, 1), endDate: DateTime(2026, 1, 3));
   return MonthData(
     months: [month],
     categories: [food, rent],
@@ -20,9 +21,24 @@ MonthData threeDayMonth({double plannedSavings = 0}) {
       Income(id: 1, value: 2137, date: DateTime(2026, 1, 1), isSalary: true),
     ],
     expenses: [
-      Expense(id: 1, value: 666, date: DateTime(2026, 1, 1), categoryId: rent.id, isMonthly: true),
-      Expense(id: 2, value: 69, date: DateTime(2026, 1, 1), categoryId: food.id, isMonthly: false),
-      Expense(id: 3, value: 67, date: DateTime(2026, 1, 2), categoryId: food.id, isMonthly: false),
+      Expense(
+          id: 1,
+          value: 666,
+          date: DateTime(2026, 1, 1),
+          categoryId: rent.id,
+          isMonthly: true),
+      Expense(
+          id: 2,
+          value: 69,
+          date: DateTime(2026, 1, 1),
+          categoryId: food.id,
+          isMonthly: false),
+      Expense(
+          id: 3,
+          value: 67,
+          date: DateTime(2026, 1, 2),
+          categoryId: food.id,
+          isMonthly: false),
     ],
     plannedSavings: plannedSavings,
   );
@@ -53,11 +69,14 @@ void main() {
       expect(s.allIncomes, 0);
       expect(s.allExpenses, 0);
       expect(s.balance, 0);
-      expect(MonthSummary.compute(const MonthData(months: [], categories: [])), MonthSummary.empty);
+      expect(MonthSummary.compute(const MonthData(months: [], categories: [])),
+          MonthSummary.empty);
     });
 
-    test('applies planned savings and the daily allowance in the current month', () {
-      final s = MonthSummary.compute(threeDayMonth(plannedSavings: 1000), today: DateTime(2026, 1, 2));
+    test('applies planned savings and the daily allowance in the current month',
+        () {
+      final s = MonthSummary.compute(threeDayMonth(plannedSavings: 1000),
+          today: DateTime(2026, 1, 2));
 
       expect(s.isActual, isTrue);
       expect(s.plannedSavings, 1000);
@@ -70,8 +89,10 @@ void main() {
       expect(s.todayPercent, closeTo(67 / 167.5 * 100, 1e-9));
     });
 
-    test('ignores planned savings and the allowance outside the current month', () {
-      final s = MonthSummary.compute(threeDayMonth(plannedSavings: 1000), today: DateTime(2026, 2, 10));
+    test('ignores planned savings and the allowance outside the current month',
+        () {
+      final s = MonthSummary.compute(threeDayMonth(plannedSavings: 1000),
+          today: DateTime(2026, 2, 10));
 
       expect(s.isActual, isFalse);
       expect(s.plannedSavings, 0);
@@ -83,7 +104,8 @@ void main() {
     });
 
     test('has no allowance when over budget', () {
-      final s = MonthSummary.compute(threeDayMonth(plannedSavings: 5000), today: DateTime(2026, 1, 1));
+      final s = MonthSummary.compute(threeDayMonth(plannedSavings: 5000),
+          today: DateTime(2026, 1, 1));
 
       expect(s.balance, lessThan(0));
       expect(s.maxDaily, isNull);
@@ -91,7 +113,8 @@ void main() {
     });
 
     test('counts the last day as one day left', () {
-      final s = MonthSummary.compute(threeDayMonth(), today: DateTime(2026, 1, 3));
+      final s =
+          MonthSummary.compute(threeDayMonth(), today: DateTime(2026, 1, 3));
 
       expect(s.daysLeft, 1);
       expect(s.maxDaily, closeTo(2137 - 666 - 136, 1e-9));
@@ -100,11 +123,13 @@ void main() {
 
   group('BurndownSeries', () {
     test('matches the server chart data for the three-day month', () {
-      final b = BurndownSeries.compute(threeDayMonth(), today: DateTime(2026, 6, 1));
+      final b =
+          BurndownSeries.compute(threeDayMonth(), today: DateTime(2026, 6, 1));
 
       expect(b.points.length, 4);
       expect(b.points.first.isStart, isTrue);
-      expect(b.points.skip(1).map((p) => p.day), [DateTime(2026, 1, 1), DateTime(2026, 1, 2), DateTime(2026, 1, 3)]);
+      expect(b.points.skip(1).map((p) => p.day),
+          [DateTime(2026, 1, 1), DateTime(2026, 1, 2), DateTime(2026, 1, 3)]);
       expect(b.dailyExpenses, [0, 69, 67, 0]);
       expect(b.monthlyExpenses, [0, 666, 0, 0]);
       expect(b.startingBalance, 1471);
@@ -121,20 +146,28 @@ void main() {
     });
 
     test('handles a single-day month', () {
-      final month = Month(id: 2, startDate: DateTime(2026, 3, 1), endDate: DateTime(2026, 3, 1));
+      final month = Month(
+          id: 2,
+          startDate: DateTime(2026, 3, 1),
+          endDate: DateTime(2026, 3, 1));
       final data = MonthData(
         months: [month],
         categories: const [],
         month: month,
-        incomes: [Income(id: 1, value: 420, date: DateTime(2026, 3, 1), isSalary: true)],
+        incomes: [
+          Income(id: 1, value: 420, date: DateTime(2026, 3, 1), isSalary: true)
+        ],
       );
       final b = BurndownSeries.compute(data, today: DateTime(2026, 6, 1));
 
       expect(b.balances, [420, 420]);
     });
 
-    test('runs the ideal line to the planned savings target in the current month', () {
-      final b = BurndownSeries.compute(threeDayMonth(plannedSavings: 571), today: DateTime(2026, 1, 2));
+    test(
+        'runs the ideal line to the planned savings target in the current month',
+        () {
+      final b = BurndownSeries.compute(threeDayMonth(plannedSavings: 571),
+          today: DateTime(2026, 1, 2));
 
       expect(b.isActual, isTrue);
       expect(b.plannedSavingsTarget, 571);
@@ -144,8 +177,10 @@ void main() {
       expect(b.todayIndex, 2);
     });
 
-    test('runs the ideal line to zero and has no today marker for a past month', () {
-      final b = BurndownSeries.compute(threeDayMonth(plannedSavings: 571), today: DateTime(2026, 2, 1));
+    test('runs the ideal line to zero and has no today marker for a past month',
+        () {
+      final b = BurndownSeries.compute(threeDayMonth(plannedSavings: 571),
+          today: DateTime(2026, 2, 1));
 
       expect(b.plannedSavingsTarget, 0);
       expect(b.ideals.last, closeTo(0, 1e-9));
@@ -156,7 +191,12 @@ void main() {
       final data = threeDayMonth();
       final withStray = data.copyWith(expenses: [
         ...data.expenses,
-        Expense(id: 9, value: 500, date: DateTime(2026, 1, 20), categoryId: food.id, isMonthly: false),
+        Expense(
+            id: 9,
+            value: 500,
+            date: DateTime(2026, 1, 20),
+            categoryId: food.id,
+            isMonthly: false),
       ]);
       final b = BurndownSeries.compute(withStray, today: DateTime(2026, 6, 1));
 
@@ -185,13 +225,32 @@ void main() {
     });
 
     test('counts expenses dated outside the month and keeps DST days', () {
-      final month = Month(id: 3, startDate: DateTime(2026, 10, 24), endDate: DateTime(2026, 10, 26));
-      final t = ExpenseTable.build(month, [food], [
-        Expense(id: 1, value: 10, date: DateTime(2026, 10, 25), categoryId: food.id, isMonthly: false),
-        Expense(id: 2, value: 20, date: DateTime(2026, 11, 2), categoryId: food.id, isMonthly: false),
+      final month = Month(
+          id: 3,
+          startDate: DateTime(2026, 10, 24),
+          endDate: DateTime(2026, 10, 26));
+      final t = ExpenseTable.build(month, [
+        food
+      ], [
+        Expense(
+            id: 1,
+            value: 10,
+            date: DateTime(2026, 10, 25),
+            categoryId: food.id,
+            isMonthly: false),
+        Expense(
+            id: 2,
+            value: 20,
+            date: DateTime(2026, 11, 2),
+            categoryId: food.id,
+            isMonthly: false),
       ]);
 
-      expect(t.days, [DateTime(2026, 10, 24), DateTime(2026, 10, 25), DateTime(2026, 10, 26)]);
+      expect(t.days, [
+        DateTime(2026, 10, 24),
+        DateTime(2026, 10, 25),
+        DateTime(2026, 10, 26)
+      ]);
       expect(t.cell(food.id, DateTime(2026, 10, 25)), 10);
       expect(t.categoryTotal(food.id), 30);
       expect(t.outOfRangeCount, 1);
@@ -201,11 +260,36 @@ void main() {
   group('BudgetRules', () {
     test('ranks daily categories by use, ties by id', () {
       final expenses = [
-        Expense(id: 1, value: 1, date: DateTime(2026, 1, 1), categoryId: 3, isMonthly: false),
-        Expense(id: 2, value: 1, date: DateTime(2026, 1, 1), categoryId: 3, isMonthly: false),
-        Expense(id: 3, value: 1, date: DateTime(2026, 1, 1), categoryId: 2, isMonthly: false),
-        Expense(id: 4, value: 1, date: DateTime(2026, 1, 1), categoryId: 1, isMonthly: false),
-        Expense(id: 5, value: 1, date: DateTime(2026, 1, 1), categoryId: 9, isMonthly: true),
+        Expense(
+            id: 1,
+            value: 1,
+            date: DateTime(2026, 1, 1),
+            categoryId: 3,
+            isMonthly: false),
+        Expense(
+            id: 2,
+            value: 1,
+            date: DateTime(2026, 1, 1),
+            categoryId: 3,
+            isMonthly: false),
+        Expense(
+            id: 3,
+            value: 1,
+            date: DateTime(2026, 1, 1),
+            categoryId: 2,
+            isMonthly: false),
+        Expense(
+            id: 4,
+            value: 1,
+            date: DateTime(2026, 1, 1),
+            categoryId: 1,
+            isMonthly: false),
+        Expense(
+            id: 5,
+            value: 1,
+            date: DateTime(2026, 1, 1),
+            categoryId: 9,
+            isMonthly: true),
       ];
 
       expect(BudgetRules.topCategoryIds(expenses), [3, 1, 2]);
@@ -213,7 +297,10 @@ void main() {
     });
 
     test('proposes the next month from the last one', () {
-      final last = Month(id: 1, startDate: DateTime(2026, 9, 26), endDate: DateTime(2026, 10, 25));
+      final last = Month(
+          id: 1,
+          startDate: DateTime(2026, 9, 26),
+          endDate: DateTime(2026, 10, 25));
       final next = BudgetRules.nextMonthRange(last);
 
       expect(next.start, DateTime(2026, 10, 26));
@@ -228,11 +315,18 @@ void main() {
     });
 
     test('defaults a new entry to today inside the month', () {
-      final month = Month(id: 1, startDate: DateTime(2026, 9, 26), endDate: DateTime(2026, 10, 25));
+      final month = Month(
+          id: 1,
+          startDate: DateTime(2026, 9, 26),
+          endDate: DateTime(2026, 10, 25));
 
-      expect(BudgetRules.defaultEntryDate(month, today: DateTime(2026, 10, 5, 9)), DateTime(2026, 10, 5));
-      expect(BudgetRules.defaultEntryDate(month, today: DateTime(2026, 12, 1)), DateTime(2026, 10, 25));
-      expect(BudgetRules.defaultEntryDate(month, today: DateTime(2026, 1, 1)), DateTime(2026, 9, 26));
+      expect(
+          BudgetRules.defaultEntryDate(month, today: DateTime(2026, 10, 5, 9)),
+          DateTime(2026, 10, 5));
+      expect(BudgetRules.defaultEntryDate(month, today: DateTime(2026, 12, 1)),
+          DateTime(2026, 10, 25));
+      expect(BudgetRules.defaultEntryDate(month, today: DateTime(2026, 1, 1)),
+          DateTime(2026, 9, 26));
     });
   });
 }

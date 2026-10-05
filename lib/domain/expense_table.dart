@@ -30,8 +30,10 @@ class ExpenseTable {
         _dailyByDay = dailyByDay,
         _totalByDay = totalByDay;
 
-  factory ExpenseTable.build(Month month, List<Category> categories, List<Expense> expenses) {
-    final sorted = [...categories]..sort((a, b) => a.position.compareTo(b.position));
+  factory ExpenseTable.build(
+      Month month, List<Category> categories, List<Expense> expenses) {
+    final sorted = [...categories]
+      ..sort((a, b) => a.position.compareTo(b.position));
     final byCategoryAndDay = <int, Map<DateTime, double>>{};
     final categoryTotals = <int, double>{};
     final dailyByDay = <DateTime, double>{};
@@ -42,12 +44,16 @@ class ExpenseTable {
 
     for (final expense in expenses) {
       final day = expense.date;
-      (byCategoryAndDay[expense.categoryId] ??= {}).update(day, (v) => v + expense.value, ifAbsent: () => expense.value);
-      categoryTotals.update(expense.categoryId, (v) => v + expense.value, ifAbsent: () => expense.value);
-      totalByDay.update(day, (v) => v + expense.value, ifAbsent: () => expense.value);
+      (byCategoryAndDay[expense.categoryId] ??= {})
+          .update(day, (v) => v + expense.value, ifAbsent: () => expense.value);
+      categoryTotals.update(expense.categoryId, (v) => v + expense.value,
+          ifAbsent: () => expense.value);
+      totalByDay.update(day, (v) => v + expense.value,
+          ifAbsent: () => expense.value);
       grandTotal += expense.value;
       if (expense.isDaily) {
-        dailyByDay.update(day, (v) => v + expense.value, ifAbsent: () => expense.value);
+        dailyByDay.update(day, (v) => v + expense.value,
+            ifAbsent: () => expense.value);
         grandDaily += expense.value;
       }
       if (!month.contains(day)) outOfRange++;
@@ -68,7 +74,8 @@ class ExpenseTable {
 
   bool get isEmpty => grandTotal == 0 && _categoryTotals.isEmpty;
 
-  double cell(int categoryId, DateTime day) => _byCategoryAndDay[categoryId]?[Dates.dateOnly(day)] ?? 0;
+  double cell(int categoryId, DateTime day) =>
+      _byCategoryAndDay[categoryId]?[Dates.dateOnly(day)] ?? 0;
 
   double categoryTotal(int categoryId) => _categoryTotals[categoryId] ?? 0;
 

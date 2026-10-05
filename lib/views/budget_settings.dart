@@ -30,7 +30,8 @@ class BudgetSettingsScreen extends StatelessWidget {
     final locale = Localizations.localeOf(context).toString();
     final currency = CurrencyScope.of(context);
     final symbol = Formatters.currencySymbol(currency, locale);
-    final valueStyle = theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.primary);
+    final valueStyle =
+        theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.primary);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.budgetSettings)),
@@ -39,7 +40,8 @@ class BudgetSettingsScreen extends StatelessWidget {
       body: ListenableBuilder(
         listenable: months,
         builder: (context, _) => ListView(
-          padding: EdgeInsets.only(top: 8, bottom: 8 + MediaQuery.paddingOf(context).bottom),
+          padding: EdgeInsets.only(
+              top: 8, bottom: 8 + MediaQuery.paddingOf(context).bottom),
           children: [
             ListTile(
               leading: const Icon(Icons.payments_outlined),
@@ -48,7 +50,8 @@ class BudgetSettingsScreen extends StatelessWidget {
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(symbol == currency ? currency : '$currency · $symbol', style: valueStyle),
+                  Text(symbol == currency ? currency : '$currency · $symbol',
+                      style: valueStyle),
                   const SizedBox(width: 4),
                   const Icon(Icons.chevron_right),
                 ],
@@ -61,12 +64,15 @@ class BudgetSettingsScreen extends StatelessWidget {
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (months.data != null) Text('${months.data!.categories.length}', style: valueStyle),
+                  if (months.data != null)
+                    Text('${months.data!.categories.length}',
+                        style: valueStyle),
                   const SizedBox(width: 4),
                   const Icon(Icons.chevron_right),
                 ],
               ),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoriesScreen())),
+              onTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const CategoriesScreen())),
             ),
           ],
         ),
@@ -95,7 +101,8 @@ class _CurrencySheetState extends State<_CurrencySheet> {
     _future = AppScope.of(context).api.fetchCurrency();
   }
 
-  void _reload() => setState(() => _future = AppScope.of(context).api.fetchCurrency());
+  void _reload() =>
+      setState(() => _future = AppScope.of(context).api.fetchCurrency());
 
   Future<void> _select(String code) async {
     final services = AppScope.of(context);
@@ -110,7 +117,8 @@ class _CurrencySheetState extends State<_CurrencySheet> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _saving = null);
-      messenger.showSnackBar(SnackBar(content: Text(describeApiError(e, l10n))));
+      messenger
+          .showSnackBar(SnackBar(content: Text(describeApiError(e, l10n))));
     }
   }
 
@@ -121,7 +129,8 @@ class _CurrencySheetState extends State<_CurrencySheet> {
     final locale = Localizations.localeOf(context).toString();
     return SafeArea(
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.7),
+        constraints:
+            BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.7),
         child: FutureBuilder<CurrencySettings>(
           future: _future,
           builder: (context, snapshot) {
@@ -132,16 +141,23 @@ class _CurrencySheetState extends State<_CurrencySheet> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(error is ApiException ? describeApiError(error, l10n) : '$error', textAlign: TextAlign.center),
+                    Text(
+                        error is ApiException
+                            ? describeApiError(error, l10n)
+                            : '$error',
+                        textAlign: TextAlign.center),
                     const SizedBox(height: 12),
-                    FilledButton.tonal(onPressed: _reload, child: Text(l10n.retry)),
+                    FilledButton.tonal(
+                        onPressed: _reload, child: Text(l10n.retry)),
                   ],
                 ),
               );
             }
             final choices = snapshot.data?.choices;
             if (choices == null) {
-              return const SizedBox(height: 160, child: Center(child: CircularProgressIndicator()));
+              return const SizedBox(
+                  height: 160,
+                  child: Center(child: CircularProgressIndicator()));
             }
             return ListView(
               shrinkWrap: true,
@@ -149,7 +165,8 @@ class _CurrencySheetState extends State<_CurrencySheet> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-                  child: Text(l10n.chooseCurrency, style: theme.textTheme.titleMedium),
+                  child: Text(l10n.chooseCurrency,
+                      style: theme.textTheme.titleMedium),
                 ),
                 for (final choice in choices)
                   ListTile(
@@ -158,15 +175,20 @@ class _CurrencySheetState extends State<_CurrencySheet> {
                       child: Text(
                         Formatters.currencySymbol(choice.code, locale),
                         textAlign: TextAlign.center,
-                        style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant),
                       ),
                     ),
                     title: Text(choice.name),
                     subtitle: Text(choice.code),
                     trailing: _saving == choice.code
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2))
                         : choice.code == widget.current
-                            ? Icon(Icons.check_rounded, color: theme.colorScheme.primary)
+                            ? Icon(Icons.check_rounded,
+                                color: theme.colorScheme.primary)
                             : null,
                     onTap: _saving == null ? () => _select(choice.code) : null,
                   ),

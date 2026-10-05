@@ -15,22 +15,41 @@ Map<String, dynamic> monthJson(int id) => switch (id) {
     };
 
 Map<String, dynamic> response(int monthId, {bool withNewest = false}) => {
-      'months': [if (withNewest) monthJson(13), monthJson(12), monthJson(11), monthJson(10)],
+      'months': [
+        if (withNewest) monthJson(13),
+        monthJson(12),
+        monthJson(11),
+        monthJson(10)
+      ],
       'categories': [
         {'id': 1, 'name': 'Food', 'position': 1},
       ],
       'month': monthJson(monthId),
       'incomes': [
-        {'id': 1, 'value': 3000.0, 'date': '2026-09-26', 'comment': '', 'is_salary': true},
+        {
+          'id': 1,
+          'value': 3000.0,
+          'date': '2026-09-26',
+          'comment': '',
+          'is_salary': true
+        },
       ],
       'expenses': [
-        {'id': 1, 'value': 100.0, 'date': '2026-09-27', 'comment': '', 'category': 1, 'is_monthly': false},
+        {
+          'id': 1,
+          'value': 100.0,
+          'date': '2026-09-27',
+          'comment': '',
+          'category': 1,
+          'is_monthly': false
+        },
       ],
       'planned_savings': 500.0,
     };
 
 http.Response json(Object body, [int status = 200]) =>
-    http.Response(jsonEncode(body), status, headers: {'content-type': 'application/json'});
+    http.Response(jsonEncode(body), status,
+        headers: {'content-type': 'application/json'});
 
 int? requestedMonthId(http.Request request) {
   final value = request.url.queryParameters['month_id'];
@@ -41,7 +60,8 @@ void main() {
   late SessionStore session;
   late List<http.Request> requests;
 
-  MonthController controller(Future<http.Response> Function(http.Request) handler) {
+  MonthController controller(
+      Future<http.Response> Function(http.Request) handler) {
     final api = ApiClient(
       session: session,
       httpClient: MockClient((request) async {
@@ -59,7 +79,8 @@ void main() {
   });
 
   test('loads the default month and exposes typed data and figures', () async {
-    final months = controller((r) async => json(response(requestedMonthId(r) ?? 11)));
+    final months =
+        controller((r) async => json(response(requestedMonthId(r) ?? 11)));
     final notifications = <bool>[];
     months.addListener(() => notifications.add(months.isLoading));
 
@@ -79,7 +100,8 @@ void main() {
   });
 
   test('reports an error when the first load fails', () async {
-    final months = controller((_) async => http.Response('<html>Server Error</html>', 500));
+    final months = controller(
+        (_) async => http.Response('<html>Server Error</html>', 500));
 
     await months.load();
 
@@ -110,7 +132,8 @@ void main() {
   });
 
   test('navigates between months, newest first', () async {
-    final months = controller((r) async => json(response(requestedMonthId(r) ?? 11)));
+    final months =
+        controller((r) async => json(response(requestedMonthId(r) ?? 11)));
     await months.load();
 
     expect(months.previousMonth!.id, 10);
@@ -128,7 +151,8 @@ void main() {
   });
 
   test('refresh reloads the month on screen', () async {
-    final months = controller((r) async => json(response(requestedMonthId(r) ?? 11)));
+    final months =
+        controller((r) async => json(response(requestedMonthId(r) ?? 11)));
     await months.selectMonth(12);
 
     await months.refresh();
@@ -143,14 +167,20 @@ void main() {
     });
     await months.selectMonth(11);
 
-    await months.saveExpense(value: 12, date: DateTime(2026, 10, 5), categoryId: 1, isMonthly: false);
+    await months.saveExpense(
+        value: 12,
+        date: DateTime(2026, 10, 5),
+        categoryId: 1,
+        isMonthly: false);
 
-    expect(requests.map((r) => '${r.method} ${r.url.path}'), ['GET /api/month/', 'POST /api/expense/', 'GET /api/month/']);
+    expect(requests.map((r) => '${r.method} ${r.url.path}'),
+        ['GET /api/month/', 'POST /api/expense/', 'GET /api/month/']);
     expect(jsonDecode(requests[1].body), containsPair('month', 11));
     expect(requestedMonthId(requests.last), 11);
   });
 
-  test('createMonth proposes the month after the newest and opens it', () async {
+  test('createMonth proposes the month after the newest and opens it',
+      () async {
     var created = false;
     final months = controller((r) async {
       if (r.method == 'POST') {
@@ -165,7 +195,8 @@ void main() {
     await months.createMonth();
 
     final post = requests.firstWhere((r) => r.method == 'POST');
-    expect(jsonDecode(post.body), {'start_date': '2026-11-26', 'end_date': '2026-12-25'});
+    expect(jsonDecode(post.body),
+        {'start_date': '2026-11-26', 'end_date': '2026-12-25'});
     expect(months.month!.id, 13);
   });
 

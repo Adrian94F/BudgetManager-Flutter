@@ -53,7 +53,9 @@ class _BudgetManagerAppState extends State<BudgetManagerApp> {
         listenable: services.settings,
         builder: (context, _) {
           // Wallpaper colour on Android 12+ when enabled; indigo otherwise.
-          final seed = services.settings.useDynamicColor ? services.dynamicSeedColor : null;
+          final seed = services.settings.useDynamicColor
+              ? services.dynamicSeedColor
+              : null;
           return MaterialApp(
             title: 'Budget Manager',
             navigatorKey: _navigatorKey,
@@ -71,7 +73,8 @@ class _BudgetManagerAppState extends State<BudgetManagerApp> {
             themeMode: services.settings.themeMode,
             // Above the navigator, so every route formats amounts in the
             // user's currency and follows a change made in the settings.
-            builder: (context, child) => _CurrencyScopeHost(months: services.months, child: child!),
+            builder: (context, child) =>
+                _CurrencyScopeHost(months: services.months, child: child!),
             home: Builder(
               builder: (context) {
                 // Transparent system bars with icons readable on the theme.
@@ -87,7 +90,9 @@ class _BudgetManagerAppState extends State<BudgetManagerApp> {
                   ),
                   child: ListenableBuilder(
                     listenable: services.auth,
-                    builder: (context, _) => services.auth.isLoggedIn ? const HomeScreen() : const LoginScreen(),
+                    builder: (context, _) => services.auth.isLoggedIn
+                        ? const HomeScreen()
+                        : const LoginScreen(),
                   ),
                 );
               },
@@ -140,7 +145,8 @@ class _CurrencyScopeHostState extends State<_CurrencyScopeHost> {
 
   void _onMonthsChanged() {
     if (!mounted || widget.months.currency == _currency) return;
-    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
       SchedulerBinding.instance.addPostFrameCallback((_) => _onMonthsChanged());
       return;
     }
@@ -148,5 +154,6 @@ class _CurrencyScopeHostState extends State<_CurrencyScopeHost> {
   }
 
   @override
-  Widget build(BuildContext context) => CurrencyScope(currency: _currency, child: widget.child);
+  Widget build(BuildContext context) =>
+      CurrencyScope(currency: _currency, child: widget.child);
 }

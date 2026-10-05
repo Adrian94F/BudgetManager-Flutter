@@ -12,7 +12,8 @@ import '../../tools/formatters.dart';
 /// Line colour of the balance, as in the iOS app: error below zero,
 /// tertiary when the current month is under its savings target, primary
 /// otherwise; a closed month is green when money was left and red when not.
-Color burndownBalanceColor(BurndownSeries series, ColorScheme scheme, BudgetColors budget) {
+Color burndownBalanceColor(
+    BurndownSeries series, ColorScheme scheme, BudgetColors budget) {
   final latest = series.latestBalance;
   if (series.isActual) {
     if (latest < 0) return scheme.error;
@@ -28,7 +29,8 @@ Color burndownBalanceColor(BurndownSeries series, ColorScheme scheme, BudgetColo
 /// recurring expenses as bars, date labels every week, the target label and
 /// a tooltip that follows a touch.
 class MonthBurndownChart extends StatefulWidget {
-  const MonthBurndownChart({super.key, required this.series, this.isSimplified = false});
+  const MonthBurndownChart(
+      {super.key, required this.series, this.isSimplified = false});
 
   final BurndownSeries series;
   final bool isSimplified;
@@ -47,7 +49,8 @@ class _MonthBurndownChartState extends State<MonthBurndownChart> {
   }
 
   void _selectAt(Offset position, Size size) {
-    final geometry = _ChartGeometry(size, widget.series.points.length, simplified: false);
+    final geometry =
+        _ChartGeometry(size, widget.series.points.length, simplified: false);
     final index = geometry.indexAt(position.dx);
     if (index != _selectedIndex) setState(() => _selectedIndex = index);
   }
@@ -102,8 +105,10 @@ class _MonthBurndownChartState extends State<MonthBurndownChart> {
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTapDown: (details) => _selectAt(details.localPosition, size),
-          onHorizontalDragStart: (details) => _selectAt(details.localPosition, size),
-          onHorizontalDragUpdate: (details) => _selectAt(details.localPosition, size),
+          onHorizontalDragStart: (details) =>
+              _selectAt(details.localPosition, size),
+          onHorizontalDragUpdate: (details) =>
+              _selectAt(details.localPosition, size),
           child: chart,
         );
       },
@@ -154,7 +159,8 @@ class _Palette {
       other.tooltipText == tooltipText;
 
   @override
-  int get hashCode => Object.hash(balance, ideal, target, daily, monthly, grid, weekend, today, label, tooltipBackground, tooltipText);
+  int get hashCode => Object.hash(balance, ideal, target, daily, monthly, grid,
+      weekend, today, label, tooltipBackground, tooltipText);
 }
 
 /// Where the plot sits inside the canvas and how point indices map to x.
@@ -170,7 +176,9 @@ class _ChartGeometry {
   final Rect plot;
   final int pointCount;
 
-  double x(int index) => pointCount <= 1 ? plot.left : plot.left + plot.width * index / (pointCount - 1);
+  double x(int index) => pointCount <= 1
+      ? plot.left
+      : plot.left + plot.width * index / (pointCount - 1);
 
   int indexAt(double dx) {
     if (pointCount <= 1) return 0;
@@ -182,7 +190,9 @@ class _ChartGeometry {
 /// Y range in whole thousands. The simplified view bottoms out at the
 /// savings target when the balance stays above it, so the card shows the
 /// part of the range that matters.
-({double lower, double upper, List<double> ticks}) _yRange(BurndownSeries series, {required bool simplified}) {
+({double lower, double upper, List<double> ticks}) _yRange(
+    BurndownSeries series,
+    {required bool simplified}) {
   final values = [
     ...series.balances,
     ...series.ideals,
@@ -210,7 +220,9 @@ class _ChartGeometry {
 String _compact(double value) {
   if (value == 0) return '0';
   final thousands = value / 1000;
-  return thousands % 1 == 0 ? '${thousands.toInt()}k' : '${thousands.toStringAsFixed(1)}k';
+  return thousands % 1 == 0
+      ? '${thousands.toInt()}k'
+      : '${thousands.toStringAsFixed(1)}k';
 }
 
 Path _dashed(Path source, double dash, double gap) {
@@ -247,15 +259,24 @@ class _BurndownPainter extends CustomPainter {
   final String Function(double) money;
   final String Function(DateTime) dayLabel;
   final String Function(DateTime) tooltipDate;
-  final ({String start, String balance, String daily, String recurring, String plan}) words;
+  final ({
+    String start,
+    String balance,
+    String daily,
+    String recurring,
+    String plan
+  }) words;
 
   @override
   void paint(Canvas canvas, Size size) {
     final points = series.points;
-    final geometry = _ChartGeometry(size, points.length, simplified: simplified);
+    final geometry =
+        _ChartGeometry(size, points.length, simplified: simplified);
     final plot = geometry.plot;
     final range = _yRange(series, simplified: simplified);
-    double y(double value) => plot.bottom - (value - range.lower) / (range.upper - range.lower) * plot.height;
+    double y(double value) =>
+        plot.bottom -
+        (value - range.lower) / (range.upper - range.lower) * plot.height;
 
     canvas.save();
     canvas.clipRect(Rect.fromLTRB(0, 0, size.width, size.height));
@@ -266,25 +287,35 @@ class _BurndownPainter extends CustomPainter {
     _paintArea(canvas, geometry, points, y);
     _paintIdeal(canvas, geometry, points, y);
     _paintBalance(canvas, geometry, points, y);
-    if (!simplified && series.isActual && series.plannedSavingsTarget > 0) _paintTarget(canvas, plot, y);
+    if (!simplified && series.isActual && series.plannedSavingsTarget > 0) {
+      _paintTarget(canvas, plot, y);
+    }
     if (!simplified) _paintDayLabels(canvas, geometry, points);
-    if (!simplified && selectedIndex != null) _paintTooltip(canvas, size, geometry, points, y, selectedIndex!);
+    if (!simplified && selectedIndex != null) {
+      _paintTooltip(canvas, size, geometry, points, y, selectedIndex!);
+    }
 
     canvas.restore();
   }
 
-  void _paintBands(Canvas canvas, _ChartGeometry geometry, List<BurndownPoint> points) {
+  void _paintBands(
+      Canvas canvas, _ChartGeometry geometry, List<BurndownPoint> points) {
     final plot = geometry.plot;
     final weekend = Paint()..color = palette.weekend;
     final today = Paint()..color = palette.today;
     for (var i = 1; i < points.length; i++) {
-      final band = Rect.fromLTRB(geometry.x(i - 1), plot.top, geometry.x(i), plot.bottom);
+      final band = Rect.fromLTRB(
+          geometry.x(i - 1), plot.top, geometry.x(i), plot.bottom);
       if (points[i].isWeekend) canvas.drawRect(band, weekend);
       if (series.todayIndex == i) canvas.drawRect(band, today);
     }
   }
 
-  void _paintGrid(Canvas canvas, _ChartGeometry geometry, ({double lower, double upper, List<double> ticks}) range, double Function(double) y) {
+  void _paintGrid(
+      Canvas canvas,
+      _ChartGeometry geometry,
+      ({double lower, double upper, List<double> ticks}) range,
+      double Function(double) y) {
     final plot = geometry.plot;
     final grid = Paint()
       ..color = palette.grid
@@ -294,11 +325,13 @@ class _BurndownPainter extends CustomPainter {
       canvas.drawLine(Offset(plot.left, ty), Offset(plot.right, ty), grid);
       if (simplified && tick == 0) continue;
       final label = _text(_compact(tick), palette.label);
-      label.paint(canvas, Offset(plot.left - 6 - label.width, ty - label.height / 2));
+      label.paint(
+          canvas, Offset(plot.left - 6 - label.width, ty - label.height / 2));
     }
   }
 
-  void _paintBars(Canvas canvas, _ChartGeometry geometry, List<BurndownPoint> points, double Function(double) y) {
+  void _paintBars(Canvas canvas, _ChartGeometry geometry,
+      List<BurndownPoint> points, double Function(double) y) {
     final daily = Paint()..color = palette.daily;
     final monthly = Paint()..color = palette.monthly;
     final base = y(0);
@@ -307,18 +340,23 @@ class _BurndownPainter extends CustomPainter {
       final left = geometry.x(i - 1);
       final right = geometry.x(i);
       final inset = (right - left) * 0.2;
-      RRect rect(double top, double bottom) =>
-          RRect.fromRectAndRadius(Rect.fromLTRB(left + inset, top, right - inset, bottom), const Radius.circular(2));
+      RRect rect(double top, double bottom) => RRect.fromRectAndRadius(
+          Rect.fromLTRB(left + inset, top, right - inset, bottom),
+          const Radius.circular(2));
       if (point.monthlyExpenses > 0) {
         canvas.drawRRect(rect(y(point.monthlyExpenses), base), monthly);
       }
       if (point.dailyExpenses > 0) {
-        canvas.drawRRect(rect(y(point.monthlyExpenses + point.dailyExpenses), y(point.monthlyExpenses)), daily);
+        canvas.drawRRect(
+            rect(y(point.monthlyExpenses + point.dailyExpenses),
+                y(point.monthlyExpenses)),
+            daily);
       }
     }
   }
 
-  Path _linePath(_ChartGeometry geometry, List<BurndownPoint> points, double Function(BurndownPoint) value, double Function(double) y) {
+  Path _linePath(_ChartGeometry geometry, List<BurndownPoint> points,
+      double Function(BurndownPoint) value, double Function(double) y) {
     final path = Path();
     for (var i = 0; i < points.length; i++) {
       final offset = Offset(geometry.x(i), y(value(points[i])));
@@ -331,7 +369,8 @@ class _BurndownPainter extends CustomPainter {
     return path;
   }
 
-  void _paintArea(Canvas canvas, _ChartGeometry geometry, List<BurndownPoint> points, double Function(double) y) {
+  void _paintArea(Canvas canvas, _ChartGeometry geometry,
+      List<BurndownPoint> points, double Function(double) y) {
     final plot = geometry.plot;
     final area = _linePath(geometry, points, (p) => p.balance, y)
       ..lineTo(geometry.x(points.length - 1), plot.bottom)
@@ -341,12 +380,16 @@ class _BurndownPainter extends CustomPainter {
       ..shader = ui.Gradient.linear(
         Offset(0, plot.top),
         Offset(0, plot.bottom),
-        [palette.balance.withValues(alpha: 0.22), palette.balance.withValues(alpha: 0.0)],
+        [
+          palette.balance.withValues(alpha: 0.22),
+          palette.balance.withValues(alpha: 0.0)
+        ],
       );
     canvas.drawPath(area, paint);
   }
 
-  void _paintIdeal(Canvas canvas, _ChartGeometry geometry, List<BurndownPoint> points, double Function(double) y) {
+  void _paintIdeal(Canvas canvas, _ChartGeometry geometry,
+      List<BurndownPoint> points, double Function(double) y) {
     final path = _linePath(geometry, points, (p) => p.ideal, y);
     canvas.drawPath(
       _dashed(path, 4, 3),
@@ -357,7 +400,8 @@ class _BurndownPainter extends CustomPainter {
     );
   }
 
-  void _paintBalance(Canvas canvas, _ChartGeometry geometry, List<BurndownPoint> points, double Function(double) y) {
+  void _paintBalance(Canvas canvas, _ChartGeometry geometry,
+      List<BurndownPoint> points, double Function(double) y) {
     final path = _linePath(geometry, points, (p) => p.balance, y);
     canvas.drawPath(
       path,
@@ -382,11 +426,14 @@ class _BurndownPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1,
     );
-    final label = _text('${words.plan} ${money(series.plannedSavingsTarget)}', palette.target);
-    label.paint(canvas, Offset(plot.right - label.width, ty - label.height - 2));
+    final label = _text(
+        '${words.plan} ${money(series.plannedSavingsTarget)}', palette.target);
+    label.paint(
+        canvas, Offset(plot.right - label.width, ty - label.height - 2));
   }
 
-  void _paintDayLabels(Canvas canvas, _ChartGeometry geometry, List<BurndownPoint> points) {
+  void _paintDayLabels(
+      Canvas canvas, _ChartGeometry geometry, List<BurndownPoint> points) {
     final plot = geometry.plot;
     for (var i = 1; i < points.length; i += 7) {
       final day = points[i].day;
@@ -394,12 +441,14 @@ class _BurndownPainter extends CustomPainter {
       final label = _text(dayLabel(day), palette.label);
       final x = geometry.x(i - 1);
       if (x + label.width > plot.right) break;
-      canvas.drawLine(Offset(x, plot.bottom), Offset(x, plot.bottom + 3), Paint()..color = palette.grid);
+      canvas.drawLine(Offset(x, plot.bottom), Offset(x, plot.bottom + 3),
+          Paint()..color = palette.grid);
       label.paint(canvas, Offset(x, plot.bottom + 5));
     }
   }
 
-  void _paintTooltip(Canvas canvas, Size size, _ChartGeometry geometry, List<BurndownPoint> points, double Function(double) y, int index) {
+  void _paintTooltip(Canvas canvas, Size size, _ChartGeometry geometry,
+      List<BurndownPoint> points, double Function(double) y, int index) {
     final point = points[index];
     final plot = geometry.plot;
     final x = geometry.x(index);
@@ -410,13 +459,16 @@ class _BurndownPainter extends CustomPainter {
         ..color = palette.label
         ..strokeWidth = 1,
     );
-    canvas.drawCircle(Offset(x, y(point.balance)), 4, Paint()..color = palette.balance);
+    canvas.drawCircle(
+        Offset(x, y(point.balance)), 4, Paint()..color = palette.balance);
 
     final lines = [
       point.isStart ? words.start : tooltipDate(point.day!),
       '${words.balance}: ${money(point.balance)}',
-      if (point.dailyExpenses > 0) '${words.daily}: ${money(point.dailyExpenses)}',
-      if (point.monthlyExpenses > 0) '${words.recurring}: ${money(point.monthlyExpenses)}',
+      if (point.dailyExpenses > 0)
+        '${words.daily}: ${money(point.dailyExpenses)}',
+      if (point.monthlyExpenses > 0)
+        '${words.recurring}: ${money(point.monthlyExpenses)}',
     ];
     final text = _text(lines.join('\n'), palette.tooltipText, bold: false);
     const padding = 8.0;
@@ -425,14 +477,19 @@ class _BurndownPainter extends CustomPainter {
     var left = x - boxWidth / 2;
     left = left.clamp(0.0, math.max(0.0, size.width - boxWidth));
     final top = math.max(0.0, y(point.balance) - boxHeight - 12);
-    final box = RRect.fromRectAndRadius(Rect.fromLTWH(left, top, boxWidth, boxHeight), const Radius.circular(8));
+    final box = RRect.fromRectAndRadius(
+        Rect.fromLTWH(left, top, boxWidth, boxHeight),
+        const Radius.circular(8));
     canvas.drawRRect(box, Paint()..color = palette.tooltipBackground);
     text.paint(canvas, Offset(left + padding, top + padding));
   }
 
   TextPainter _text(String text, Color color, {bool bold = false}) {
     return TextPainter(
-      text: TextSpan(text: text, style: labelStyle.copyWith(color: color, fontWeight: bold ? FontWeight.w600 : null)),
+      text: TextSpan(
+          text: text,
+          style: labelStyle.copyWith(
+              color: color, fontWeight: bold ? FontWeight.w600 : null)),
       textDirection: ui.TextDirection.ltr,
     )..layout();
   }
@@ -458,14 +515,16 @@ class BurndownLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final balanceColor = burndownBalanceColor(series, scheme, BudgetColors.of(context));
+    final balanceColor =
+        burndownBalanceColor(series, scheme, BudgetColors.of(context));
     Widget item(Color color, String text, {bool dashed = false}) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               width: 18,
               height: dashed ? 2 : 10,
-              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(
+                  color: color, borderRadius: BorderRadius.circular(2)),
             ),
             const SizedBox(width: 6),
             Text(text, style: Theme.of(context).textTheme.bodySmall),

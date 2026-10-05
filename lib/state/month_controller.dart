@@ -42,11 +42,11 @@ class MonthController extends ChangeNotifier {
   /// The currency every amount is in, as the server reports it.
   String get currency => _data?.currency ?? defaultCurrency;
 
-  MonthSummary get summary =>
-      _summary ??= _data == null ? MonthSummary.empty : MonthSummary.compute(_data!);
+  MonthSummary get summary => _summary ??=
+      _data == null ? MonthSummary.empty : MonthSummary.compute(_data!);
 
-  BurndownSeries get burndown =>
-      _burndown ??= _data == null ? BurndownSeries.empty : BurndownSeries.compute(_data!);
+  BurndownSeries get burndown => _burndown ??=
+      _data == null ? BurndownSeries.empty : BurndownSeries.compute(_data!);
 
   /// The month before the one on screen (months are kept newest first).
   Month? get previousMonth {
@@ -100,7 +100,8 @@ class MonthController extends ChangeNotifier {
   }
 
   /// Reloads the month on screen.
-  Future<void> refresh() => load(monthId: _data?.month?.id ?? _requestedMonthId);
+  Future<void> refresh() =>
+      load(monthId: _data?.month?.id ?? _requestedMonthId);
 
   Future<void> selectMonth(int monthId) => load(monthId: monthId);
 
@@ -133,17 +134,22 @@ class MonthController extends ChangeNotifier {
   /// after the newest one, or to the current calendar month when there is
   /// no month yet.
   Future<void> createMonth({DateTime? start, DateTime? end}) async {
-    final newest = _data?.months.isNotEmpty == true ? _data!.months.first : null;
-    final range = newest == null ? BudgetRules.firstMonthRange() : BudgetRules.nextMonthRange(newest);
+    final newest =
+        _data?.months.isNotEmpty == true ? _data!.months.first : null;
+    final range = newest == null
+        ? BudgetRules.firstMonthRange()
+        : BudgetRules.nextMonthRange(newest);
     await _api.createMonth(start: start ?? range.start, end: end ?? range.end);
     await load();
-    final created = _data?.months.isNotEmpty == true ? _data!.months.first : null;
+    final created =
+        _data?.months.isNotEmpty == true ? _data!.months.first : null;
     if (created != null && created.id != _data?.month?.id) {
       await load(monthId: created.id);
     }
   }
 
-  Future<void> updateMonth({required int id, required DateTime start, required DateTime end}) async {
+  Future<void> updateMonth(
+      {required int id, required DateTime start, required DateTime end}) async {
     await _api.updateMonth(id: id, start: start, end: end);
     await refresh();
   }
@@ -178,9 +184,20 @@ class MonthController extends ChangeNotifier {
   }) async {
     final monthId = _requireMonthId();
     if (id == null) {
-      await _api.createIncome(monthId: monthId, value: value, date: date, comment: comment, isSalary: isSalary);
+      await _api.createIncome(
+          monthId: monthId,
+          value: value,
+          date: date,
+          comment: comment,
+          isSalary: isSalary);
     } else {
-      await _api.updateIncome(id: id, monthId: monthId, value: value, date: date, comment: comment, isSalary: isSalary);
+      await _api.updateIncome(
+          id: id,
+          monthId: monthId,
+          value: value,
+          date: date,
+          comment: comment,
+          isSalary: isSalary);
     }
     await refresh();
   }
@@ -201,10 +218,21 @@ class MonthController extends ChangeNotifier {
     final monthId = _requireMonthId();
     if (id == null) {
       await _api.createExpense(
-          monthId: monthId, value: value, date: date, categoryId: categoryId, comment: comment, isMonthly: isMonthly);
+          monthId: monthId,
+          value: value,
+          date: date,
+          categoryId: categoryId,
+          comment: comment,
+          isMonthly: isMonthly);
     } else {
       await _api.updateExpense(
-          id: id, monthId: monthId, value: value, date: date, categoryId: categoryId, comment: comment, isMonthly: isMonthly);
+          id: id,
+          monthId: monthId,
+          value: value,
+          date: date,
+          categoryId: categoryId,
+          comment: comment,
+          isMonthly: isMonthly);
     }
     await refresh();
   }

@@ -17,7 +17,8 @@ class FabMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final elevation = MediaQuery.of(context).orientation == Orientation.landscape ? 0.0 : 6.0;
+    final elevation =
+        MediaQuery.of(context).orientation == Orientation.landscape ? 0.0 : 6.0;
     switch (fabType) {
       case FabType.expense:
         return buildAddExpenseFAB(context, elevation: elevation);

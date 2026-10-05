@@ -86,12 +86,16 @@ class MonthSummary {
 
     double sum(Iterable<double> values) => values.fold(0.0, (a, b) => a + b);
 
-    final salaries = sum(data.incomes.where((i) => i.isSalary).map((i) => i.value));
-    final otherIncomes = sum(data.incomes.where((i) => !i.isSalary).map((i) => i.value));
+    final salaries =
+        sum(data.incomes.where((i) => i.isSalary).map((i) => i.value));
+    final otherIncomes =
+        sum(data.incomes.where((i) => !i.isSalary).map((i) => i.value));
     final allIncomes = salaries + otherIncomes;
 
-    final monthlyExpenses = sum(data.expenses.where((e) => e.isMonthly).map((e) => e.value));
-    final dailyExpenses = sum(data.expenses.where((e) => e.isDaily).map((e) => e.value));
+    final monthlyExpenses =
+        sum(data.expenses.where((e) => e.isMonthly).map((e) => e.value));
+    final dailyExpenses =
+        sum(data.expenses.where((e) => e.isDaily).map((e) => e.value));
     final allExpenses = monthlyExpenses + dailyExpenses;
 
     final isActual = month.isActual(now);
@@ -100,15 +104,24 @@ class MonthSummary {
     final balance = actualBalance - plannedSavings;
 
     final daysLeft = isActual ? month.daysLeft(now) : 0;
-    final dailyBudget = allIncomes - monthlyExpenses - dailyExpenses - plannedSavings;
-    final maxDaily = isActual && daysLeft > 0 && dailyBudget >= 0 ? dailyBudget / daysLeft : null;
+    final dailyBudget =
+        allIncomes - monthlyExpenses - dailyExpenses - plannedSavings;
+    final maxDaily = isActual && daysLeft > 0 && dailyBudget >= 0
+        ? dailyBudget / daysLeft
+        : null;
 
     final todaySpendings = isActual
         ? sum(data.expenses
-            .where((e) => e.isDaily && e.date.year == now.year && e.date.month == now.month && e.date.day == now.day)
+            .where((e) =>
+                e.isDaily &&
+                e.date.year == now.year &&
+                e.date.month == now.month &&
+                e.date.day == now.day)
             .map((e) => e.value))
         : 0.0;
-    final todayPercent = maxDaily != null && maxDaily > 0 ? todaySpendings / maxDaily * 100 : null;
+    final todayPercent = maxDaily != null && maxDaily > 0
+        ? todaySpendings / maxDaily * 100
+        : null;
 
     return MonthSummary(
       isActual: isActual,

@@ -25,7 +25,8 @@ class CurrencySettings {
   final String currency;
   final List<CurrencyChoice> choices;
 
-  factory CurrencySettings.fromJson(Map<String, dynamic> json) => CurrencySettings(
+  factory CurrencySettings.fromJson(Map<String, dynamic> json) =>
+      CurrencySettings(
         currency: json['currency'] as String? ?? defaultCurrency,
         choices: (json['choices'] as List<dynamic>? ?? const [])
             .map((c) => CurrencyChoice.fromJson(c as Map<String, dynamic>))

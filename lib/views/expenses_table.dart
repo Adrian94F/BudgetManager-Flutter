@@ -11,7 +11,8 @@ import 'widgets/custom_data_table.dart';
 /// Category × day grid of the month's expenses with a sum row and column.
 /// Tapping a cell, a day or a category opens the filtered expenses list.
 class ExpensesTableView extends StatelessWidget {
-  const ExpensesTableView({super.key, required this.data, required this.onOpenFiltered});
+  const ExpensesTableView(
+      {super.key, required this.data, required this.onOpenFiltered});
 
   final MonthData data;
   final void Function(ExpensesFilter filter) onOpenFiltered;
@@ -46,22 +47,34 @@ class ExpensesTableView extends StatelessWidget {
         for (final category in table.categories)
           [
             for (final day in table.days)
-              CellData(text: formatNumber(table.cell(category.id, day)), categoryId: category.id, date: day),
+              CellData(
+                  text: formatNumber(table.cell(category.id, day)),
+                  categoryId: category.id,
+                  date: day),
           ],
       ],
       fixedColCells: [
-        for (final category in table.categories) CellData(text: category.name, categoryId: category.id),
+        for (final category in table.categories)
+          CellData(text: category.name, categoryId: category.id),
       ],
       fixedRightColCells: [
         for (final category in table.categories)
-          CellData(text: formatNumber(table.categoryTotal(category.id)), categoryId: category.id, isSum: true),
+          CellData(
+              text: formatNumber(table.categoryTotal(category.id)),
+              categoryId: category.id,
+              isSum: true),
       ],
       fixedRowCells: [
         for (final day in table.days)
-          CellData(text: '${day.day}', secondaryText: dayLetters[day.weekday - 1], date: day),
+          CellData(
+              text: '${day.day}',
+              secondaryText: dayLetters[day.weekday - 1],
+              date: day),
       ],
       fixedBottomRowCells: [
-        for (final day in table.days) CellData(text: formatNumber(table.total(day)), date: day, isSum: true),
+        for (final day in table.days)
+          CellData(
+              text: formatNumber(table.total(day)), date: day, isSum: true),
       ],
       cellBuilder: (cell) => _buildCell(context, cell),
     );
@@ -76,7 +89,8 @@ class ExpensesTableView extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
-                Icon(Icons.info_outline_rounded, color: scheme.onTertiaryContainer, size: 20),
+                Icon(Icons.info_outline_rounded,
+                    color: scheme.onTertiaryContainer, size: 20),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -134,7 +148,9 @@ class ExpensesTableView extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
-                      color: isToday ? scheme.onPrimary : (isWeekend ? scheme.primary : scheme.onSurface),
+                      color: isToday
+                          ? scheme.onPrimary
+                          : (isWeekend ? scheme.primary : scheme.onSurface),
                     ),
                   ),
                 ),
@@ -158,7 +174,9 @@ class ExpensesTableView extends StatelessWidget {
                 Container(
                   width: 8,
                   height: 8,
-                  decoration: BoxDecoration(color: CategoryStyle.of(context, cell.text).accent, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                      color: CategoryStyle.of(context, cell.text).accent,
+                      shape: BoxShape.circle),
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -166,7 +184,10 @@ class ExpensesTableView extends StatelessWidget {
                     cell.text,
                     maxLines: 1,
                     overflow: TextOverflow.clip,
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 10, color: scheme.onSurface),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 10,
+                        color: scheme.onSurface),
                   ),
                 ),
               ],
@@ -181,14 +202,18 @@ class ExpensesTableView extends StatelessWidget {
       return Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => onOpenFiltered(ExpensesFilter(category: category, date: day)),
+          onTap: () =>
+              onOpenFiltered(ExpensesFilter(category: category, date: day)),
           child: Center(
             child: cell.text.isEmpty
                 ? null
                 : Text(
                     cell.text,
                     maxLines: 1,
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurfaceVariant),
                   ),
           ),
         ),
@@ -207,13 +232,17 @@ class ExpensesTableView extends StatelessWidget {
     return Material(
       color: background,
       child: InkWell(
-        onTap: () => onOpenFiltered(ExpensesFilter(category: category, date: day)),
+        onTap: () =>
+            onOpenFiltered(ExpensesFilter(category: category, date: day)),
         child: Center(
           child: cell.text.isEmpty
               ? null
               : Text(
                   cell.text,
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: scheme.onSurface),
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: scheme.onSurface),
                 ),
         ),
       ),
@@ -236,7 +265,8 @@ class _Message extends StatelessWidget {
           child: Text(
             text,
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: theme.textTheme.bodyLarge
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ),
       ],

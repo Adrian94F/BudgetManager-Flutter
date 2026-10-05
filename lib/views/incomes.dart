@@ -28,7 +28,8 @@ class IncomesScreen extends StatelessWidget {
     try {
       await services.months.deleteIncome(income.id);
     } on ApiException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(describeApiError(e, l10n))));
+      messenger
+          .showSnackBar(SnackBar(content: Text(describeApiError(e, l10n))));
       return false;
     }
     messenger.showSnackBar(SnackBar(
@@ -46,7 +47,8 @@ class IncomesScreen extends StatelessWidget {
             );
             await services.months.refresh();
           } on ApiException catch (e) {
-            messenger.showSnackBar(SnackBar(content: Text(describeApiError(e, l10n))));
+            messenger.showSnackBar(
+                SnackBar(content: Text(describeApiError(e, l10n))));
           }
         },
       ),
@@ -61,8 +63,7 @@ class IncomesScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final today = Dates.today();
 
-    final incomes = [...data.incomes]
-      ..sort((a, b) {
+    final incomes = [...data.incomes]..sort((a, b) {
         final byDate = b.date.compareTo(a.date);
         return byDate != 0 ? byDate : b.id.compareTo(a.id);
       });
@@ -75,7 +76,8 @@ class IncomesScreen extends StatelessWidget {
             child: Text(
               l10n.noIncomes,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.textTheme.bodyLarge
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           ),
         ],
@@ -97,7 +99,10 @@ class IncomesScreen extends StatelessWidget {
         onDelete: () => _delete(context, income),
       ));
     }
-    return ListView(padding: EdgeInsets.only(bottom: 88 + MediaQuery.paddingOf(context).bottom), children: items);
+    return ListView(
+        padding:
+            EdgeInsets.only(bottom: 88 + MediaQuery.paddingOf(context).bottom),
+        children: items);
   }
 }
 
@@ -129,7 +134,8 @@ class _IncomeTile extends StatelessWidget {
       endActionPane: ActionPane(
         motion: const ScrollMotion(),
         extentRatio: 0.5,
-        dismissible: DismissiblePane(confirmDismiss: onDelete, onDismissed: () {}),
+        dismissible:
+            DismissiblePane(confirmDismiss: onDelete, onDismissed: () {}),
         children: [
           SlidableAction(
             onPressed: (_) => onCopy(),
@@ -155,11 +161,13 @@ class _IncomeTile extends StatelessWidget {
         ),
         title: Row(
           children: [
-            Expanded(child: Text(income.isSalary ? l10n.salary : l10n.otherIncome)),
+            Expanded(
+                child: Text(income.isSalary ? l10n.salary : l10n.otherIncome)),
             const SizedBox(width: 12),
             Text(
               Formatters.moneyOf(context, income.value),
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -169,7 +177,8 @@ class _IncomeTile extends StatelessWidget {
                 comment,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
               ),
       ),
     );

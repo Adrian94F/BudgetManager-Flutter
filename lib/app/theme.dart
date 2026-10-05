@@ -30,7 +30,11 @@ class BudgetColors extends ThemeExtension<BudgetColors> {
       (Theme.of(context).brightness == Brightness.light ? light : dark);
 
   @override
-  BudgetColors copyWith({Color? success, Color? successContainer, Color? onSuccessContainer}) => BudgetColors(
+  BudgetColors copyWith(
+          {Color? success,
+          Color? successContainer,
+          Color? onSuccessContainer}) =>
+      BudgetColors(
         success: success ?? this.success,
         successContainer: successContainer ?? this.successContainer,
         onSuccessContainer: onSuccessContainer ?? this.onSuccessContainer,
@@ -41,8 +45,10 @@ class BudgetColors extends ThemeExtension<BudgetColors> {
     if (other is! BudgetColors) return this;
     return BudgetColors(
       success: Color.lerp(success, other.success, t)!,
-      successContainer: Color.lerp(successContainer, other.successContainer, t)!,
-      onSuccessContainer: Color.lerp(onSuccessContainer, other.onSuccessContainer, t)!,
+      successContainer:
+          Color.lerp(successContainer, other.successContainer, t)!,
+      onSuccessContainer:
+          Color.lerp(onSuccessContainer, other.onSuccessContainer, t)!,
     );
   }
 }
@@ -51,32 +57,44 @@ class BudgetColors extends ThemeExtension<BudgetColors> {
 /// buttons do; `Material` animates the change.
 WidgetStateProperty<OutlinedBorder?> _pressableShape(double radius) =>
     WidgetStateProperty.resolveWith((states) => RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(states.contains(WidgetState.pressed) ? radius * 0.6 : radius),
+          borderRadius: BorderRadius.circular(
+              states.contains(WidgetState.pressed) ? radius * 0.6 : radius),
         ));
 
-const _cardShape = RoundedSuperellipseBorder(borderRadius: BorderRadius.all(Radius.circular(16)));
-const _sheetShape = RoundedSuperellipseBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28)));
-const _dialogShape = RoundedSuperellipseBorder(borderRadius: BorderRadius.all(Radius.circular(28)));
+const _cardShape = RoundedSuperellipseBorder(
+    borderRadius: BorderRadius.all(Radius.circular(16)));
+const _sheetShape = RoundedSuperellipseBorder(
+    borderRadius: BorderRadius.vertical(top: Radius.circular(28)));
+const _dialogShape = RoundedSuperellipseBorder(
+    borderRadius: BorderRadius.all(Radius.circular(28)));
 
 /// The app's Material 3 theme, seeded with the wallpaper colour when the user
 /// enabled dynamic colour on Android 12+ and with indigo otherwise. Surfaces
 /// use superellipse ("squircle") corners.
 ThemeData buildTheme(Brightness brightness, {Color? seedColor}) {
-  final colorScheme = ColorScheme.fromSeed(seedColor: seedColor ?? Colors.indigo, brightness: brightness);
+  final colorScheme = ColorScheme.fromSeed(
+      seedColor: seedColor ?? Colors.indigo, brightness: brightness);
   return ThemeData(
     useMaterial3: true,
     colorScheme: colorScheme,
     brightness: brightness,
-    extensions: [brightness == Brightness.light ? BudgetColors.light : BudgetColors.dark],
+    extensions: [
+      brightness == Brightness.light ? BudgetColors.light : BudgetColors.dark
+    ],
     cardTheme: const CardThemeData(shape: _cardShape),
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(shape: _cardShape),
+    floatingActionButtonTheme:
+        const FloatingActionButtonThemeData(shape: _cardShape),
     bottomSheetTheme: const BottomSheetThemeData(shape: _sheetShape),
     dialogTheme: const DialogThemeData(shape: _dialogShape),
     snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
-    filledButtonTheme: FilledButtonThemeData(style: ButtonStyle(shape: _pressableShape(20))),
-    elevatedButtonTheme: ElevatedButtonThemeData(style: ButtonStyle(shape: _pressableShape(20))),
-    outlinedButtonTheme: OutlinedButtonThemeData(style: ButtonStyle(shape: _pressableShape(20))),
-    textButtonTheme: TextButtonThemeData(style: ButtonStyle(shape: _pressableShape(20))),
+    filledButtonTheme:
+        FilledButtonThemeData(style: ButtonStyle(shape: _pressableShape(20))),
+    elevatedButtonTheme:
+        ElevatedButtonThemeData(style: ButtonStyle(shape: _pressableShape(20))),
+    outlinedButtonTheme:
+        OutlinedButtonThemeData(style: ButtonStyle(shape: _pressableShape(20))),
+    textButtonTheme:
+        TextButtonThemeData(style: ButtonStyle(shape: _pressableShape(20))),
     // The 2024 Material 3 look for progress indicators and sliders (rounded
     // track with a gap and a stop indicator). The flag is Flutter's official
     // opt-in and is marked deprecated only because it will become the default.

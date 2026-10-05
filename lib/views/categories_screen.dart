@@ -50,8 +50,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   void _showError(ApiException e) {
     final l10n = AppLocalizations.of(context)!;
-    final message = e.message.toLowerCase().contains('unique') ? l10n.categoryExists : describeApiError(e, l10n);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    final message = e.message.toLowerCase().contains('unique')
+        ? l10n.categoryExists
+        : describeApiError(e, l10n);
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _edit({Category? category}) async {
@@ -90,10 +93,13 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         title: Text(l10n.deleteCategory),
         content: Text('${category.name}\n\n${l10n.deleteCategoryWarning}'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.cancel)),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(l10n.cancel)),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+            style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error),
             child: Text(l10n.remove),
           ),
         ],
@@ -142,7 +148,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           : Column(children: [ErrorBanner(error: error, onRetry: _load)]);
     } else if (categories.isEmpty) {
       body = Center(
-        child: Text(l10n.noCategoriesYet, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        child: Text(l10n.noCategoriesYet,
+            style: theme.textTheme.bodyLarge
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
       );
     } else {
       body = Column(
@@ -152,13 +160,15 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Text(
               l10n.reorderHint,
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           ),
           Expanded(
             child: ReorderableListView.builder(
               buildDefaultDragHandles: false,
-              padding: EdgeInsets.only(bottom: 88 + MediaQuery.paddingOf(context).bottom),
+              padding: EdgeInsets.only(
+                  bottom: 88 + MediaQuery.paddingOf(context).bottom),
               itemCount: categories.length,
               onReorderItem: _busy ? (_, __) {} : _reorder,
               itemBuilder: (context, index) {
@@ -197,7 +207,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       appBar: AppBar(
         title: Text(l10n.manageCategories),
         bottom: _busy
-            ? const PreferredSize(preferredSize: Size.fromHeight(2), child: LinearProgressIndicator(minHeight: 2))
+            ? const PreferredSize(
+                preferredSize: Size.fromHeight(2),
+                child: LinearProgressIndicator(minHeight: 2))
             : null,
       ),
       body: body,
@@ -256,10 +268,12 @@ class _NameDialogState extends State<_NameDialog> {
         textCapitalization: TextCapitalization.sentences,
         textInputAction: TextInputAction.done,
         onSubmitted: (_) => _submit(),
-        decoration: InputDecoration(labelText: l10n.categoryName, errorText: _error),
+        decoration:
+            InputDecoration(labelText: l10n.categoryName, errorText: _error),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
+        TextButton(
+            onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
         FilledButton(onPressed: _submit, child: Text(l10n.save)),
       ],
     );

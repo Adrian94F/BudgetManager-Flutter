@@ -12,7 +12,8 @@ String describeApiError(ApiException error, AppLocalizations l10n) {
 
 /// Full-screen error shown when there is no data to fall back on.
 class ErrorScreen extends StatelessWidget {
-  const ErrorScreen({super.key, required this.error, required this.onRetry, this.onLogout});
+  const ErrorScreen(
+      {super.key, required this.error, required this.onRetry, this.onLogout});
 
   final ApiException error;
   final VoidCallback onRetry;
@@ -31,7 +32,9 @@ class ErrorScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  error.isNetwork ? Icons.cloud_off_rounded : Icons.error_outline_rounded,
+                  error.isNetwork
+                      ? Icons.cloud_off_rounded
+                      : Icons.error_outline_rounded,
                   size: 48,
                   color: colors.error,
                 ),
@@ -71,12 +74,16 @@ class FormErrorBox extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(12.0),
-      decoration: BoxDecoration(color: scheme.errorContainer, borderRadius: BorderRadius.circular(12.0)),
+      decoration: BoxDecoration(
+          color: scheme.errorContainer,
+          borderRadius: BorderRadius.circular(12.0)),
       child: Row(
         children: [
           Icon(Icons.error_outline_rounded, color: scheme.onErrorContainer),
           const SizedBox(width: 12),
-          Expanded(child: Text(message, style: TextStyle(color: scheme.onErrorContainer))),
+          Expanded(
+              child: Text(message,
+                  style: TextStyle(color: scheme.onErrorContainer))),
         ],
       ),
     );

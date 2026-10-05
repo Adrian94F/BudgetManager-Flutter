@@ -22,7 +22,10 @@ class RailAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!showLabel) return IconButton(icon: Icon(icon), tooltip: tooltip, onPressed: onPressed);
+    if (!showLabel) {
+      return IconButton(
+          icon: Icon(icon), tooltip: tooltip, onPressed: onPressed);
+    }
     final theme = Theme.of(context);
     final color = theme.colorScheme.onSurfaceVariant;
     return Tooltip(

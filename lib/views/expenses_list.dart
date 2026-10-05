@@ -27,7 +27,11 @@ class ExpensesFilter {
 /// sit in a collapsed "Incoming" section at the top. Search lives in the top
 /// bar (see `ExpenseSearchButton`).
 class ExpensesListView extends StatelessWidget {
-  const ExpensesListView({super.key, required this.data, required this.filter, this.onClearFilter});
+  const ExpensesListView(
+      {super.key,
+      required this.data,
+      required this.filter,
+      this.onClearFilter});
 
   final MonthData data;
   final ExpensesFilter filter;
@@ -37,8 +41,12 @@ class ExpensesListView extends StatelessWidget {
 
   List<Expense> _applyFilter(List<Expense> expenses) {
     return expenses.where((e) {
-      if (filter.date != null && !Dates.isSameDay(e.date, filter.date!)) return false;
-      if (filter.category != null && e.categoryId != filter.category) return false;
+      if (filter.date != null && !Dates.isSameDay(e.date, filter.date!)) {
+        return false;
+      }
+      if (filter.category != null && e.categoryId != filter.category) {
+        return false;
+      }
       return true;
     }).toList();
   }
@@ -62,7 +70,8 @@ class ExpensesListView extends StatelessWidget {
     try {
       await services.months.deleteExpense(expense.id);
     } on ApiException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(describeApiError(e, l10n))));
+      messenger
+          .showSnackBar(SnackBar(content: Text(describeApiError(e, l10n))));
       return false;
     }
     messenger.showSnackBar(SnackBar(
@@ -81,7 +90,8 @@ class ExpensesListView extends StatelessWidget {
             );
             await services.months.refresh();
           } on ApiException catch (e) {
-            messenger.showSnackBar(SnackBar(content: Text(describeApiError(e, l10n))));
+            messenger.showSnackBar(
+                SnackBar(content: Text(describeApiError(e, l10n))));
           }
         },
       ),
@@ -101,8 +111,12 @@ class ExpensesListView extends StatelessWidget {
         return byDate != 0 ? byDate : b.id.compareTo(a.id);
       });
     final separateIncoming = filter.date == null;
-    final incoming = separateIncoming ? sorted.where((e) => e.date.isAfter(today)).toList() : const <Expense>[];
-    final current = separateIncoming ? sorted.where((e) => !e.date.isAfter(today)).toList() : sorted;
+    final incoming = separateIncoming
+        ? sorted.where((e) => e.date.isAfter(today)).toList()
+        : const <Expense>[];
+    final current = separateIncoming
+        ? sorted.where((e) => !e.date.isAfter(today)).toList()
+        : sorted;
 
     return Column(
       children: [
@@ -119,7 +133,8 @@ class ExpensesListView extends StatelessWidget {
               ),
             ),
           ),
-        Expanded(child: _buildList(context, l10n, locale, today, incoming, current)),
+        Expanded(
+            child: _buildList(context, l10n, locale, today, incoming, current)),
       ],
     );
   }
@@ -140,7 +155,8 @@ class ExpensesListView extends StatelessWidget {
             child: Text(
               l10n.noExpenses,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ),
         ],
@@ -153,7 +169,8 @@ class ExpensesListView extends StatelessWidget {
         leading: const Icon(Icons.schedule_rounded),
         title: Text(l10n.incomingExpenses(incoming.length)),
         children: [
-          for (final expense in incoming) _expenseTile(context, expense, showDate: true, locale: locale),
+          for (final expense in incoming)
+            _expenseTile(context, expense, showDate: true, locale: locale),
         ],
       ));
     }
@@ -161,19 +178,26 @@ class ExpensesListView extends StatelessWidget {
     for (final expense in current) {
       if (lastDay == null || !Dates.isSameDay(lastDay, expense.date)) {
         lastDay = expense.date;
-        items.add(DayHeader(label: dayLabel(expense.date, today, l10n, locale)));
+        items
+            .add(DayHeader(label: dayLabel(expense.date, today, l10n, locale)));
       }
-      items.add(_expenseTile(context, expense, showDate: false, locale: locale));
+      items
+          .add(_expenseTile(context, expense, showDate: false, locale: locale));
     }
-    return ListView(padding: EdgeInsets.only(bottom: 88 + MediaQuery.paddingOf(context).bottom), children: items);
+    return ListView(
+        padding:
+            EdgeInsets.only(bottom: 88 + MediaQuery.paddingOf(context).bottom),
+        children: items);
   }
 
-  Widget _expenseTile(BuildContext context, Expense expense, {required bool showDate, required String locale}) {
+  Widget _expenseTile(BuildContext context, Expense expense,
+      {required bool showDate, required String locale}) {
     return _ExpenseTile(
       key: ValueKey(expense.id),
       expense: expense,
       categoryName: data.categoryName(expense.categoryId),
-      dateLabel: showDate ? DateFormat.MMMEd(locale).format(expense.date) : null,
+      dateLabel:
+          showDate ? DateFormat.MMMEd(locale).format(expense.date) : null,
       onEdit: () => ExpenseFormScreen.open(context, expense: expense),
       onCopy: () => ExpenseFormScreen.open(context, template: expense),
       onDelete: () => _delete(context, expense),
@@ -219,7 +243,8 @@ class _ExpenseTile extends StatelessWidget {
         extentRatio: 0.5,
         // A full swipe deletes once the server confirmed; a partial swipe
         // shows Copy and Remove.
-        dismissible: DismissiblePane(confirmDismiss: onDelete, onDismissed: () {}),
+        dismissible:
+            DismissiblePane(confirmDismiss: onDelete, onDismissed: () {}),
         children: [
           SlidableAction(
             onPressed: (_) => onCopy(),
@@ -246,11 +271,14 @@ class _ExpenseTile extends StatelessWidget {
               Icon(Icons.repeat_rounded, size: 18, color: scheme.primary),
               const SizedBox(width: 6),
             ],
-            Expanded(child: Text(categoryName, maxLines: 1, overflow: TextOverflow.ellipsis)),
+            Expanded(
+                child: Text(categoryName,
+                    maxLines: 1, overflow: TextOverflow.ellipsis)),
             const SizedBox(width: 12),
             Text(
               Formatters.moneyOf(context, expense.value),
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -260,7 +288,8 @@ class _ExpenseTile extends StatelessWidget {
                 subtitleParts.join(' · '),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
               ),
       ),
     );

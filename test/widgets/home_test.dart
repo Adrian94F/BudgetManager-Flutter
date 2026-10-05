@@ -15,14 +15,17 @@ void main() {
     final server = FakeServer();
     await pumpApp(tester, server, loggedIn: true);
 
-    final title = DateFormat.MMMM('en').format(Dates.parseApi(server.currentMonth['start_date'] as String));
+    final title = DateFormat.MMMM('en')
+        .format(Dates.parseApi(server.currentMonth['start_date'] as String));
     expect(find.text(title), findsOneWidget);
     expect(find.text('BALANCE'), findsOneWidget);
     // 5000 income - 120 expense
     expect(find.textContaining('4,880.00'), findsOneWidget);
   });
 
-  testWidgets('in landscape the chart fills its column and the sums keep to the right edge', (tester) async {
+  testWidgets(
+      'in landscape the chart fills its column and the sums keep to the right edge',
+      (tester) async {
     final server = FakeServer();
     await pumpApp(tester, server, loggedIn: true);
 
@@ -30,26 +33,37 @@ void main() {
     final chart = find.byType(MonthBurndownChart);
     expect(chart, findsOneWidget);
     expect(tester.getSize(chart).height, greaterThan(350));
-    expect(find.ancestor(of: chart, matching: find.byType(ListView)), findsNothing);
+    expect(find.ancestor(of: chart, matching: find.byType(ListView)),
+        findsNothing);
 
     // The card's amount ends where the card's padding begins (16 inside the
     // Card's own 4 dp margin), however wide the card.
     final expensesCard = find.widgetWithText(InfoCard, 'EXPENSES');
-    final amount = find.descendant(of: expensesCard, matching: find.byType(FittedBox));
-    expect(tester.getTopRight(amount).dx, closeTo(tester.getTopRight(expensesCard).dx - 20, 1));
+    final amount =
+        find.descendant(of: expensesCard, matching: find.byType(FittedBox));
+    expect(tester.getTopRight(amount).dx,
+        closeTo(tester.getTopRight(expensesCard).dx - 20, 1));
   });
 
-  testWidgets('the table collapses the header and the list brings it back', (tester) async {
+  testWidgets('the table collapses the header and the list brings it back',
+      (tester) async {
     final server = FakeServer();
     await pumpApp(tester, server, loggedIn: true);
-    double headerHeight() => (tester.renderObject(find.byType(SliverAppBar)) as RenderSliver).geometry!.paintExtent;
+    double headerHeight() =>
+        (tester.renderObject(find.byType(SliverAppBar)) as RenderSliver)
+            .geometry!
+            .paintExtent;
     final rail = find.byType(NavigationRail);
 
-    await tester.tap(find.descendant(of: rail, matching: find.text('Expenses')));
+    await tester
+        .tap(find.descendant(of: rail, matching: find.text('Expenses')));
     await tester.pumpAndSettle();
     expect(headerHeight(), greaterThan(140));
     // A wide window keeps the List / Table switch in the bar.
-    expect(find.descendant(of: find.byType(SliverAppBar), matching: find.text('Table')), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byType(SliverAppBar), matching: find.text('Table')),
+        findsOneWidget);
 
     await tester.tap(find.text('Table'));
     await tester.pumpAndSettle();
@@ -70,18 +84,27 @@ void main() {
     expect(headerHeight(), lessThan(70));
   });
 
-  testWidgets('on a phone the switch sits below the bar and stays visible when the table collapses it', (tester) async {
+  testWidgets(
+      'on a phone the switch sits below the bar and stays visible when the table collapses it',
+      (tester) async {
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final server = FakeServer();
     await pumpApp(tester, server, loggedIn: true);
-    double headerHeight() => (tester.renderObject(find.byType(SliverAppBar)) as RenderSliver).geometry!.paintExtent;
+    double headerHeight() =>
+        (tester.renderObject(find.byType(SliverAppBar)) as RenderSliver)
+            .geometry!
+            .paintExtent;
 
-    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Expenses')));
+    await tester.tap(find.descendant(
+        of: find.byType(NavigationBar), matching: find.text('Expenses')));
     await tester.pumpAndSettle();
-    expect(find.descendant(of: find.byType(SliverAppBar), matching: find.text('Table')), findsNothing);
+    expect(
+        find.descendant(
+            of: find.byType(SliverAppBar), matching: find.text('Table')),
+        findsNothing);
     expect(find.text('Table'), findsOneWidget);
 
     await tester.tap(find.text('Table'));
@@ -96,15 +119,20 @@ void main() {
     final server = FakeServer();
     await pumpApp(tester, server, loggedIn: true);
     final previous = server.months.firstWhere((m) => m['id'] == 10);
-    final previousTitle = DateFormat.MMMM('en').format(Dates.parseApi(previous['start_date'] as String));
+    final previousTitle = DateFormat.MMMM('en')
+        .format(Dates.parseApi(previous['start_date'] as String));
 
     await tester.tap(find.byTooltip('Select month'));
     await tester.pumpAndSettle();
     expect(find.text('Select month'), findsOneWidget);
     expect(find.byIcon(Icons.check_rounded), findsOneWidget);
-    expect(find.descendant(of: find.byType(MonthPickerSheet), matching: find.byType(ListTile)), findsNWidgets(2));
+    expect(
+        find.descendant(
+            of: find.byType(MonthPickerSheet), matching: find.byType(ListTile)),
+        findsNWidgets(2));
 
-    await tester.tap(find.descendant(of: find.byType(MonthPickerSheet), matching: find.text(previousTitle)));
+    await tester.tap(find.descendant(
+        of: find.byType(MonthPickerSheet), matching: find.text(previousTitle)));
     await tester.pumpAndSettle();
 
     expect(server.requests.last.url.queryParameters['month_id'], '10');
@@ -116,7 +144,8 @@ void main() {
     final server = FakeServer();
     await pumpApp(tester, server, loggedIn: true);
     final previous = server.months.firstWhere((m) => m['id'] == 10);
-    final previousTitle = DateFormat.MMMM('en').format(Dates.parseApi(previous['start_date'] as String));
+    final previousTitle = DateFormat.MMMM('en')
+        .format(Dates.parseApi(previous['start_date'] as String));
 
     await tester.fling(find.text('BALANCE'), const Offset(400, 0), 1200);
     await tester.pumpAndSettle();
@@ -143,13 +172,15 @@ void main() {
     expect(server.monthLoads, loadsBefore + 1);
   });
 
-  testWidgets('tapping the selected destination again reloads the month', (tester) async {
+  testWidgets('tapping the selected destination again reloads the month',
+      (tester) async {
     final server = FakeServer();
     await pumpApp(tester, server, loggedIn: true);
     final loadsBefore = server.monthLoads;
 
     // The test surface is 800 px wide, so navigation is the rail.
-    final incomesDestination = find.descendant(of: find.byType(NavigationRail), matching: find.text('Incomes'));
+    final incomesDestination = find.descendant(
+        of: find.byType(NavigationRail), matching: find.text('Incomes'));
 
     // Another destination: no reload, just the tab.
     await tester.tap(incomesDestination);
@@ -163,7 +194,9 @@ void main() {
     expect(server.monthLoads, loadsBefore + 1);
   });
 
-  testWidgets('a phone in landscape gets a compact bar, rail actions and a menu that fits', (tester) async {
+  testWidgets(
+      'a phone in landscape gets a compact bar, rail actions and a menu that fits',
+      (tester) async {
     tester.view.physicalSize = const Size(800, 360);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -172,19 +205,30 @@ void main() {
     await pumpApp(tester, server, loggedIn: true);
 
     // One-line bar with the date range beside the name, no large title.
-    expect(tester.widget<SliverAppBar>(find.byType(SliverAppBar)).expandedHeight, isNull);
+    expect(
+        tester.widget<SliverAppBar>(find.byType(SliverAppBar)).expandedHeight,
+        isNull);
     final range = server.currentMonth['start_date'] as String;
-    expect(find.textContaining(Dates.parseApi(range).day.toString()), findsWidgets);
+    expect(find.textContaining(Dates.parseApi(range).day.toString()),
+        findsWidgets);
 
     // Month picker and Settings live in the rail, not in the bar.
     final rail = find.byType(NavigationRail);
-    expect(find.descendant(of: rail, matching: find.byTooltip('Select month')), findsOneWidget);
-    expect(find.descendant(of: rail, matching: find.byTooltip('Settings')), findsOneWidget);
-    expect(find.descendant(of: find.byType(SliverAppBar), matching: find.byTooltip('Settings')), findsNothing);
+    expect(find.descendant(of: rail, matching: find.byTooltip('Select month')),
+        findsOneWidget);
+    expect(find.descendant(of: rail, matching: find.byTooltip('Settings')),
+        findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byType(SliverAppBar),
+            matching: find.byTooltip('Settings')),
+        findsNothing);
     // 360 dp leaves room for the selected destination's label only, and none
     // under the two actions.
-    expect(tester.widget<NavigationRail>(rail).labelType, NavigationRailLabelType.selected);
-    expect(find.descendant(of: rail, matching: find.text('Settings')), findsNothing);
+    expect(tester.widget<NavigationRail>(rail).labelType,
+        NavigationRailLabelType.selected);
+    expect(find.descendant(of: rail, matching: find.text('Settings')),
+        findsNothing);
 
     // The summary's action sheet shows every action without overflowing.
     await tester.tap(find.byIcon(Icons.menu_rounded));
@@ -194,14 +238,18 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a tall window labels every rail item, the actions included', (tester) async {
+  testWidgets('a tall window labels every rail item, the actions included',
+      (tester) async {
     final server = FakeServer();
     await pumpApp(tester, server, loggedIn: true);
 
     final rail = find.byType(NavigationRail);
-    expect(tester.widget<NavigationRail>(rail).labelType, NavigationRailLabelType.all);
-    expect(find.descendant(of: rail, matching: find.text('Month')), findsOneWidget);
-    expect(find.descendant(of: rail, matching: find.text('Settings')), findsOneWidget);
+    expect(tester.widget<NavigationRail>(rail).labelType,
+        NavigationRailLabelType.all);
+    expect(find.descendant(of: rail, matching: find.text('Month')),
+        findsOneWidget);
+    expect(find.descendant(of: rail, matching: find.text('Settings')),
+        findsOneWidget);
 
     await tester.tap(find.descendant(of: rail, matching: find.text('Month')));
     await tester.pumpAndSettle();
@@ -247,7 +295,8 @@ void main() {
     expect(find.text('App settings'), findsOneWidget);
   });
 
-  testWidgets('Budget settings counts the categories and opens their list', (tester) async {
+  testWidgets('Budget settings counts the categories and opens their list',
+      (tester) async {
     final server = FakeServer();
     await pumpApp(tester, server, loggedIn: true);
 
@@ -257,7 +306,8 @@ void main() {
     await tester.pumpAndSettle();
 
     final categoriesTile = find.widgetWithText(ListTile, 'Categories');
-    expect(find.descendant(of: categoriesTile, matching: find.text('2')), findsOneWidget);
+    expect(find.descendant(of: categoriesTile, matching: find.text('2')),
+        findsOneWidget);
 
     await tester.tap(categoriesTile);
     await tester.pumpAndSettle();
@@ -295,11 +345,13 @@ void main() {
     expect(find.textContaining('zł'), findsNothing);
   });
 
-  testWidgets('keeps the data and shows a banner when a refresh fails', (tester) async {
+  testWidgets('keeps the data and shows a banner when a refresh fails',
+      (tester) async {
     final server = FakeServer();
     final services = await pumpApp(tester, server, loggedIn: true);
 
-    server.defaultMonthId = 99; // the server now answers 500 for the default month
+    server.defaultMonthId =
+        99; // the server now answers 500 for the default month
     services.months.data; // data stays
     await services.months.load();
     await tester.pumpAndSettle();

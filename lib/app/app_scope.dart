@@ -41,7 +41,12 @@ class AppServices {
     auth.addListener(() {
       if (!auth.isLoggedIn) months.clear();
     });
-    return AppServices(session: session, api: api, auth: auth, settings: settings, months: months);
+    return AppServices(
+        session: session,
+        api: api,
+        auth: auth,
+        settings: settings,
+        months: months);
   }
 }
 

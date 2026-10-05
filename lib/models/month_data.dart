@@ -53,7 +53,8 @@ class MonthData {
     final incomes = month == null
         ? <Income>[]
         : (json['incomes'] as List<dynamic>? ?? const [])
-            .map((i) => Income.fromJson(i as Map<String, dynamic>, fallbackDate: month.startDate))
+            .map((i) => Income.fromJson(i as Map<String, dynamic>,
+                fallbackDate: month.startDate))
             .toList();
     final expenses = (json['expenses'] as List<dynamic>? ?? const [])
         .map((e) => Expense.fromJson(e as Map<String, dynamic>))
@@ -86,7 +87,8 @@ class MonthData {
     return null;
   }
 
-  String categoryName(int id, {String fallback = '–'}) => categoryById(id)?.name ?? fallback;
+  String categoryName(int id, {String fallback = '–'}) =>
+      categoryById(id)?.name ?? fallback;
 
   /// The month whose dates contain [today], if any.
   Month? currentMonth([DateTime? today]) {

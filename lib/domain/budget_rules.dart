@@ -43,5 +43,6 @@ class BudgetRules {
 
   /// The default date for a new entry: today, moved inside [month] when
   /// today falls outside it.
-  static DateTime defaultEntryDate(Month month, {DateTime? today}) => month.clamp(today ?? DateTime.now());
+  static DateTime defaultEntryDate(Month month, {DateTime? today}) =>
+      month.clamp(today ?? DateTime.now());
 }

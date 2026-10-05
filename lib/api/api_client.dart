@@ -40,7 +40,8 @@ class ApiClient {
 
   /// Logs in and stores the tokens. Throws an [ApiException] of kind auth
   /// for wrong credentials and of kind network when the server is unreachable.
-  Future<void> login({required String username, required String password}) async {
+  Future<void> login(
+      {required String username, required String password}) async {
     final response = await _send(
       'POST',
       'token/',
@@ -48,7 +49,8 @@ class ApiClient {
       authenticated: false,
     );
     final json = _decode(response) as Map<String, dynamic>;
-    await session.saveTokens(access: json['access'] as String, refresh: json['refresh'] as String?);
+    await session.saveTokens(
+        access: json['access'] as String, refresh: json['refresh'] as String?);
   }
 
   /// Refreshes the session at launch or on resume. Returns whether the app
@@ -83,7 +85,8 @@ class ApiClient {
         'end_date': Dates.formatApi(end),
       });
 
-  Future<void> updateMonth({required int id, required DateTime start, required DateTime end}) =>
+  Future<void> updateMonth(
+          {required int id, required DateTime start, required DateTime end}) =>
       _send('POST', 'month/', body: {
         'id': id,
         'start_date': Dates.formatApi(start),
@@ -91,7 +94,8 @@ class ApiClient {
       });
 
   /// Deletes a month; the server refuses (400) when it still has expenses.
-  Future<void> deleteMonth(int id) => _send('DELETE', 'month/', body: {'id': id});
+  Future<void> deleteMonth(int id) =>
+      _send('DELETE', 'month/', body: {'id': id});
 
   Future<void> savePlannedSavings(double value) =>
       _send('POST', 'planned-savings/', body: {'planned_savings': value});
@@ -105,7 +109,8 @@ class ApiClient {
     String comment = '',
     required bool isSalary,
   }) =>
-      _send('POST', 'income/', body: _incomeBody(null, monthId, value, date, comment, isSalary));
+      _send('POST', 'income/',
+          body: _incomeBody(null, monthId, value, date, comment, isSalary));
 
   Future<void> updateIncome({
     required int id,
@@ -115,11 +120,15 @@ class ApiClient {
     String comment = '',
     required bool isSalary,
   }) =>
-      _send('POST', 'income/', body: _incomeBody(id, monthId, value, date, comment, isSalary));
+      _send('POST', 'income/',
+          body: _incomeBody(id, monthId, value, date, comment, isSalary));
 
-  Future<void> deleteIncome(int id) => _send('DELETE', 'income/', body: {'id': id});
+  Future<void> deleteIncome(int id) =>
+      _send('DELETE', 'income/', body: {'id': id});
 
-  Map<String, dynamic> _incomeBody(int? id, int monthId, double value, DateTime date, String comment, bool isSalary) => {
+  Map<String, dynamic> _incomeBody(int? id, int monthId, double value,
+          DateTime date, String comment, bool isSalary) =>
+      {
         if (id != null) 'id': id,
         'month': monthId,
         'value': value,
@@ -138,7 +147,9 @@ class ApiClient {
     String comment = '',
     required bool isMonthly,
   }) =>
-      _send('POST', 'expense/', body: _expenseBody(null, monthId, value, date, categoryId, comment, isMonthly));
+      _send('POST', 'expense/',
+          body: _expenseBody(
+              null, monthId, value, date, categoryId, comment, isMonthly));
 
   Future<void> updateExpense({
     required int id,
@@ -149,12 +160,15 @@ class ApiClient {
     String comment = '',
     required bool isMonthly,
   }) =>
-      _send('POST', 'expense/', body: _expenseBody(id, monthId, value, date, categoryId, comment, isMonthly));
+      _send('POST', 'expense/',
+          body: _expenseBody(
+              id, monthId, value, date, categoryId, comment, isMonthly));
 
-  Future<void> deleteExpense(int id) => _send('DELETE', 'expense/', body: {'id': id});
+  Future<void> deleteExpense(int id) =>
+      _send('DELETE', 'expense/', body: {'id': id});
 
-  Map<String, dynamic> _expenseBody(
-          int? id, int monthId, double value, DateTime date, int categoryId, String comment, bool isMonthly) =>
+  Map<String, dynamic> _expenseBody(int? id, int monthId, double value,
+          DateTime date, int categoryId, String comment, bool isMonthly) =>
       {
         if (id != null) 'id': id,
         'month': monthId,
@@ -170,23 +184,28 @@ class ApiClient {
   Future<List<Category>> fetchCategories() async {
     final response = await _send('GET', 'category/');
     final list = _decode(response) as List<dynamic>;
-    return list.map((c) => Category.fromJson(c as Map<String, dynamic>)).toList()
+    return list
+        .map((c) => Category.fromJson(c as Map<String, dynamic>))
+        .toList()
       ..sort((a, b) => a.position.compareTo(b.position));
   }
 
-  Future<void> createCategory(String name) => _send('POST', 'category/', body: {'name': name});
+  Future<void> createCategory(String name) =>
+      _send('POST', 'category/', body: {'name': name});
 
   Future<void> updateCategory({required int id, required String name}) =>
       _send('POST', 'category/', body: {'id': id, 'name': name});
 
   /// Deletes a category together with every expense in it, in all months.
-  Future<void> deleteCategory(int id) => _send('DELETE', 'category/', body: {'id': id});
+  Future<void> deleteCategory(int id) =>
+      _send('DELETE', 'category/', body: {'id': id});
 
   Future<void> reorderCategories(List<Category> ordered) => _send(
         'POST',
         'categories/order/',
         body: [
-          for (var i = 0; i < ordered.length; i++) {'id': ordered[i].id, 'position': i + 1},
+          for (var i = 0; i < ordered.length; i++)
+            {'id': ordered[i].id, 'position': i + 1},
         ],
       );
 
@@ -198,7 +217,8 @@ class ApiClient {
     return CurrencySettings.fromJson(_decode(response) as Map<String, dynamic>);
   }
 
-  Future<void> setCurrency(String code) => _send('POST', 'currency/', body: {'currency': code});
+  Future<void> setCurrency(String code) =>
+      _send('POST', 'currency/', body: {'currency': code});
 
   Future<void> changePassword({
     required String oldPassword,
@@ -248,12 +268,14 @@ class ApiClient {
     } on http.ClientException catch (e) {
       throw ApiException.network(e.message);
     } on TimeoutException {
-      throw ApiException.network('Timed out after ${requestTimeout.inSeconds}s');
+      throw ApiException.network(
+          'Timed out after ${requestTimeout.inSeconds}s');
     }
 
     if (response.statusCode == 401 && authenticated && allowRetry) {
       if (await _reauthenticate()) {
-        return _send(method, path, body: body, query: query, authenticated: true, allowRetry: false);
+        return _send(method, path,
+            body: body, query: query, authenticated: true, allowRetry: false);
       }
       throw ApiException.fromResponse(response);
     }
@@ -268,7 +290,10 @@ class ApiClient {
     try {
       return jsonDecode(utf8.decode(response.bodyBytes));
     } on FormatException catch (e) {
-      throw ApiException(kind: ApiErrorKind.server, statusCode: response.statusCode, message: 'Unreadable response: ${e.message}');
+      throw ApiException(
+          kind: ApiErrorKind.server,
+          statusCode: response.statusCode,
+          message: 'Unreadable response: ${e.message}');
     }
   }
 
@@ -299,9 +324,12 @@ class ApiClient {
     final refresh = await session.refreshToken();
     if (refresh == null) return false;
     try {
-      final response = await _send('POST', 'token/refresh/', body: {'refresh': refresh}, authenticated: false);
+      final response = await _send('POST', 'token/refresh/',
+          body: {'refresh': refresh}, authenticated: false);
       final json = _decode(response) as Map<String, dynamic>;
-      await session.saveTokens(access: json['access'] as String, refresh: json['refresh'] as String?);
+      await session.saveTokens(
+          access: json['access'] as String,
+          refresh: json['refresh'] as String?);
       return true;
     } on ApiException catch (e) {
       if (e.isNetwork) rethrow;
@@ -313,7 +341,8 @@ class ApiClient {
     final credentials = await session.savedCredentials();
     if (credentials == null) return false;
     try {
-      await login(username: credentials.username, password: credentials.password);
+      await login(
+          username: credentials.username, password: credentials.password);
       return true;
     } on ApiException catch (e) {
       if (e.isNetwork) rethrow;

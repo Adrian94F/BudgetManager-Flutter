@@ -52,7 +52,10 @@ class AuthController extends ChangeNotifier {
   /// Logs in and, when [rememberMe] is set, keeps the credentials for the
   /// silent re-login that runs after a rejected refresh. Returns success;
   /// the failure reason is in [failure].
-  Future<bool> login({required String username, required String password, required bool rememberMe}) async {
+  Future<bool> login(
+      {required String username,
+      required String password,
+      required bool rememberMe}) async {
     _isBusy = true;
     _failure = null;
     _failureDetail = null;

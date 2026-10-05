@@ -14,11 +14,13 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    void push(Widget screen) => Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+    void push(Widget screen) =>
+        Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
     return Scaffold(
       appBar: AppBar(title: Text(l10n.settings)),
       body: ListView(
-        padding: EdgeInsets.only(top: 8, bottom: 8 + MediaQuery.paddingOf(context).bottom),
+        padding: EdgeInsets.only(
+            top: 8, bottom: 8 + MediaQuery.paddingOf(context).bottom),
         children: [
           ListTile(
             leading: const Icon(Icons.palette_outlined),

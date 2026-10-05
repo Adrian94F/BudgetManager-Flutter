@@ -43,7 +43,9 @@ class MonthSliverAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progress = showProgress
-        ? const PreferredSize(preferredSize: Size.fromHeight(2), child: LinearProgressIndicator(minHeight: 2))
+        ? const PreferredSize(
+            preferredSize: Size.fromHeight(2),
+            child: LinearProgressIndicator(minHeight: 2))
         : null;
     if (compact) {
       return SliverAppBar(
@@ -51,7 +53,8 @@ class MonthSliverAppBar extends StatelessWidget {
         automaticallyImplyLeading: false,
         leading: leading,
         titleSpacing: leading == null ? 12 : 0,
-        title: _InlineTitle(title: title, subtitle: subtitle, onTap: onTitleTap),
+        title:
+            _InlineTitle(title: title, subtitle: subtitle, onTap: onTitleTap),
         actions: actions,
         bottom: progress,
       );
@@ -76,7 +79,8 @@ class MonthSliverAppBar extends StatelessWidget {
 
 /// The compact bar's title: the month name with the date range beside it.
 class _InlineTitle extends StatelessWidget {
-  const _InlineTitle({required this.title, required this.subtitle, required this.onTap});
+  const _InlineTitle(
+      {required this.title, required this.subtitle, required this.onTap});
 
   final String title;
   final String? subtitle;
@@ -97,13 +101,18 @@ class _InlineTitle extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Flexible(child: Text(title, style: theme.textTheme.titleLarge, maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Flexible(
+                  child: Text(title,
+                      style: theme.textTheme.titleLarge,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis)),
               if (subtitle != null) ...[
                 const SizedBox(width: 10),
                 Flexible(
                   child: Text(
                     subtitle!,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -134,10 +143,14 @@ class _CollapsingTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.dependOnInheritedWidgetOfExactType<FlexibleSpaceBarSettings>()!;
+    final settings =
+        context.dependOnInheritedWidgetOfExactType<FlexibleSpaceBarSettings>()!;
     // 1 = fully expanded, 0 = collapsed to the toolbar.
     final range = settings.maxExtent - settings.minExtent;
-    final t = range <= 0 ? 0.0 : ((settings.currentExtent - settings.minExtent) / range).clamp(0.0, 1.0);
+    final t = range <= 0
+        ? 0.0
+        : ((settings.currentExtent - settings.minExtent) / range)
+            .clamp(0.0, 1.0);
     final theme = Theme.of(context);
     final nameStyle = TextStyle.lerp(
       theme.textTheme.titleLarge,
@@ -165,7 +178,10 @@ class _CollapsingTitle extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: nameStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(title,
+                        style: nameStyle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
                     if (subtitle != null)
                       ClipRect(
                         child: Align(
@@ -175,7 +191,8 @@ class _CollapsingTitle extends StatelessWidget {
                             opacity: t,
                             child: Text(
                               subtitle!,
-                              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),

@@ -24,7 +24,8 @@ class Income {
 
   /// [fallbackDate] replaces a missing date, as the iOS app does with the
   /// month's start date.
-  factory Income.fromJson(Map<String, dynamic> json, {required DateTime fallbackDate}) {
+  factory Income.fromJson(Map<String, dynamic> json,
+      {required DateTime fallbackDate}) {
     final parsed = Dates.tryParseApi(json['date'] as String?);
     return Income(
       id: json['id'] as int,
@@ -36,7 +37,9 @@ class Income {
     );
   }
 
-  Income copyWith({double? value, DateTime? date, String? comment, bool? isSalary}) => Income(
+  Income copyWith(
+          {double? value, DateTime? date, String? comment, bool? isSalary}) =>
+      Income(
         id: id,
         value: value ?? this.value,
         date: date ?? this.date,
@@ -46,5 +49,6 @@ class Income {
       );
 
   @override
-  String toString() => 'Income($id, $value, ${Dates.formatApi(date)}, salary: $isSalary)';
+  String toString() =>
+      'Income($id, $value, ${Dates.formatApi(date)}, salary: $isSalary)';
 }

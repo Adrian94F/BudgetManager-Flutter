@@ -3,7 +3,8 @@ class Category {
   final String name;
   final int position;
 
-  const Category({required this.id, required this.name, required this.position});
+  const Category(
+      {required this.id, required this.name, required this.position});
 
   factory Category.fromJson(Map<String, dynamic> json) => Category(
         id: json['id'] as int,
@@ -19,7 +20,10 @@ class Category {
 
   @override
   bool operator ==(Object other) =>
-      other is Category && other.id == id && other.name == name && other.position == position;
+      other is Category &&
+      other.id == id &&
+      other.name == name &&
+      other.position == position;
 
   @override
   int get hashCode => Object.hash(id, name, position);

@@ -51,7 +51,8 @@ class SummaryScreen extends StatelessWidget {
               Expanded(
                 child: ListView(
                   primary: false,
-                  padding: EdgeInsets.only(right: 32, top: 8.0, bottom: 8.0 + bottomInset),
+                  padding: EdgeInsets.only(
+                      right: 32, top: 8.0, bottom: 8.0 + bottomInset),
                   children: [...cards, const SizedBox(height: 16)],
                 ),
               ),
@@ -59,7 +60,8 @@ class SummaryScreen extends StatelessWidget {
           );
         }
         return ListView(
-          padding: EdgeInsets.fromLTRB(16, 8, 16, 78 + MediaQuery.paddingOf(context).bottom),
+          padding: EdgeInsets.fromLTRB(
+              16, 8, 16, 78 + MediaQuery.paddingOf(context).bottom),
           children: [chart, const SizedBox(height: 16), ...cards],
         );
       },
@@ -68,7 +70,8 @@ class SummaryScreen extends StatelessWidget {
 
   /// Portrait: a strip of fixed height above the cards. Landscape: the card
   /// fills whatever height the column gives it (the chart paints to any size).
-  Widget _buildChartCard(BuildContext context, BurndownSeries series, Orientation orientation) {
+  Widget _buildChartCard(
+      BuildContext context, BurndownSeries series, Orientation orientation) {
     final card = InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () => Navigator.push(
@@ -82,7 +85,9 @@ class SummaryScreen extends StatelessWidget {
         ),
       ),
     );
-    return orientation == Orientation.portrait ? SizedBox(height: 200, child: card) : card;
+    return orientation == Orientation.portrait
+        ? SizedBox(height: 200, child: card)
+        : card;
   }
 
   Widget _buildExpensesCard(BuildContext context, MonthSummary summary) {
@@ -96,8 +101,10 @@ class SummaryScreen extends StatelessWidget {
       children: summary.allExpenses == 0
           ? const []
           : [
-              detailRow(l10n.dailyExpenses, Formatters.moneyOf(context, summary.dailyExpenses)),
-              detailRow(l10n.recurrentExpenses, Formatters.moneyOf(context, summary.monthlyExpenses)),
+              detailRow(l10n.dailyExpenses,
+                  Formatters.moneyOf(context, summary.dailyExpenses)),
+              detailRow(l10n.recurrentExpenses,
+                  Formatters.moneyOf(context, summary.monthlyExpenses)),
             ],
     );
   }
@@ -113,9 +120,12 @@ class SummaryScreen extends StatelessWidget {
       children: summary.allIncomes == 0
           ? const []
           : [
-              detailRow(l10n.forDailyExpenses, Formatters.moneyOf(context, summary.incomesForDailyExpenses)),
-              detailRow(l10n.salary, Formatters.moneyOf(context, summary.salaries)),
-              detailRow(l10n.otherIncome, Formatters.moneyOf(context, summary.otherIncomes)),
+              detailRow(l10n.forDailyExpenses,
+                  Formatters.moneyOf(context, summary.incomesForDailyExpenses)),
+              detailRow(
+                  l10n.salary, Formatters.moneyOf(context, summary.salaries)),
+              detailRow(l10n.otherIncome,
+                  Formatters.moneyOf(context, summary.otherIncomes)),
             ],
     );
   }
@@ -127,7 +137,8 @@ class SummaryScreen extends StatelessWidget {
       title: Text(name),
       trailing: Text(
         value,
-        style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14, color: valueColor),
+        style: TextStyle(
+            fontWeight: FontWeight.w500, fontSize: 14, color: valueColor),
       ),
     );
   }
@@ -150,19 +161,39 @@ class _HeroBalance extends StatelessWidget {
     final budgetColors = BudgetColors.of(context);
     String money(double amount) => Formatters.moneyOf(context, amount);
 
-    final (background, foreground, statusIcon, statusText) = switch ((summary.balance < 0, summary.isActual)) {
-      (true, _) => (scheme.errorContainer, scheme.onErrorContainer, Icons.trending_down_rounded, l10n.statusOverBudget),
-      (false, true) => (scheme.primaryContainer, scheme.onPrimaryContainer, Icons.check_circle_outline_rounded, l10n.statusOnTrack),
-      (false, false) => (budgetColors.successContainer, budgetColors.onSuccessContainer, Icons.savings_outlined, l10n.statusSaved),
+    final (background, foreground, statusIcon, statusText) =
+        switch ((summary.balance < 0, summary.isActual)) {
+      (true, _) => (
+          scheme.errorContainer,
+          scheme.onErrorContainer,
+          Icons.trending_down_rounded,
+          l10n.statusOverBudget
+        ),
+      (false, true) => (
+          scheme.primaryContainer,
+          scheme.onPrimaryContainer,
+          Icons.check_circle_outline_rounded,
+          l10n.statusOnTrack
+        ),
+      (false, false) => (
+          budgetColors.successContainer,
+          budgetColors.onSuccessContainer,
+          Icons.savings_outlined,
+          l10n.statusSaved
+        ),
     };
     final secondary = foreground.withValues(alpha: 0.8);
 
     final maxDaily = summary.maxDaily;
     final hasAllowance = summary.isActual && maxDaily != null && maxDaily > 0;
     final overDaily = hasAllowance && summary.todaySpendings > maxDaily;
-    final progress = hasAllowance ? (summary.todaySpendings / maxDaily).clamp(0.0, 1.0) : 0.0;
+    final progress = hasAllowance
+        ? (summary.todaySpendings / maxDaily).clamp(0.0, 1.0)
+        : 0.0;
     var spentToday = money(summary.todaySpendings);
-    if (summary.todayPercent != null) spentToday += ' (${summary.todayPercent!.round()}%)';
+    if (summary.todayPercent != null) {
+      spentToday += ' (${summary.todayPercent!.round()}%)';
+    }
 
     return Card.filled(
       color: background,
@@ -176,10 +207,12 @@ class _HeroBalance extends StatelessWidget {
                 Expanded(
                   child: Text(
                     l10n.balance.toUpperCase(),
-                    style: theme.textTheme.labelLarge?.copyWith(color: foreground, letterSpacing: 0.8),
+                    style: theme.textTheme.labelLarge
+                        ?.copyWith(color: foreground, letterSpacing: 0.8),
                   ),
                 ),
-                _StatusPill(icon: statusIcon, text: statusText, color: foreground),
+                _StatusPill(
+                    icon: statusIcon, text: statusText, color: foreground),
               ],
             ),
             const SizedBox(height: 6),
@@ -195,14 +228,18 @@ class _HeroBalance extends StatelessWidget {
               transitionBuilder: (child, animation) => FadeTransition(
                 opacity: animation,
                 child: SlideTransition(
-                  position: Tween(begin: const Offset(0, 0.2), end: Offset.zero).animate(animation),
+                  position: Tween(begin: const Offset(0, 0.2), end: Offset.zero)
+                      .animate(animation),
                   child: child,
                 ),
               ),
               child: Text(
                 money(summary.balance),
                 key: ValueKey(summary.balance),
-                style: theme.textTheme.displaySmall?.copyWith(color: foreground, fontWeight: FontWeight.w700, letterSpacing: -0.5),
+                style: theme.textTheme.displaySmall?.copyWith(
+                    color: foreground,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5),
               ),
             ),
             if (summary.plannedSavings > 0) ...[
@@ -216,8 +253,13 @@ class _HeroBalance extends StatelessWidget {
               const SizedBox(height: 18),
               Row(
                 children: [
-                  Expanded(child: Text(l10n.spentToday, style: theme.textTheme.labelLarge?.copyWith(color: foreground))),
-                  Text(spentToday, style: theme.textTheme.labelLarge?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                  Expanded(
+                      child: Text(l10n.spentToday,
+                          style: theme.textTheme.labelLarge
+                              ?.copyWith(color: foreground))),
+                  Text(spentToday,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                          color: foreground, fontWeight: FontWeight.w600)),
                 ],
               ),
               if (hasAllowance) ...[
@@ -246,7 +288,8 @@ class _HeroBalance extends StatelessWidget {
 }
 
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.icon, required this.text, required this.color});
+  const _StatusPill(
+      {required this.icon, required this.text, required this.color});
 
   final IconData icon;
   final String text;
@@ -266,7 +309,9 @@ class _StatusPill extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: color),
           const SizedBox(width: 6),
-          Text(text, style: theme.textTheme.labelMedium?.copyWith(color: color, fontWeight: FontWeight.w600)),
+          Text(text,
+              style: theme.textTheme.labelMedium
+                  ?.copyWith(color: color, fontWeight: FontWeight.w600)),
         ],
       ),
     );

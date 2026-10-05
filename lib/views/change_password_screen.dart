@@ -31,7 +31,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   }
 
   bool get _isValid =>
-      _oldController.text.isNotEmpty && _newController.text.isNotEmpty && _confirmController.text.isNotEmpty;
+      _oldController.text.isNotEmpty &&
+      _newController.text.isNotEmpty &&
+      _confirmController.text.isNotEmpty;
 
   Future<void> _submit() async {
     final l10n = AppLocalizations.of(context)!;
@@ -63,7 +65,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       setState(() {
         _busy = false;
         _fieldErrors = e.fieldErrors;
-        _error = e.fieldErrors.isEmpty ? (e.isNetwork ? l10n.errorServerUnavailable : e.message) : null;
+        _error = e.fieldErrors.isEmpty
+            ? (e.isNetwork ? l10n.errorServerUnavailable : e.message)
+            : null;
       });
     }
   }
@@ -72,18 +76,22 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
-    final border = OutlineInputBorder(borderRadius: BorderRadius.circular(12.0));
+    final border =
+        OutlineInputBorder(borderRadius: BorderRadius.circular(12.0));
 
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.changePassword),
         bottom: _busy
-            ? const PreferredSize(preferredSize: Size.fromHeight(2), child: LinearProgressIndicator(minHeight: 2))
+            ? const PreferredSize(
+                preferredSize: Size.fromHeight(2),
+                child: LinearProgressIndicator(minHeight: 2))
             : null,
       ),
       body: AutofillGroup(
         child: ListView(
-          padding: EdgeInsets.fromLTRB(24, 16, 24, 16 + MediaQuery.paddingOf(context).bottom),
+          padding: EdgeInsets.fromLTRB(
+              24, 16, 24, 16 + MediaQuery.paddingOf(context).bottom),
           children: [
             if (_error != null) ...[
               FormErrorBox(message: _error!),
@@ -137,7 +145,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             const SizedBox(height: 8),
             Text(
               l10n.passwordRules,
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 24),
             FilledButton.icon(

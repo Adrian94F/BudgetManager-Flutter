@@ -29,7 +29,8 @@ class _FadingTextState extends State<FadingText> {
   }
 
   void _checkOverflow() {
-    final RenderBox? textRenderBox = _textKey.currentContext?.findRenderObject() as RenderBox?;
+    final RenderBox? textRenderBox =
+        _textKey.currentContext?.findRenderObject() as RenderBox?;
     final RenderBox? parentRenderBox = context.findRenderObject() as RenderBox?;
 
     if (textRenderBox != null && parentRenderBox != null) {
@@ -59,7 +60,9 @@ class _FadingTextState extends State<FadingText> {
     if (isOverflowing) {
       return ShaderMask(
         shaderCallback: (Rect bounds) {
-          final textColor = widget.style?.color ?? Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black;
+          final textColor = widget.style?.color ??
+              Theme.of(context).textTheme.bodyLarge?.color ??
+              Colors.black;
           return LinearGradient(
             colors: [textColor, Colors.transparent],
             stops: const [0.8, 1.0],

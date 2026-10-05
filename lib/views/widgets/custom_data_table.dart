@@ -39,92 +39,89 @@ class CustomDataTableState<T> extends State<CustomDataTable<T>> {
   bool _showSums = true;
 
   Widget _buildChild(double width, T? data) => SizedBox(
-      width: width,
-      height: _cellHeight,
-      child: widget.cellBuilder.call(data)
-  );
+      width: width, height: _cellHeight, child: widget.cellBuilder.call(data));
 
   Widget _buildFixedCol() => Material(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: widget.fixedColCells.map((cell) {
-        return Container(
-          width: _fixedColWidth + (_cellMargin * 2),
-          height: _cellHeight,
-          padding: const EdgeInsets.symmetric(horizontal: _cellMargin),
-          child: _buildChild(_fixedColWidth, cell),
-        );
-      }).toList(),
-    ),
-  );
-
-  Widget _buildFixedRightCol() => Material(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: widget.fixedRightColCells.map((cell) {
-        final cellWidth = _showSums ? _cellWidth : _hiddenCellWidth;
-        return Container(
-          width: cellWidth + (_cellMargin * 2),
-          height: _cellHeight,
-          padding: const EdgeInsets.symmetric(horizontal: _cellMargin),
-          child: _buildChild(cellWidth, cell),
-        );
-      }).toList(),
-    ),
-  );
-
-  Widget _buildFixedRow() => Material(
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: widget.fixedRowCells.map((cell) {
-        return Container(
-          width: _cellWidth + (_cellMargin * 2),
-          height: _fixedRowHeight,
-          padding: const EdgeInsets.symmetric(horizontal: _cellMargin),
-          child: _buildChild(_cellWidth, cell),
-        );
-      }).toList(),
-    ),
-  );
-
-  Widget _buildFixedBottomRow() => Material(
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: widget.fixedBottomRowCells.map((cell) {
-        return Container(
-          width: _cellWidth + (_cellMargin * 2),
-          height: _showSums ? _cellHeight : 0.0,
-          padding: const EdgeInsets.symmetric(horizontal: _cellMargin),
-          child: _buildChild(_cellWidth, cell),
-        );
-      }).toList(),
-    ),
-  );
-
-  Widget _buildSubTable() => Material(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: widget.rowsCells.map((row) {
-        return Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
-          children: row.map((cell) {
+          children: widget.fixedColCells.map((cell) {
+            return Container(
+              width: _fixedColWidth + (_cellMargin * 2),
+              height: _cellHeight,
+              padding: const EdgeInsets.symmetric(horizontal: _cellMargin),
+              child: _buildChild(_fixedColWidth, cell),
+            );
+          }).toList(),
+        ),
+      );
+
+  Widget _buildFixedRightCol() => Material(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: widget.fixedRightColCells.map((cell) {
+            final cellWidth = _showSums ? _cellWidth : _hiddenCellWidth;
+            return Container(
+              width: cellWidth + (_cellMargin * 2),
+              height: _cellHeight,
+              padding: const EdgeInsets.symmetric(horizontal: _cellMargin),
+              child: _buildChild(cellWidth, cell),
+            );
+          }).toList(),
+        ),
+      );
+
+  Widget _buildFixedRow() => Material(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: widget.fixedRowCells.map((cell) {
             return Container(
               width: _cellWidth + (_cellMargin * 2),
-              height: _cellHeight,
+              height: _fixedRowHeight,
               padding: const EdgeInsets.symmetric(horizontal: _cellMargin),
               child: _buildChild(_cellWidth, cell),
             );
           }).toList(),
-        );
-      }).toList(),
-    ),
-  );
+        ),
+      );
+
+  Widget _buildFixedBottomRow() => Material(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: widget.fixedBottomRowCells.map((cell) {
+            return Container(
+              width: _cellWidth + (_cellMargin * 2),
+              height: _showSums ? _cellHeight : 0.0,
+              padding: const EdgeInsets.symmetric(horizontal: _cellMargin),
+              child: _buildChild(_cellWidth, cell),
+            );
+          }).toList(),
+        ),
+      );
+
+  Widget _buildSubTable() => Material(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: widget.rowsCells.map((row) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: row.map((cell) {
+                return Container(
+                  width: _cellWidth + (_cellMargin * 2),
+                  height: _cellHeight,
+                  padding: const EdgeInsets.symmetric(horizontal: _cellMargin),
+                  child: _buildChild(_cellWidth, cell),
+                );
+              }).toList(),
+            );
+          }).toList(),
+        ),
+      );
 
   Widget _buildCornerSumCell({
     bool wide = false,
@@ -133,9 +130,8 @@ class CustomDataTableState<T> extends State<CustomDataTable<T>> {
     required BuildContext context,
     Widget? child,
   }) {
-    final innerWidth = wide
-        ? _fixedColWidth
-        : (_showSums ? _cellWidth : _hiddenCellWidth);
+    final innerWidth =
+        wide ? _fixedColWidth : (_showSums ? _cellWidth : _hiddenCellWidth);
     return Material(
       child: Container(
         width: innerWidth + _cellMargin * 2,
@@ -222,7 +218,8 @@ class CustomDataTableState<T> extends State<CustomDataTable<T>> {
       children: <Widget>[
         Row(
           children: <Widget>[
-            _buildCornerSumCell(context: context, wide: true, showButton: true, high: true),
+            _buildCornerSumCell(
+                context: context, wide: true, showButton: true, high: true),
             Flexible(
               child: SingleChildScrollView(
                 controller: _rowController,
