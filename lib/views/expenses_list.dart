@@ -23,9 +23,9 @@ class ExpensesFilter {
 }
 
 /// The month's expenses grouped by day, newest first. Future-dated expenses
-/// sit in a collapsed "Incoming" section at the top; a search box narrows the
-/// list by category, comment, amount or date.
-class ExpensesListView extends StatefulWidget {
+/// sit in a collapsed "Incoming" section at the top. Search lives in the top
+/// bar (see `ExpenseSearchButton`).
+class ExpensesListView extends StatelessWidget {
   const ExpensesListView({super.key, required this.data, required this.filter, this.onClearFilter});
 
   final MonthData data;
@@ -34,24 +34,7 @@ class ExpensesListView extends StatefulWidget {
   /// Called when the user dismisses the filter chip.
   final VoidCallback? onClearFilter;
 
-  @override
-  State<ExpensesListView> createState() => _ExpensesListViewState();
-}
-
-class _ExpensesListViewState extends State<ExpensesListView> {
-  final _searchController = TextEditingController();
-  String _query = '';
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  bool get _isSearching => _query.trim().isNotEmpty;
-
   List<Expense> _applyFilter(List<Expense> expenses) {
-    final filter = widget.filter;
     return expenses.where((e) {
       if (filter.date != null && !Dates.isSameDay(e.date, filter.date!)) return false;
       if (filter.category != null && e.categoryId != filter.category) return false;
@@ -59,37 +42,15 @@ class _ExpensesListViewState extends State<ExpensesListView> {
     }).toList();
   }
 
-  List<Expense> _applySearch(List<Expense> expenses, String locale) {
-    if (!_isSearching) return expenses;
-    final query = _query.trim().toLowerCase();
-    final shortDate = DateFormat.yMMMd(locale);
-    final longDate = DateFormat.yMMMMEEEEd(locale);
-    return expenses.where((e) {
-      final haystack = [
-        widget.data.categoryName(e.categoryId),
-        e.comment ?? '',
-        Formatters.money(e.value, locale),
-        e.value.toStringAsFixed(2),
-        shortDate.format(e.date),
-        longDate.format(e.date),
-      ].join('\n').toLowerCase();
-      return haystack.contains(query);
-    }).toList();
-  }
-
   String _filterLabel(String locale) {
     final parts = [
-      if (widget.filter.date != null) DateFormat.yMMMd(locale).format(widget.filter.date!),
-      if (widget.filter.category != null) widget.data.categoryName(widget.filter.category!),
+      if (filter.date != null) DateFormat.yMMMd(locale).format(filter.date!),
+      if (filter.category != null) data.categoryName(filter.category!),
     ];
     return parts.join(' · ');
   }
 
-  Future<void> _edit(Expense expense) => ExpenseFormScreen.open(context, expense: expense);
-
-  Future<void> _copy(Expense expense) => ExpenseFormScreen.open(context, template: expense);
-
-  Future<void> _confirmDelete(Expense expense) async {
+  Future<void> _confirmDelete(BuildContext context, Expense expense) async {
     final l10n = AppLocalizations.of(context)!;
     final months = AppScope.of(context).months;
     final messenger = ScaffoldMessenger.of(context);
@@ -122,18 +83,18 @@ class _ExpensesListViewState extends State<ExpensesListView> {
     final locale = Localizations.localeOf(context).toString();
     final today = Dates.today();
 
-    final sorted = _applySearch(_applyFilter(widget.data.expenses), locale)
+    final sorted = _applyFilter(data.expenses)
       ..sort((a, b) {
         final byDate = b.date.compareTo(a.date);
         return byDate != 0 ? byDate : b.id.compareTo(a.id);
       });
-    final separateIncoming = !_isSearching && widget.filter.date == null;
+    final separateIncoming = filter.date == null;
     final incoming = separateIncoming ? sorted.where((e) => e.date.isAfter(today)).toList() : const <Expense>[];
     final current = separateIncoming ? sorted.where((e) => !e.date.isAfter(today)).toList() : sorted;
 
     return Column(
       children: [
-        if (widget.filter.isActive)
+        if (filter.isActive)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Align(
@@ -142,29 +103,8 @@ class _ExpensesListViewState extends State<ExpensesListView> {
                 avatar: const Icon(Icons.filter_alt_outlined, size: 18),
                 label: Text(_filterLabel(locale)),
                 tooltip: l10n.filteredExpenses,
-                onDeleted: widget.onClearFilter,
+                onDeleted: onClearFilter,
               ),
-            ),
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: SearchBar(
-              controller: _searchController,
-              hintText: l10n.searchExpenses,
-              leading: const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.search)),
-              trailing: [
-                if (_query.isNotEmpty)
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() => _query = '');
-                    },
-                  ),
-              ],
-              elevation: const WidgetStatePropertyAll(0),
-              onChanged: (value) => setState(() => _query = value),
             ),
           ),
         Expanded(child: _buildList(context, l10n, locale, today, incoming, current)),
@@ -186,7 +126,7 @@ class _ExpensesListViewState extends State<ExpensesListView> {
           Padding(
             padding: const EdgeInsets.all(48.0),
             child: Text(
-              _isSearching ? l10n.noResults : l10n.noExpenses,
+              l10n.noExpenses,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
@@ -201,7 +141,7 @@ class _ExpensesListViewState extends State<ExpensesListView> {
         leading: const Icon(Icons.schedule_rounded),
         title: Text(l10n.incomingExpenses(incoming.length)),
         children: [
-          for (final expense in incoming) _expenseTile(expense, showDate: true, locale: locale),
+          for (final expense in incoming) _expenseTile(context, expense, showDate: true, locale: locale),
         ],
       ));
     }
@@ -211,20 +151,20 @@ class _ExpensesListViewState extends State<ExpensesListView> {
         lastDay = expense.date;
         items.add(DayHeader(label: dayLabel(expense.date, today, l10n, locale)));
       }
-      items.add(_expenseTile(expense, showDate: false, locale: locale));
+      items.add(_expenseTile(context, expense, showDate: false, locale: locale));
     }
     return ListView(padding: const EdgeInsets.only(bottom: 88), children: items);
   }
 
-  Widget _expenseTile(Expense expense, {required bool showDate, required String locale}) {
+  Widget _expenseTile(BuildContext context, Expense expense, {required bool showDate, required String locale}) {
     return _ExpenseTile(
       key: ValueKey(expense.id),
       expense: expense,
-      categoryName: widget.data.categoryName(expense.categoryId),
+      categoryName: data.categoryName(expense.categoryId),
       dateLabel: showDate ? DateFormat.MMMEd(locale).format(expense.date) : null,
-      onEdit: () => _edit(expense),
-      onCopy: () => _copy(expense),
-      onDelete: () => _confirmDelete(expense),
+      onEdit: () => ExpenseFormScreen.open(context, expense: expense),
+      onCopy: () => ExpenseFormScreen.open(context, template: expense),
+      onDelete: () => _confirmDelete(context, expense),
     );
   }
 }

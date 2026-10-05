@@ -64,6 +64,28 @@ void main() {
     expect(find.text('Weekly shop'), findsOneWidget);
   });
 
+  testWidgets('finds an expense through the top-bar search', (tester) async {
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+
+    // The magnifier shows on the expenses tab only.
+    expect(find.byTooltip('Search expenses'), findsNothing);
+    await tester.tap(find.byIcon(Icons.receipt_long_outlined));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Search expenses'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).last, 'weekly');
+    await tester.pumpAndSettle();
+    final result = find.ancestor(of: find.byIcon(Icons.receipt_long_outlined), matching: find.byType(ListTile));
+    expect(result, findsOneWidget);
+
+    await tester.tap(result);
+    await tester.pumpAndSettle();
+    expect(find.text('Expense details'), findsOneWidget);
+    expect(find.text('Weekly shop'), findsOneWidget);
+  });
+
   testWidgets('shows the server message when a save is rejected', (tester) async {
     final server = FakeServer();
     server.categories.clear();

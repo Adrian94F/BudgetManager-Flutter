@@ -5,6 +5,7 @@ import '../api/api.dart';
 import '../app/app_scope.dart';
 import '../models/models.dart';
 import '../state/month_controller.dart';
+import 'expense_search.dart';
 import 'expenses_list.dart';
 import 'expenses_table.dart';
 import 'incomes.dart';
@@ -186,6 +187,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _returnToPreviousTab)
                 : null,
             actions: [
+              if (month != null && _currentIndex == 1 && !_filter.isActive) ExpenseSearchButton(data: data),
               IconButton(
                 icon: const Icon(Icons.calendar_month_outlined),
                 tooltip: l10n.selectMonth,
