@@ -39,7 +39,17 @@ class CashFlowChart extends StatelessWidget {
   /// How far a label's text may stand out over each end of its node, in
   /// logical pixels: a node up to twice this shorter than its text still
   /// gets the label. Tune to taste.
-  static const labelOverhang = 1.0;
+  static const labelOverhang = 4.0;
+
+  /// How much of a category's own saturation the diagram takes away, 0 to
+  /// 1. The colours categories have in the table and the list are vivid
+  /// for small marks; as wide bands they are quieter. Tune to taste.
+  static const categoryMuting = 0.5;
+
+  static Color _muted(Color color) {
+    final hsl = HSLColor.fromColor(color);
+    return hsl.withSaturation(hsl.saturation * (1 - categoryMuting)).toColor();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +77,7 @@ class CashFlowChart extends StatelessWidget {
               node.category!.name,
               theme.brightness,
             )) {
-              final style => (style.accent, style.onContainer),
+              final style => (_muted(style.accent), _muted(style.onContainer)),
             },
           CashFlowNodeKind.leftover => (
               budgetColors.success,
