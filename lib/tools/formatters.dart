@@ -16,10 +16,20 @@ class Formatters {
   static final _letterThenDigit = RegExp(r'(?<=\p{L})(?=\d)', unicode: true);
   static final _digitThenLetter = RegExp(r'(?<=\d)(?=\p{L})', unicode: true);
 
-  static String money(double amount, String locale,
-      {String currency = defaultCurrency}) {
-    final format = _formats['$locale|$currency'] ??=
-        NumberFormat.simpleCurrency(locale: locale, name: currency);
+  /// [decimalDigits] overrides the currency's own, e.g. 0 for whole units
+  /// on a chart.
+  static String money(
+    double amount,
+    String locale, {
+    String currency = defaultCurrency,
+    int? decimalDigits,
+  }) {
+    final format = _formats['$locale|$currency|$decimalDigits'] ??=
+        NumberFormat.simpleCurrency(
+      locale: locale,
+      name: currency,
+      decimalDigits: decimalDigits,
+    );
     return format
         .format(amount)
         .replaceAll(_letterThenDigit, ' ')
@@ -28,9 +38,17 @@ class Formatters {
 
   /// [money] in the locale of [context] and the currency of the nearest
   /// [CurrencyScope].
-  static String moneyOf(BuildContext context, double amount) =>
-      money(amount, Localizations.localeOf(context).toString(),
-          currency: CurrencyScope.of(context));
+  static String moneyOf(
+    BuildContext context,
+    double amount, {
+    int? decimalDigits,
+  }) =>
+      money(
+        amount,
+        Localizations.localeOf(context).toString(),
+        currency: CurrencyScope.of(context),
+        decimalDigits: decimalDigits,
+      );
 
   /// The symbol of [currency] in [locale] ("zł", "€"), or its code when the
   /// locale has no shorter form ("CHF").
