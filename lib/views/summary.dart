@@ -4,7 +4,6 @@ import 'package:budget_manager/l10n/app_localizations.dart';
 import '../app/app_scope.dart';
 import '../app/theme.dart';
 import '../domain/domain.dart';
-import '../models/models.dart';
 import '../tools/formatters.dart';
 import 'statistics.dart';
 import 'widgets/info_card.dart';
@@ -14,18 +13,10 @@ import 'widgets/month_burndown_chart.dart';
 /// come from [MonthSummary], which applies the same rules as the server and
 /// the iOS app.
 class SummaryScreen extends StatelessWidget {
-  const SummaryScreen({
-    super.key,
-    this.onShowExpenses,
-    this.onShowIncomes,
-    this.onShowCategoryExpenses,
-  });
+  const SummaryScreen({super.key, this.onShowExpenses, this.onShowIncomes});
 
   final VoidCallback? onShowExpenses;
   final VoidCallback? onShowIncomes;
-
-  /// A category tapped in the cash flow on the Statistics screen.
-  final ValueChanged<Category>? onShowCategoryExpenses;
 
   @override
   Widget build(BuildContext context) {
@@ -85,10 +76,7 @@ class SummaryScreen extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) =>
-              StatisticsScreen(onShowCategory: onShowCategoryExpenses),
-        ),
+        MaterialPageRoute(builder: (context) => const StatisticsScreen()),
       ),
       child: AbsorbPointer(
         child: Padding(

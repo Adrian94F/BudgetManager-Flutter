@@ -4,6 +4,7 @@ import 'package:budget_manager/l10n/app_localizations.dart';
 import '../app/app_scope.dart';
 import '../domain/domain.dart';
 import '../models/models.dart';
+import 'category_expenses.dart';
 import 'widgets/cash_flow_chart.dart';
 import 'widgets/month_burndown_chart.dart';
 
@@ -13,13 +14,10 @@ enum StatisticsView { burndown, cashFlow }
 /// The month's statistics, full screen: the burndown with its legend, or the
 /// cash flow, chosen with the segmented switch at the top (the Expenses tab
 /// picks its list or table the same way). Opened from the chart card on the
-/// Summary, so it starts on the burndown.
+/// Summary, so it starts on the burndown. A category tapped in the cash flow
+/// opens its expenses above this screen, so back returns to the diagram.
 class StatisticsScreen extends StatefulWidget {
-  const StatisticsScreen({super.key, this.onShowCategory});
-
-  /// Called with a category tapped in the cash flow, once this screen has
-  /// closed, so the shell can show that category's expenses.
-  final ValueChanged<Category>? onShowCategory;
+  const StatisticsScreen({super.key});
 
   @override
   State<StatisticsScreen> createState() => _StatisticsScreenState();
@@ -29,8 +27,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   var _view = StatisticsView.burndown;
 
   void _showCategory(Category category) {
-    Navigator.pop(context);
-    widget.onShowCategory?.call(category);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CategoryExpensesScreen(category: category),
+      ),
+    );
   }
 
   @override

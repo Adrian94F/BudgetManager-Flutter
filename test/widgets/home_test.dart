@@ -1,5 +1,6 @@
 import 'package:budget_manager/domain/domain.dart';
 import 'package:budget_manager/tools/dates.dart';
+import 'package:budget_manager/views/category_expenses.dart';
 import 'package:budget_manager/views/month_picker_sheet.dart';
 import 'package:budget_manager/views/statistics.dart';
 import 'package:budget_manager/views/widgets/cash_flow_chart.dart';
@@ -392,7 +393,8 @@ void main() {
     expect(column().pixels, greaterThan(100));
   });
 
-  testWidgets('a tap on a category in the cash flow opens its expenses',
+  testWidgets(
+      'a tap on a category in the cash flow opens its expenses, back returns',
       (tester) async {
     final server = FakeServer();
     server.expenses[11]!.add({
@@ -415,10 +417,18 @@ void main() {
     await tester.tapAt(Offset(rect.right - 4, rect.top + 12));
     await tester.pumpAndSettle();
 
-    expect(find.byType(StatisticsScreen), findsNothing);
-    expect(find.widgetWithText(InputChip, 'Transport'), findsOneWidget);
+    // The category's expenses open above the statistics.
+    expect(find.byType(CategoryExpensesScreen), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Transport'), findsOneWidget);
     expect(find.text('Bus pass'), findsOneWidget);
     expect(find.text('Weekly shop'), findsNothing);
+    expect(find.byType(InputChip), findsNothing);
+
+    // Back returns to the diagram.
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byType(CategoryExpensesScreen), findsNothing);
+    expect(find.byType(CashFlowChart), findsOneWidget);
   });
 
   testWidgets('pull-to-refresh reloads the month', (tester) async {

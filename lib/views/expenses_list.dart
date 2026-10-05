@@ -27,17 +27,23 @@ class ExpensesFilter {
 /// sit in a collapsed "Incoming" section at the top. Search lives in the top
 /// bar (see `ExpenseSearchButton`).
 class ExpensesListView extends StatelessWidget {
-  const ExpensesListView(
-      {super.key,
-      required this.data,
-      required this.filter,
-      this.onClearFilter});
+  const ExpensesListView({
+    super.key,
+    required this.data,
+    required this.filter,
+    this.onClearFilter,
+    this.showFilterChip = true,
+  });
 
   final MonthData data;
   final ExpensesFilter filter;
 
   /// Called when the user dismisses the filter chip.
   final VoidCallback? onClearFilter;
+
+  /// Whether an active filter shows as a chip above the list; false where
+  /// the screen names the filter itself.
+  final bool showFilterChip;
 
   List<Expense> _applyFilter(List<Expense> expenses) {
     return expenses.where((e) {
@@ -120,7 +126,7 @@ class ExpensesListView extends StatelessWidget {
 
     return Column(
       children: [
-        if (filter.isActive)
+        if (filter.isActive && showFilterChip)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Align(

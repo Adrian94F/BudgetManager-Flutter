@@ -16,7 +16,7 @@ offers the same features with SwiftUI.
   and recurring bars, or the month's cash flow as a Sankey diagram (salary
   and other income into the budget, out to the categories and the
   leftover), with the recurring expenses in or out; tap a category to see
-  its expenses, pinch to stretch the expenses column until every category
+  its expenses (back returns to the diagram), pinch to stretch the expenses column until every category
   has its label and scroll it, while incomes and the budget stay put and
   bands reach only the categories on screen.
 - Expenses grouped by day with search, a collapsed section for future
