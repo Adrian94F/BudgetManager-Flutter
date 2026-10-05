@@ -117,5 +117,13 @@
   "noResults": "Nothing found.",
   "invalidAmount": "Enter a valid amount.",
   "noCategories": "Add a category in Budget settings first.",
-  "noIncomes": "No incomes in this month yet."
+  "noIncomes": "No incomes in this month yet.",
+  "expensesOutsideMonth": "{count} expenses are dated outside this month.",
+  "@expensesOutsideMonth": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

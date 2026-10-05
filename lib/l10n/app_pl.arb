@@ -98,5 +98,6 @@
     "noResults": "Nic nie znaleziono.",
     "invalidAmount": "Podaj poprawną kwotę.",
     "noCategories": "Najpierw dodaj kategorię w ustawieniach budżetu.",
-    "noIncomes": "Brak przychodów w tym miesiącu."
+    "noIncomes": "Brak przychodów w tym miesiącu.",
+    "expensesOutsideMonth": "Liczba wydatków z datą poza tym miesiącem: {count}."
 }

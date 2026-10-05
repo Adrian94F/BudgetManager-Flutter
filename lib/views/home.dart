@@ -37,7 +37,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   var _currentIndex = 0;
   int? _previousIndex;
   ExpensesFilter _filter = const ExpensesFilter();
-  ScrollCoords? _savedCoords;
   bool _wasInBackground = false;
 
   MonthController get _months => AppScope.of(context).months;
@@ -88,25 +87,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
-  void _saveTableCoords(ScrollCoords coords) {
-    setState(() => _savedCoords = coords);
-  }
-
   Future<void> _refresh() => _months.refresh();
 
   Future<void> _refreshHard() {
-    setState(() {
-      _filter = const ExpensesFilter();
-      _savedCoords = null;
-    });
+    setState(() => _filter = const ExpensesFilter());
     return _months.refresh();
   }
 
   void _selectMonth(int monthId) {
-    setState(() {
-      _filter = const ExpensesFilter();
-      _savedCoords = null;
-    });
+    setState(() => _filter = const ExpensesFilter());
     _months.selectMonth(monthId);
   }
 
@@ -159,9 +148,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return ListenableBuilder(
       listenable: months,
       builder: (context, _) {
-        final raw = months.rawJson;
         final data = months.data;
-        if (raw == null || data == null) {
+        if (data == null) {
           final error = months.error;
           if (error != null && !months.isLoading) {
             return ErrorScreen(
@@ -178,30 +166,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             if (!didPop && _previousIndex != null) _returnToPreviousTab();
           },
           child: LayoutBuilder(
-            builder: (context, constraints) => _buildScaffold(context, constraints, months, data, raw),
+            builder: (context, constraints) => _buildScaffold(context, constraints, months, data),
           ),
         );
       },
     );
   }
 
-  Widget _buildScaffold(
-    BuildContext context,
-    BoxConstraints constraints,
-    MonthController months,
-    MonthData data,
-    Map<String, dynamic> raw,
-  ) {
+  Widget _buildScaffold(BuildContext context, BoxConstraints constraints, MonthController months, MonthData data) {
     final l10n = AppLocalizations.of(context)!;
     final month = data.month;
-    final tabs = month == null ? null : _buildTabs(data, raw);
+    final tabs = month == null ? null : _buildTabs(data);
     final isMonthTab = _currentIndex < _monthRelatedViews;
 
     final Widget content;
     if (tabs != null) {
       content = tabs[_currentIndex].screen;
     } else if (isMonthTab) {
-      content = NoMonthView(message: raw['message'] as String?, onCreate: _createMonth);
+      content = NoMonthView(message: data.message, onCreate: _createMonth);
     } else {
       content = const SettingsScreen();
     }
@@ -247,10 +229,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  List<_Tab> _buildTabs(MonthData data, Map<String, dynamic> raw) {
-    final expenses = raw['expenses'] as List<dynamic>;
-    final categories = raw['categories'] as List<dynamic>;
-    final monthRaw = raw['month'] as Map<String, dynamic>;
+  List<_Tab> _buildTabs(MonthData data) {
     return [
       _Tab(
         SummaryScreen(onShowExpenses: () => _selectTab(1), onShowIncomes: () => _selectTab(3)),
@@ -261,15 +240,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         FabMenu(onRefresh: _refresh, fabType: FabType.expense),
       ),
       _Tab(
-        ExpensesTableView(
-          expenses: expenses,
-          categories: categories,
-          month: monthRaw,
-          refreshParent: _refresh,
-          openFilteredListCallback: _openFilteredExpensesList,
-          saveTableCoords: _saveTableCoords,
-          scrollCoords: _savedCoords,
-        ),
+        ExpensesTableView(data: data, onOpenFiltered: _openFilteredExpensesList),
         null,
       ),
       _Tab(
