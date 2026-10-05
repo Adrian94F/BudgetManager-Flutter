@@ -73,10 +73,12 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     _amountController = TextEditingController(text: source == null ? '' : source.value.toStringAsFixed(2));
     _commentController = TextEditingController(text: source?.comment ?? '');
     _date = widget.expense?.date ?? widget.template?.date ?? widget.initialDate ?? BudgetRules.defaultEntryDate(month);
-    _suggestedCategoryIds = _isEditing ? const [] : BudgetRules.topCategoryIds(data.expenses);
-    _categoryId = source?.categoryId ??
-        widget.initialCategoryId ??
-        (_suggestedCategoryIds.isNotEmpty ? _suggestedCategoryIds.first : data.categories.firstOrNull?.id);
+    // Only categories that still exist can be suggested or preselected.
+    bool exists(int? id) => id != null && data.categoryById(id) != null;
+    _suggestedCategoryIds =
+        _isEditing ? const [] : BudgetRules.topCategoryIds(data.expenses).where(exists).toList();
+    final preferred = [source?.categoryId, widget.initialCategoryId, _suggestedCategoryIds.firstOrNull];
+    _categoryId = preferred.firstWhere(exists, orElse: () => data.categories.firstOrNull?.id);
     _isMonthly = source?.isMonthly ?? false;
   }
 
