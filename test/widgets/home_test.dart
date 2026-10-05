@@ -4,6 +4,7 @@ import 'package:budget_manager/views/category_expenses.dart';
 import 'package:budget_manager/views/month_picker_sheet.dart';
 import 'package:budget_manager/views/statistics.dart';
 import 'package:budget_manager/views/widgets/cash_flow_chart.dart';
+import 'package:budget_manager/views/widgets/custom_data_table.dart';
 import 'package:budget_manager/views/widgets/info_card.dart';
 import 'package:budget_manager/views/widgets/month_burndown_chart.dart';
 import 'package:flutter/material.dart';
@@ -117,6 +118,36 @@ void main() {
     // The body keeps clear of the toolbar, so the switch stays in view.
     expect(tester.getTopLeft(find.text('Table')).dy, greaterThan(56));
     expect(find.text('List'), findsOneWidget);
+  });
+
+  testWidgets('the table keeps clear of the system navigation bar', (
+    tester,
+  ) async {
+    // A phone in landscape: the rail, no navigation bar of the app's own,
+    // and a 48 px system bar at the bottom.
+    tester.view.physicalSize = const Size(800, 360);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.padding = const FakeViewPadding(bottom: 48);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPadding);
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+
+    // The short rail labels only the selected destination, so go by icon.
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationRail),
+        matching: find.byIcon(Icons.receipt_long_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Table'));
+    await tester.pumpAndSettle();
+
+    final table = find.byWidgetPredicate((w) => w is CustomDataTable);
+    expect(table, findsOneWidget);
+    expect(tester.getBottomLeft(table).dy, lessThanOrEqualTo(360 - 48 - 8));
   });
 
   testWidgets('switches months through the picker', (tester) async {

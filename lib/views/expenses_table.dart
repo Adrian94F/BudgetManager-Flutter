@@ -79,7 +79,17 @@ class ExpensesTableView extends StatelessWidget {
       cellBuilder: (cell) => _buildCell(context, cell),
     );
 
-    if (table.outOfRangeCount == 0) return grid;
+    // Clear of the system navigation bar: the body runs under it where the
+    // shell has no navigation bar of its own (a wide window), and the sums
+    // row sits at the very bottom. A little room to spare either way.
+    final padded = Padding(
+      padding: EdgeInsets.only(
+        bottom: 8 + MediaQuery.paddingOf(context).bottom,
+      ),
+      child: grid,
+    );
+
+    if (table.outOfRangeCount == 0) return padded;
     final scheme = Theme.of(context).colorScheme;
     return Column(
       children: [
@@ -102,7 +112,7 @@ class ExpensesTableView extends StatelessWidget {
             ),
           ),
         ),
-        Expanded(child: grid),
+        Expanded(child: padded),
       ],
     );
   }
