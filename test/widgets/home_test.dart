@@ -159,6 +159,65 @@ void main() {
     expect(server.requests.last.url.queryParameters['month_id'], '11');
   });
 
+  testWidgets('steps through the months with the chevrons beside the title',
+      (tester) async {
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+    final previous = server.months.firstWhere((m) => m['id'] == 10);
+    final previousTitle = DateFormat.MMMM('en')
+        .format(Dates.parseApi(previous['start_date'] as String));
+    IconButton chevron(String tooltip) =>
+        tester.widget<IconButton>(find.ancestor(
+            of: find.byTooltip(tooltip), matching: find.byType(IconButton)));
+
+    // The newest month is on screen: nothing to step forward to.
+    expect(chevron('Next month').onPressed, isNull);
+    expect(chevron('Previous month').onPressed, isNotNull);
+
+    await tester.tap(find.byTooltip('Previous month'));
+    await tester.pumpAndSettle();
+    expect(server.requests.last.url.queryParameters['month_id'], '10');
+    expect(find.text(previousTitle), findsOneWidget);
+    // The oldest month now: only forward is left.
+    expect(chevron('Previous month').onPressed, isNull);
+    expect(chevron('Next month').onPressed, isNotNull);
+
+    await tester.tap(find.byTooltip('Next month'));
+    await tester.pumpAndSettle();
+    expect(server.requests.last.url.queryParameters['month_id'], '11');
+  });
+
+  testWidgets(
+      'the title and the content slide in from the side the month lies on',
+      (tester) async {
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+    String titleOf(int id) => DateFormat.MMMM('en').format(Dates.parseApi(
+        server.months.firstWhere((m) => m['id'] == id)['start_date']
+            as String));
+    final currentTitle = titleOf(11);
+    final previousTitle = titleOf(10);
+
+    await tester.tap(find.byTooltip('Previous month'));
+    // Let the load land, then stop part-way through the transition.
+    for (var i = 0; i < 5 && find.text(previousTitle).evaluate().isEmpty; i++) {
+      await tester.pump();
+    }
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Both months are on screen for the moment: the earlier one comes in
+    // from the left while the later one leaves to the right, title and body.
+    expect(find.text(previousTitle), findsOneWidget);
+    expect(find.text(currentTitle), findsOneWidget);
+    expect(tester.getTopLeft(find.text(previousTitle)).dx,
+        lessThan(tester.getTopLeft(find.text(currentTitle)).dx));
+    expect(find.text('BALANCE'), findsNWidgets(2));
+
+    await tester.pumpAndSettle();
+    expect(find.text(currentTitle), findsNothing);
+    expect(find.text('BALANCE'), findsOneWidget);
+  });
+
   testWidgets('pull-to-refresh reloads the month', (tester) async {
     final server = FakeServer();
     await pumpApp(tester, server, loggedIn: true);
@@ -211,6 +270,12 @@ void main() {
     final range = server.currentMonth['start_date'] as String;
     expect(find.textContaining(Dates.parseApi(range).day.toString()),
         findsWidgets);
+    // The chevrons that step a month sit right after the name.
+    expect(
+        find.descendant(
+            of: find.byType(SliverAppBar),
+            matching: find.byTooltip('Previous month')),
+        findsOneWidget);
 
     // Month picker and Settings live in the rail, not in the bar.
     final rail = find.byType(NavigationRail);

@@ -18,11 +18,12 @@ import 'summary.dart';
 import 'widgets/error_views.dart';
 import 'widgets/fab_menu.dart';
 import 'widgets/month_app_bar.dart';
+import 'widgets/month_switcher.dart';
 import 'widgets/rail_action.dart';
 
-/// The signed-in shell: a collapsing top bar with the month's title, the
-/// month picker and Settings, and three tabs below (Summary, Expenses as a
-/// list or a table, Incomes).
+/// The signed-in shell: a collapsing top bar with the month's title and the
+/// chevrons that step a month, the month picker and Settings, and three
+/// tabs below (Summary, Expenses as a list or a table, Incomes).
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -48,6 +49,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   _ExpensesView _expensesView = _ExpensesView.list;
   ExpensesFilter _filter = const ExpensesFilter();
   bool _wasInBackground = false;
+
+  /// The month last shown, to tell which way in time a change of month
+  /// goes; the title and the content then slide that way.
+  Month? _shownMonth;
+  var _switchDirection = MonthSwitchDirection.none;
 
   /// Drives the header and the tab's list together (see `NestedScrollView`).
   final _scrollController = ScrollController();
@@ -155,6 +161,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _months.selectMonth(monthId);
   }
 
+  /// A step to [target] for the chevrons beside the title; null (no such
+  /// month) disables the chevron.
+  VoidCallback? _stepTo(Month? target) =>
+      target == null ? null : () => _selectMonth(target.id);
+
+  /// Notes the month about to be shown and which way in time it lies from
+  /// the previous one, for [MonthSwitcher]. Called from build, with the
+  /// data the controller holds now; a rebuild with the same month changes
+  /// nothing.
+  void _trackMonth(Month? month) {
+    final previous = _shownMonth;
+    if (month?.id == previous?.id) return;
+    _switchDirection = previous == null || month == null
+        ? MonthSwitchDirection.none
+        : month.startDate.isAfter(previous.startDate)
+            ? MonthSwitchDirection.forward
+            : MonthSwitchDirection.backward;
+    _shownMonth = month;
+  }
+
   void _selectTab(int index) {
     _updateView(() {
       _filter = const ExpensesFilter();
@@ -229,6 +255,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       builder: (context, _) {
         final data = months.data;
         if (data == null) {
+          // Whatever comes next is a fresh start, not a move from a month.
+          _shownMonth = null;
           final error = months.error;
           if (error != null && !months.isLoading) {
             return ErrorScreen(
@@ -259,6 +287,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final l10n = AppLocalizations.of(context)!;
     final locale = Localizations.localeOf(context).toString();
     final month = data.month;
+    _trackMonth(month);
     // Medium width and up gets a rail, which also takes the month picker and
     // Settings; a compact height (a phone in landscape) gets a one-line bar
     // instead of the large collapsing title.
@@ -297,6 +326,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           sliver: MonthSliverAppBar(
             title: month?.title(locale) ?? 'Budget Manager',
             subtitle: month?.rangeTitle(locale),
+            monthKey: month?.id,
+            switchDirection: _switchDirection,
+            onPreviousMonth: _stepTo(months.previousMonth),
+            onNextMonth: _stepTo(months.nextMonth),
             onTitleTap: month == null ? null : () => _showMonthPicker(data),
             leading: _filter.isActive
                 ? IconButton(
@@ -332,7 +365,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         builder: (context) => _OverlapPadding(
           handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
           child: RefreshIndicator(
-              key: _refreshKey, onRefresh: _refreshHard, child: content),
+            key: _refreshKey,
+            onRefresh: _refreshHard,
+            // The tab slides to the new month together with the title.
+            child: MonthSwitcher(
+              monthKey: month?.id,
+              direction: _switchDirection,
+              child: content,
+            ),
+          ),
         ),
       ),
     );
