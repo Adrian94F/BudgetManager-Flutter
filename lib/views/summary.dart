@@ -36,20 +36,22 @@ class SummaryScreen extends StatelessWidget {
         ];
         if (orientation == Orientation.landscape) {
           // The chart takes the whole left column; only the cards scroll, in
-          // a list of their own (not the shell's primary controller).
+          // a list of their own (not the shell's primary controller). Both
+          // keep clear of the system navigation bar at the bottom.
+          final bottomInset = MediaQuery.paddingOf(context).bottom;
           return Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: EdgeInsets.fromLTRB(8, 8, 8, 16 + bottomInset),
                   child: chart,
                 ),
               ),
               Expanded(
                 child: ListView(
                   primary: false,
-                  padding: const EdgeInsets.only(right: 32, top: 8.0, bottom: 8.0),
+                  padding: EdgeInsets.only(right: 32, top: 8.0, bottom: 8.0 + bottomInset),
                   children: [...cards, const SizedBox(height: 16)],
                 ),
               ),
