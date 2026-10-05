@@ -46,25 +46,29 @@ class _BudgetManagerAppState extends State<BudgetManagerApp> {
       services: services,
       child: ListenableBuilder(
         listenable: services.settings,
-        builder: (context, _) => MaterialApp(
-          title: 'Budget Manager',
-          navigatorKey: _navigatorKey,
-          debugShowCheckedModeBanner: false,
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: const [Locale('en'), Locale('pl')],
-          theme: buildTheme(Brightness.light),
-          darkTheme: buildTheme(Brightness.dark),
-          themeMode: services.settings.themeMode,
-          home: ListenableBuilder(
-            listenable: services.auth,
-            builder: (context, _) => services.auth.isLoggedIn ? const HomeScreen() : const LoginScreen(),
-          ),
-        ),
+        builder: (context, _) {
+          // Wallpaper colour on Android 12+ when enabled; indigo otherwise.
+          final seed = services.settings.useDynamicColor ? services.dynamicSeedColor : null;
+          return MaterialApp(
+            title: 'Budget Manager',
+            navigatorKey: _navigatorKey,
+            debugShowCheckedModeBanner: false,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [Locale('en'), Locale('pl')],
+            theme: buildTheme(Brightness.light, seedColor: seed),
+            darkTheme: buildTheme(Brightness.dark, seedColor: seed),
+            themeMode: services.settings.themeMode,
+            home: ListenableBuilder(
+              listenable: services.auth,
+              builder: (context, _) => services.auth.isLoggedIn ? const HomeScreen() : const LoginScreen(),
+            ),
+          );
+        },
       ),
     );
   }

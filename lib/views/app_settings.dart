@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
 import '../app/app_scope.dart';
 
+/// Theme, dynamic colour and server URL.
 class AppSettingsScreen extends StatefulWidget {
   const AppSettingsScreen({super.key});
 
@@ -45,58 +47,89 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
     final settings = AppScope.of(context).settings;
+    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.appSettings),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: Text(l10n.appSettings)),
       body: ListenableBuilder(
         listenable: settings,
         builder: (context, _) => ListView(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
           children: [
-            Text(
-              l10n.appereance,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              title: Text(l10n.theme),
-              trailing: DropdownButton<ThemeMode>(
-                value: settings.themeMode,
-                items: [
-                  DropdownMenuItem(value: ThemeMode.light, child: Text(l10n.lightTheme)),
-                  DropdownMenuItem(value: ThemeMode.dark, child: Text(l10n.darkTheme)),
-                  DropdownMenuItem(value: ThemeMode.system, child: Text(l10n.systemTheme)),
+            _SectionTitle(l10n.appereance),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: SegmentedButton<ThemeMode>(
+                segments: [
+                  ButtonSegment(value: ThemeMode.light, icon: const Icon(Icons.light_mode_outlined), label: Text(l10n.lightTheme)),
+                  ButtonSegment(value: ThemeMode.dark, icon: const Icon(Icons.dark_mode_outlined), label: Text(l10n.darkTheme)),
+                  ButtonSegment(value: ThemeMode.system, icon: const Icon(Icons.brightness_auto_outlined), label: Text(l10n.systemTheme)),
                 ],
-                onChanged: (value) {
-                  if (value != null) settings.setThemeMode(value);
-                },
+                selected: {settings.themeMode},
+                onSelectionChanged: (selection) => settings.setThemeMode(selection.first),
               ),
             ),
-            const SizedBox(height: 32),
-            Text(
-              l10n.connection,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _serverController,
-              decoration: InputDecoration(
-                labelText: l10n.serverUrl,
-                border: const OutlineInputBorder(),
+            if (isAndroid)
+              SwitchListTile(
+                secondary: const Icon(Icons.wallpaper_outlined),
+                title: Text(l10n.dynamicColor),
+                subtitle: Text(l10n.dynamicColorHint),
+                value: settings.useDynamicColor,
+                onChanged: settings.setDynamicColor,
               ),
-              keyboardType: TextInputType.url,
-            ),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _saveServerUrl,
-              child: Text(l10n.saveServerUrl),
+            _SectionTitle(l10n.connection),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _serverController,
+                    keyboardType: TextInputType.url,
+                    autocorrect: false,
+                    decoration: InputDecoration(
+                      labelText: l10n.serverUrl,
+                      prefixIcon: const Icon(Icons.dns_outlined),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.tonal(
+                    onPressed: _saveServerUrl,
+                    child: Text(l10n.saveServerUrl),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Text(
+                'Budget Manager',
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Text(text, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
     );
   }
 }

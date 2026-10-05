@@ -22,6 +22,10 @@ class AppServices {
   final SettingsController settings;
   final MonthController months;
 
+  /// The system's dynamic colour seed, read once at startup; null when the
+  /// platform has none.
+  Color? dynamicSeedColor;
+
   /// Production wiring; tests pass an in-memory [store] and a mock [httpClient].
   factory AppServices.create({KeyValueStore? store, http.Client? httpClient}) {
     final session = SessionStore(store ?? const SecureKeyValueStore());

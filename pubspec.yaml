@@ -42,6 +42,7 @@ dependencies:
   community_charts_flutter: ^1.0.4
   flutter_localizations:
     sdk: flutter
+  dynamic_color: ^2.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
