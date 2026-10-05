@@ -24,8 +24,9 @@ class HistoryChart extends StatefulWidget {
   /// Width of one month's column.
   static const monthWidth = 64.0;
 
-  /// Width of the Y axis beside the plot.
-  static const axisWidth = 56.0;
+  /// Width of the Y axis beside the plot: room for a tick label such as
+  /// "-2.5k" and a little air, no more.
+  static const axisWidth = 40.0;
 
   /// The Y range for [points]: from the lowest value, or zero, to the
   /// highest, rounded out to a round step with about five steps in all.
