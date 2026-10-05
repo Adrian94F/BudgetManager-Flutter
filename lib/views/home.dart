@@ -14,9 +14,10 @@ import 'settings.dart';
 import 'summary.dart';
 import 'widgets/error_views.dart';
 import 'widgets/fab_menu.dart';
+import 'widgets/month_app_bar.dart';
 
-/// The signed-in shell: the month's title in the top bar with the month
-/// picker and Settings beside it, and four tabs below (Summary, List, Table,
+/// The signed-in shell: a collapsing top bar with the month's title, the
+/// month picker and Settings, and four tabs below (Summary, List, Table,
 /// Incomes).
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -162,6 +163,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _buildScaffold(BuildContext context, BoxConstraints constraints, MonthController months, MonthData data) {
     final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).toString();
     final month = data.month;
     final tabs = month == null ? null : _buildTabs(data);
     final content = tabs != null
@@ -169,52 +171,51 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         : NoMonthView(message: data.message, onCreate: _createMonth);
     final fab = tabs?[_currentIndex].fab;
 
-    final appBar = AppBar(
-      title: month != null
-          ? _MonthTitle(month: month, onTap: () => _showMonthPicker(data))
-          : const Text('Budget Manager', style: TextStyle(fontWeight: FontWeight.bold)),
-      forceMaterialTransparency: true,
-      leading: _previousIndex != null
-          ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _returnToPreviousTab)
-          : null,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.calendar_month_outlined),
-          tooltip: l10n.selectMonth,
-          onPressed: () => _showMonthPicker(data),
-        ),
-        IconButton(
-          icon: const Icon(Icons.settings_outlined),
-          tooltip: l10n.settings,
-          onPressed: _openSettings,
-        ),
-        const SizedBox(width: 4),
-      ],
-      bottom: months.isRefreshing
-          ? const PreferredSize(
-              preferredSize: Size.fromHeight(2),
-              child: LinearProgressIndicator(minHeight: 2),
-            )
-          : null,
-    );
-
-    final body = Column(
-      children: [
-        if (months.error != null) ErrorBanner(error: months.error!, onRetry: months.refresh),
-        Expanded(child: RefreshIndicator(onRefresh: _refreshHard, child: content)),
-      ],
+    // The header collapses as the tab's list scrolls under it; a tab with its
+    // own scroll controllers (the table) simply keeps the header expanded.
+    final body = RefreshIndicator(
+      onRefresh: _refreshHard,
+      edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight,
+      child: NestedScrollView(
+        headerSliverBuilder: (context, _) => [
+          MonthSliverAppBar(
+            title: month?.title(locale) ?? 'Budget Manager',
+            subtitle: month?.rangeTitle(locale),
+            onTitleTap: month == null ? null : () => _showMonthPicker(data),
+            leading: _previousIndex != null
+                ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _returnToPreviousTab)
+                : null,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.calendar_month_outlined),
+                tooltip: l10n.selectMonth,
+                onPressed: () => _showMonthPicker(data),
+              ),
+              IconButton(
+                icon: const Icon(Icons.settings_outlined),
+                tooltip: l10n.settings,
+                onPressed: _openSettings,
+              ),
+              const SizedBox(width: 4),
+            ],
+            showProgress: months.isRefreshing,
+          ),
+          if (months.error != null)
+            SliverToBoxAdapter(child: ErrorBanner(error: months.error!, onRetry: months.refresh)),
+        ],
+        body: content,
+      ),
     );
 
     if (constraints.maxWidth >= 600) {
       return Row(
         children: [
           _navigationRail(l10n, fab),
-          Expanded(child: Scaffold(appBar: appBar, body: body)),
+          Expanded(child: Scaffold(body: body)),
         ],
       );
     }
     return Scaffold(
-      appBar: appBar,
       body: body,
       bottomNavigationBar: _bottomNavigation(l10n),
       floatingActionButton: fab,
@@ -228,7 +229,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         const FabMenu(),
       ),
       _Tab(
-        ExpensesListView(data: data, filter: _filter),
+        ExpensesListView(data: data, filter: _filter, onClearFilter: _returnToPreviousTab),
         const FabMenu(fabType: FabType.expense),
       ),
       _Tab(
@@ -272,37 +273,3 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 }
 
-/// Month name with its date range underneath; tapping opens the month picker.
-class _MonthTitle extends StatelessWidget {
-  const _MonthTitle({required this.month, required this.onTap});
-
-  final Month month;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final locale = Localizations.localeOf(context).toString();
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              month.title(locale),
-              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            Text(
-              month.rangeTitle(locale),
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

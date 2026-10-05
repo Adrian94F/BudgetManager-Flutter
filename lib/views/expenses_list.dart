@@ -26,10 +26,13 @@ class ExpensesFilter {
 /// sit in a collapsed "Incoming" section at the top; a search box narrows the
 /// list by category, comment, amount or date.
 class ExpensesListView extends StatefulWidget {
-  const ExpensesListView({super.key, required this.data, required this.filter});
+  const ExpensesListView({super.key, required this.data, required this.filter, this.onClearFilter});
 
   final MonthData data;
   final ExpensesFilter filter;
+
+  /// Called when the user dismisses the filter chip.
+  final VoidCallback? onClearFilter;
 
   @override
   State<ExpensesListView> createState() => _ExpensesListViewState();
@@ -74,12 +77,12 @@ class _ExpensesListViewState extends State<ExpensesListView> {
     }).toList();
   }
 
-  String _filterTitle(AppLocalizations l10n, String locale) {
+  String _filterLabel(String locale) {
     final parts = [
       if (widget.filter.date != null) DateFormat.yMMMd(locale).format(widget.filter.date!),
       if (widget.filter.category != null) widget.data.categoryName(widget.filter.category!),
     ];
-    return '${l10n.filteredExpenses}: ${parts.join(', ')}';
+    return parts.join(' · ');
   }
 
   Future<void> _edit(Expense expense) => ExpenseFormScreen.open(context, expense: expense);
@@ -128,9 +131,22 @@ class _ExpensesListViewState extends State<ExpensesListView> {
     final incoming = separateIncoming ? sorted.where((e) => e.date.isAfter(today)).toList() : const <Expense>[];
     final current = separateIncoming ? sorted.where((e) => !e.date.isAfter(today)).toList() : sorted;
 
-    final body = Column(
+    return Column(
       children: [
-        if (!widget.filter.isActive)
+        if (widget.filter.isActive)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: InputChip(
+                avatar: const Icon(Icons.filter_alt_outlined, size: 18),
+                label: Text(_filterLabel(locale)),
+                tooltip: l10n.filteredExpenses,
+                onDeleted: widget.onClearFilter,
+              ),
+            ),
+          )
+        else
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: SearchBar(
@@ -153,15 +169,6 @@ class _ExpensesListViewState extends State<ExpensesListView> {
           ),
         Expanded(child: _buildList(context, l10n, locale, today, incoming, current)),
       ],
-    );
-
-    if (!widget.filter.isActive) return body;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_filterTitle(l10n, locale), style: const TextStyle(fontSize: 16)),
-        forceMaterialTransparency: true,
-      ),
-      body: body,
     );
   }
 

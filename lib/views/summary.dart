@@ -35,16 +35,19 @@ class SummaryScreen extends StatelessWidget {
           _buildIncomesCard(context, summary),
         ];
         if (orientation == Orientation.landscape) {
+          // Two independent lists: neither takes the shell's primary controller.
           return Row(
             children: [
               Expanded(
                 child: ListView(
+                  primary: false,
                   padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
                   children: [chart],
                 ),
               ),
               Expanded(
                 child: ListView(
+                  primary: false,
                   padding: const EdgeInsets.only(right: 32, top: 8.0, bottom: 8.0),
                   children: [...cards, const SizedBox(height: 16)],
                 ),
