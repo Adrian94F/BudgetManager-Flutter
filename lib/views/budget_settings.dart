@@ -5,10 +5,11 @@ import '../api/api.dart';
 import '../app/app_scope.dart';
 import '../models/models.dart';
 import '../tools/formatters.dart';
+import 'categories_screen.dart';
 import 'widgets/error_views.dart';
 
 /// Settings of the budget itself, kept on the server so the website and
-/// both apps agree: the currency.
+/// both apps agree: the currency and the categories.
 class BudgetSettingsScreen extends StatelessWidget {
   const BudgetSettingsScreen({super.key});
 
@@ -25,33 +26,50 @@ class BudgetSettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
+    final months = AppScope.of(context).months;
     final locale = Localizations.localeOf(context).toString();
     final currency = CurrencyScope.of(context);
     final symbol = Formatters.currencySymbol(currency, locale);
+    final valueStyle = theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.primary);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.budgetSettings)),
-      body: ListView(
-        padding: EdgeInsets.only(top: 8, bottom: 8 + MediaQuery.paddingOf(context).bottom),
-        children: [
-          ListTile(
-            leading: const Icon(Icons.payments_outlined),
-            title: Text(l10n.currency),
-            subtitle: Text(l10n.currencyHint),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  symbol == currency ? currency : '$currency · $symbol',
-                  style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.primary),
-                ),
-                const SizedBox(width: 4),
-                const Icon(Icons.chevron_right),
-              ],
+      // The category count follows the month data, which the categories
+      // screen reloads after every change.
+      body: ListenableBuilder(
+        listenable: months,
+        builder: (context, _) => ListView(
+          padding: EdgeInsets.only(top: 8, bottom: 8 + MediaQuery.paddingOf(context).bottom),
+          children: [
+            ListTile(
+              leading: const Icon(Icons.payments_outlined),
+              title: Text(l10n.currency),
+              subtitle: Text(l10n.currencyHint),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(symbol == currency ? currency : '$currency · $symbol', style: valueStyle),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+              onTap: () => _pickCurrency(context, currency),
             ),
-            onTap: () => _pickCurrency(context, currency),
-          ),
-        ],
+            ListTile(
+              leading: const Icon(Icons.category_outlined),
+              title: Text(l10n.categories),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (months.data != null) Text('${months.data!.categories.length}', style: valueStyle),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoriesScreen())),
+            ),
+          ],
+        ),
       ),
     );
   }

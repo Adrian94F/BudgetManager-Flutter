@@ -144,7 +144,8 @@ void main() {
 
     expect(find.text('App settings'), findsOneWidget);
     expect(find.text('Budget settings'), findsOneWidget);
-    expect(find.text('Manage categories'), findsOneWidget);
+    // Categories belong to the budget, so they sit under Budget settings.
+    expect(find.text('Manage categories'), findsNothing);
     expect(find.text('Change password'), findsOneWidget);
     expect(find.text('Log out'), findsOneWidget);
   });
@@ -171,6 +172,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(services.settings.locale, isNull);
     expect(find.text('App settings'), findsOneWidget);
+  });
+
+  testWidgets('Budget settings counts the categories and opens their list', (tester) async {
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Budget settings'));
+    await tester.pumpAndSettle();
+
+    final categoriesTile = find.widgetWithText(ListTile, 'Categories');
+    expect(find.descendant(of: categoriesTile, matching: find.text('2')), findsOneWidget);
+
+    await tester.tap(categoriesTile);
+    await tester.pumpAndSettle();
+    expect(find.text('Manage categories'), findsOneWidget);
+    expect(find.text('Groceries'), findsOneWidget);
   });
 
   testWidgets('changes the currency from Budget settings', (tester) async {
