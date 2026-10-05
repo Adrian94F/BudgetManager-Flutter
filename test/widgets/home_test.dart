@@ -323,6 +323,43 @@ void main() {
     expect(await services.session.flowIncludesRecurring(), isFalse);
   });
 
+  testWidgets(
+      'a pinch stretches the cash flow upwards and one finger scrolls it',
+      (tester) async {
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+    await tester.tap(find.byType(MonthBurndownChart), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cash flow'));
+    await tester.pumpAndSettle();
+    final chart = find.byType(CashFlowChart);
+    final heightBefore = tester.getSize(chart).height;
+    final centre = tester.getCenter(chart);
+
+    // Two fingers 80 px apart move to 240 px apart: three times the height.
+    final upper = await tester.startGesture(centre - const Offset(0, 40));
+    final lower = await tester.startGesture(centre + const Offset(0, 40));
+    await tester.pump();
+    for (var i = 0; i < 10; i++) {
+      await upper.moveBy(const Offset(0, -8));
+      await lower.moveBy(const Offset(0, 8));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await upper.up();
+    await lower.up();
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(chart).height,
+      closeTo(heightBefore * 3, heightBefore * 0.1),
+    );
+
+    // What no longer fits scrolls with one finger.
+    final topBefore = tester.getTopLeft(chart).dy;
+    await tester.drag(chart, const Offset(0, -150), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(chart).dy, lessThan(topBefore - 100));
+  });
+
   testWidgets('a tap on a category in the cash flow opens its expenses',
       (tester) async {
     final server = FakeServer();

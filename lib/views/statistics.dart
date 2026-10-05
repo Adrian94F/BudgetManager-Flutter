@@ -6,6 +6,7 @@ import '../domain/domain.dart';
 import '../models/models.dart';
 import 'widgets/cash_flow_chart.dart';
 import 'widgets/month_burndown_chart.dart';
+import 'widgets/vertical_zoom_view.dart';
 
 /// The two statistics of a month.
 enum StatisticsView { burndown, cashFlow }
@@ -152,14 +153,17 @@ class _CashFlowView extends StatelessWidget {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            // The two variants cross-fade rather than snap.
-            child: AnimatedSwitcher(
-              duration: Durations.medium1,
-              child: CashFlowChart(
-                key: ValueKey(includeRecurring),
-                diagram: flow.diagram(includeRecurring: includeRecurring),
-                includeRecurring: includeRecurring,
-                onCategoryTap: onCategoryTap,
+            // A pinch stretches the diagram upwards, so more labels fit, and one
+            // finger scrolls it; the two variants cross-fade rather than snap.
+            child: VerticalZoomView(
+              child: AnimatedSwitcher(
+                duration: Durations.medium1,
+                child: CashFlowChart(
+                  key: ValueKey(includeRecurring),
+                  diagram: flow.diagram(includeRecurring: includeRecurring),
+                  includeRecurring: includeRecurring,
+                  onCategoryTap: onCategoryTap,
+                ),
               ),
             ),
           ),
