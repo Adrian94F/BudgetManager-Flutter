@@ -48,72 +48,76 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     final months = services.months;
     final settings = services.settings;
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.statistics)),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  // Three labelled segments with icons want more room than a
-                  // phone in portrait has; there the labels go alone.
-                  final withIcons = constraints.maxWidth >= 480;
-                  Icon? icon(IconData data) => withIcons ? Icon(data) : null;
-                  return SizedBox(
-                    width: double.infinity,
-                    child: SegmentedButton<StatisticsView>(
-                      showSelectedIcon: false,
-                      segments: [
-                        ButtonSegment(
-                          value: StatisticsView.burndown,
-                          icon: icon(Icons.show_chart_rounded),
-                          label: Text(l10n.burndown),
-                        ),
-                        ButtonSegment(
-                          value: StatisticsView.cashFlow,
-                          icon: icon(Icons.account_tree_outlined),
-                          label: Text(l10n.cashFlow),
-                        ),
-                        ButtonSegment(
-                          value: StatisticsView.history,
-                          icon: icon(Icons.bar_chart_rounded),
-                          label: Text(l10n.history),
-                        ),
-                      ],
-                      selected: {_view},
-                      onSelectionChanged: (selection) =>
-                          setState(() => _view = selection.first),
-                    ),
-                  );
-                },
-              ),
-            ),
-            Expanded(
-              child: ListenableBuilder(
-                listenable: Listenable.merge([months, settings]),
-                builder: (context, _) => AnimatedSwitcher(
-                  duration: Durations.short4,
-                  child: KeyedSubtree(
-                    key: ValueKey(_view),
-                    child: switch (_view) {
-                      StatisticsView.burndown => _BurndownView(
-                          series: months.burndown,
-                        ),
-                      StatisticsView.cashFlow => _CashFlowView(
-                          flow: months.cashFlow,
-                          includeRecurring: settings.includeRecurringInFlow,
-                          onIncludeRecurringChanged:
-                              settings.setIncludeRecurringInFlow,
-                          onCategoryTap: _showCategory,
-                        ),
-                      StatisticsView.history => _HistoryView(months: months),
-                    },
-                  ),
+      appBar: AppBar(
+        // The view switch is the title: it says what the screen shows and
+        // takes no height from the charts. A phone's bar is too narrow for
+        // three labels, so there the icons stand alone, with tooltips.
+        centerTitle: true,
+        title: LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            final withLabels = width >= 330;
+            final withIcons = !withLabels || width >= 520;
+            ButtonSegment<StatisticsView> segment(
+              StatisticsView value,
+              IconData icon,
+              String label,
+            ) =>
+                ButtonSegment(
+                  value: value,
+                  icon: withIcons ? Icon(icon) : null,
+                  label: withLabels ? Text(label) : null,
+                  tooltip: withLabels ? null : label,
+                );
+            return SegmentedButton<StatisticsView>(
+              showSelectedIcon: false,
+              style: const ButtonStyle(visualDensity: VisualDensity.compact),
+              segments: [
+                segment(
+                  StatisticsView.burndown,
+                  Icons.show_chart_rounded,
+                  l10n.burndown,
                 ),
-              ),
+                segment(
+                  StatisticsView.cashFlow,
+                  Icons.account_tree_outlined,
+                  l10n.cashFlow,
+                ),
+                segment(
+                  StatisticsView.history,
+                  Icons.bar_chart_rounded,
+                  l10n.history,
+                ),
+              ],
+              selected: {_view},
+              onSelectionChanged: (selection) =>
+                  setState(() => _view = selection.first),
+            );
+          },
+        ),
+      ),
+      body: SafeArea(
+        child: ListenableBuilder(
+          listenable: Listenable.merge([months, settings]),
+          builder: (context, _) => AnimatedSwitcher(
+            duration: Durations.short4,
+            child: KeyedSubtree(
+              key: ValueKey(_view),
+              child: switch (_view) {
+                StatisticsView.burndown => _BurndownView(
+                    series: months.burndown,
+                  ),
+                StatisticsView.cashFlow => _CashFlowView(
+                    flow: months.cashFlow,
+                    includeRecurring: settings.includeRecurringInFlow,
+                    onIncludeRecurringChanged:
+                        settings.setIncludeRecurringInFlow,
+                    onCategoryTap: _showCategory,
+                  ),
+                StatisticsView.history => _HistoryView(months: months),
+              },
             ),
-          ],
+          ),
         ),
       ),
     );
