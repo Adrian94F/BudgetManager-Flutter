@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
+import '../state/settings_controller.dart';
 import '../views/home.dart';
 import '../views/login.dart';
 import 'app_scope.dart';
@@ -59,7 +60,8 @@ class _BudgetManagerAppState extends State<BudgetManagerApp> {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
-            supportedLocales: const [Locale('en'), Locale('pl')],
+            supportedLocales: SettingsController.supportedLocales,
+            locale: services.settings.locale,
             theme: buildTheme(Brightness.light, seedColor: seed),
             darkTheme: buildTheme(Brightness.dark, seedColor: seed),
             themeMode: services.settings.themeMode,

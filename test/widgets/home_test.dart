@@ -52,6 +52,30 @@ void main() {
     expect(find.text('Log out'), findsOneWidget);
   });
 
+  testWidgets('changes the language from App settings', (tester) async {
+    final server = FakeServer();
+    final services = await pumpApp(tester, server, loggedIn: true);
+
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('App settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('Language'), findsOneWidget);
+
+    await tester.tap(find.text('Polski'));
+    await tester.pumpAndSettle();
+
+    expect(services.settings.locale, const Locale('pl'));
+    expect(await services.session.locale(), 'pl');
+    expect(find.text('Ustawienia aplikacji'), findsOneWidget);
+    expect(find.text('Język'), findsOneWidget);
+
+    await tester.tap(find.text('Jak w systemie'));
+    await tester.pumpAndSettle();
+    expect(services.settings.locale, isNull);
+    expect(find.text('App settings'), findsOneWidget);
+  });
+
   testWidgets('keeps the data and shows a banner when a refresh fails', (tester) async {
     final server = FakeServer();
     final services = await pumpApp(tester, server, loggedIn: true);

@@ -15,6 +15,7 @@ class SessionStore {
   static const serverUrlKey = 'server_url';
   static const themeModeKey = 'theme_mode';
   static const dynamicColorKey = 'dynamic_color';
+  static const localeKey = 'locale';
 
   Future<String?> accessToken() => _store.read(accessTokenKey);
 
@@ -67,4 +68,10 @@ class SessionStore {
   Future<bool> dynamicColor() async => await _store.read(dynamicColorKey) == 'true';
 
   Future<void> setDynamicColor(bool enabled) => _store.write(dynamicColorKey, enabled.toString());
+
+  /// A language tag such as `pl`, or null to follow the system.
+  Future<String?> locale() => _store.read(localeKey);
+
+  Future<void> setLocale(String? languageTag) =>
+      languageTag == null ? _store.delete(localeKey) : _store.write(localeKey, languageTag);
 }

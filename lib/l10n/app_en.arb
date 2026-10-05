@@ -139,6 +139,8 @@
   "categoryExists": "A category with this name already exists.",
   "reorderHint": "Drag the handle to change the order used in lists and in the table.",
   "noCategoriesYet": "No categories yet.",
+  "language": "Language",
+  "languageSystem": "System default",
   "dynamicColor": "Dynamic colour",
   "dynamicColorHint": "Use the colours of your wallpaper (Android 12 and newer).",
   "editMonth": "Edit month",

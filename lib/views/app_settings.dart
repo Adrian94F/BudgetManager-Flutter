@@ -80,6 +80,23 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 onChanged: settings.setDynamicColor,
               ),
             const SizedBox(height: 16),
+            _SectionTitle(l10n.language),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: SegmentedButton<String>(
+                segments: [
+                  ButtonSegment(value: 'system', icon: const Icon(Icons.language_outlined), label: Text(l10n.languageSystem)),
+                  const ButtonSegment(value: 'en', label: Text('English')),
+                  const ButtonSegment(value: 'pl', label: Text('Polski')),
+                ],
+                selected: {settings.locale?.languageCode ?? 'system'},
+                onSelectionChanged: (selection) {
+                  final value = selection.first;
+                  settings.setLocale(value == 'system' ? null : Locale(value));
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
             _SectionTitle(l10n.connection),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
