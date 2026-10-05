@@ -15,7 +15,7 @@ void main() {
     await pumpApp(tester, server, loggedIn: true);
 
     // Expenses tab shows the existing expense.
-    await tester.tap(find.byIcon(Icons.table_rows));
+    await tester.tap(find.byIcon(Icons.receipt_long_outlined));
     await tester.pumpAndSettle();
     expect(find.text('Weekly shop'), findsOneWidget);
 
@@ -69,7 +69,7 @@ void main() {
     server.categories.clear();
     await pumpApp(tester, server, loggedIn: true);
 
-    await tester.tap(find.byIcon(Icons.table_rows));
+    await tester.tap(find.byIcon(Icons.receipt_long_outlined));
     await tester.pumpAndSettle();
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();

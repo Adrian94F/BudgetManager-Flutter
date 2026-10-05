@@ -15,6 +15,9 @@ import 'summary.dart';
 import 'widgets/error_views.dart';
 import 'widgets/fab_menu.dart';
 
+/// The signed-in shell: the month's title in the top bar with the month
+/// picker and Settings beside it, and four tabs below (Summary, List, Table,
+/// Incomes).
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -30,8 +33,6 @@ class _Tab {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  static const _monthRelatedViews = 4;
-
   var _currentIndex = 0;
   int? _previousIndex;
   ExpensesFilter _filter = const ExpensesFilter();
@@ -124,6 +125,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  void _openSettings() {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+  }
+
   @override
   Widget build(BuildContext context) {
     final months = _months;
@@ -159,27 +164,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final l10n = AppLocalizations.of(context)!;
     final month = data.month;
     final tabs = month == null ? null : _buildTabs(data);
-    final isMonthTab = _currentIndex < _monthRelatedViews;
-
-    final Widget content;
-    if (tabs != null) {
-      content = tabs[_currentIndex].screen;
-    } else if (isMonthTab) {
-      content = NoMonthView(message: data.message, onCreate: _createMonth);
-    } else {
-      content = const SettingsScreen();
-    }
+    final content = tabs != null
+        ? tabs[_currentIndex].screen
+        : NoMonthView(message: data.message, onCreate: _createMonth);
     final fab = tabs?[_currentIndex].fab;
 
     final appBar = AppBar(
-      title: isMonthTab && month != null
+      title: month != null
           ? _MonthTitle(month: month, onTap: () => _showMonthPicker(data))
-          : Text(_tabTitle(l10n), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          : const Text('Budget Manager', style: TextStyle(fontWeight: FontWeight.bold)),
       forceMaterialTransparency: true,
       leading: _previousIndex != null
           ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _returnToPreviousTab)
           : null,
-      actions: isMonthTab && month != null ? _monthActions(l10n, months, data) : null,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.calendar_month_outlined),
+          tooltip: l10n.selectMonth,
+          onPressed: () => _showMonthPicker(data),
+        ),
+        IconButton(
+          icon: const Icon(Icons.settings_outlined),
+          tooltip: l10n.settings,
+          onPressed: _openSettings,
+        ),
+        const SizedBox(width: 4),
+      ],
       bottom: months.isRefreshing
           ? const PreferredSize(
               preferredSize: Size.fromHeight(2),
@@ -229,40 +239,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         IncomesScreen(data: data),
         const FabMenu(fabType: FabType.income),
       ),
-      const _Tab(SettingsScreen(), null),
-    ];
-  }
-
-  String _tabTitle(AppLocalizations l10n) {
-    final username = AppScope.of(context).auth.savedUsername;
-    return switch (_currentIndex) {
-      0 => username.isEmpty ? l10n.summary : l10n.summaryTitle(username),
-      1 => l10n.expensesList,
-      2 => l10n.expensesTable,
-      3 => l10n.incomes,
-      _ => l10n.settings,
-    };
-  }
-
-  List<Widget> _monthActions(AppLocalizations l10n, MonthController months, MonthData data) {
-    final previous = months.previousMonth;
-    final next = months.nextMonth;
-    return [
-      IconButton(
-        icon: const Icon(Icons.arrow_back_ios),
-        tooltip: l10n.prevMonth,
-        onPressed: previous == null ? null : () => _selectMonth(previous.id),
-      ),
-      IconButton(
-        icon: const Icon(Icons.arrow_forward_ios),
-        tooltip: l10n.nextMonth,
-        onPressed: next == null ? null : () => _selectMonth(next.id),
-      ),
-      IconButton(
-        icon: const Icon(Icons.calendar_month),
-        tooltip: l10n.selectMonth,
-        onPressed: () => _showMonthPicker(data),
-      ),
     ];
   }
 
@@ -274,11 +250,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       leading: fab ?? const SizedBox.square(dimension: 56),
       labelType: NavigationRailLabelType.selected,
       destinations: [
-        NavigationRailDestination(icon: const Icon(Icons.home), label: Text(l10n.summary)),
-        NavigationRailDestination(icon: const Icon(Icons.table_rows), label: Text(l10n.expensesListShort)),
-        NavigationRailDestination(icon: const Icon(Icons.grid_view_sharp), label: Text(l10n.expensesTableShort)),
-        NavigationRailDestination(icon: const Icon(Icons.download), label: Text(l10n.incomes)),
-        NavigationRailDestination(icon: const Icon(Icons.settings_rounded), label: Text(l10n.settings)),
+        NavigationRailDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: Text(l10n.summary)),
+        NavigationRailDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: Text(l10n.expensesListShort)),
+        NavigationRailDestination(icon: const Icon(Icons.grid_on_outlined), selectedIcon: const Icon(Icons.grid_on), label: Text(l10n.expensesTableShort)),
+        NavigationRailDestination(icon: const Icon(Icons.savings_outlined), selectedIcon: const Icon(Icons.savings), label: Text(l10n.incomes)),
       ],
     );
   }
@@ -287,13 +262,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return NavigationBar(
       selectedIndex: _currentIndex,
       onDestinationSelected: _selectTab,
-      labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
       destinations: [
-        NavigationDestination(icon: const Icon(Icons.home), label: l10n.summary),
-        NavigationDestination(icon: const Icon(Icons.table_rows), label: l10n.expensesListShort),
-        NavigationDestination(icon: const Icon(Icons.grid_view_sharp), label: l10n.expensesTableShort),
-        NavigationDestination(icon: const Icon(Icons.download), label: l10n.incomes),
-        NavigationDestination(icon: const Icon(Icons.settings_rounded), label: l10n.settings),
+        NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: l10n.summary),
+        NavigationDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: l10n.expensesListShort),
+        NavigationDestination(icon: const Icon(Icons.grid_on_outlined), selectedIcon: const Icon(Icons.grid_on), label: l10n.expensesTableShort),
+        NavigationDestination(icon: const Icon(Icons.savings_outlined), selectedIcon: const Icon(Icons.savings), label: l10n.incomes),
       ],
     );
   }

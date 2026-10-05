@@ -19,32 +19,37 @@ void main() {
     expect(find.textContaining('4,880.00'), findsOneWidget);
   });
 
-  testWidgets('navigates to the previous month with the arrow', (tester) async {
+  testWidgets('switches months through the picker', (tester) async {
     final server = FakeServer();
     await pumpApp(tester, server, loggedIn: true);
-
-    await tester.tap(find.byTooltip('Previous month'));
-    await tester.pumpAndSettle();
-
-    expect(server.requests.last.url.queryParameters['month_id'], '10');
     final previous = server.months.firstWhere((m) => m['id'] == 10);
-    final title = DateFormat.MMMM('en').format(Dates.parseApi(previous['start_date'] as String));
-    expect(find.text(title), findsOneWidget);
-    // The oldest month has no previous one.
-    final previousButton = find.ancestor(of: find.byTooltip('Previous month'), matching: find.byType(IconButton)).first;
-    expect(tester.widget<IconButton>(previousButton).onPressed, isNull);
-  });
-
-  testWidgets('opens the month picker from the title', (tester) async {
-    final server = FakeServer();
-    await pumpApp(tester, server, loggedIn: true);
+    final previousTitle = DateFormat.MMMM('en').format(Dates.parseApi(previous['start_date'] as String));
 
     await tester.tap(find.byTooltip('Select month'));
     await tester.pumpAndSettle();
-
     expect(find.text('Select month'), findsOneWidget);
     expect(find.byIcon(Icons.check_rounded), findsOneWidget);
     expect(find.descendant(of: find.byType(MonthPickerSheet), matching: find.byType(ListTile)), findsNWidgets(2));
+
+    await tester.tap(find.descendant(of: find.byType(MonthPickerSheet), matching: find.text(previousTitle)));
+    await tester.pumpAndSettle();
+
+    expect(server.requests.last.url.queryParameters['month_id'], '10');
+    expect(find.text(previousTitle), findsOneWidget);
+    expect(find.byType(MonthPickerSheet), findsNothing);
+  });
+
+  testWidgets('opens Settings from the top bar', (tester) async {
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('App settings'), findsOneWidget);
+    expect(find.text('Manage categories'), findsOneWidget);
+    expect(find.text('Change password'), findsOneWidget);
+    expect(find.text('Log out'), findsOneWidget);
   });
 
   testWidgets('keeps the data and shows a banner when a refresh fails', (tester) async {
