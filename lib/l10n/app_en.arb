@@ -182,5 +182,7 @@
   "leftover": "Leftover",
   "includeRecurringExpenses": "Include recurring expenses",
   "noFlowData": "No data for this month",
-  "noFlowDataHint": "Add incomes or expenses to see the flow."
+  "noFlowDataHint": "Add incomes or expenses to see the flow.",
+  "history": "History",
+  "noHistory": "No months yet, so no history."
 }

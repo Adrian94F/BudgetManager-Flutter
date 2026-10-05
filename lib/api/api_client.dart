@@ -79,6 +79,16 @@ class ApiClient {
     return MonthData.fromJson(_decode(response) as Map<String, dynamic>);
   }
 
+  /// Every month's incomes, expenses and balance, oldest first. [months]
+  /// (the app's) are matched to the rows for their dates.
+  Future<MonthHistory> fetchHistory({List<Month> months = const []}) async {
+    final response = await _send('GET', 'statistics/');
+    return MonthHistory.fromJson(
+      _decode(response) as Map<String, dynamic>,
+      months: months,
+    );
+  }
+
   Future<void> createMonth({required DateTime start, required DateTime end}) =>
       _send('POST', 'month/', body: {
         'start_date': Dates.formatApi(start),

@@ -5,6 +5,7 @@ import 'package:budget_manager/views/month_picker_sheet.dart';
 import 'package:budget_manager/views/statistics.dart';
 import 'package:budget_manager/views/widgets/cash_flow_chart.dart';
 import 'package:budget_manager/views/widgets/custom_data_table.dart';
+import 'package:budget_manager/views/widgets/history_chart.dart';
 import 'package:budget_manager/views/widgets/info_card.dart';
 import 'package:budget_manager/views/widgets/month_burndown_chart.dart';
 import 'package:flutter/material.dart';
@@ -372,7 +373,12 @@ void main() {
     expect(chart.diagram.sinks.last.kind, CashFlowNodeKind.leftover);
 
     // Leaving the recurring expenses out takes them off the salary.
-    await tester.tap(find.text('Include recurring expenses'));
+    // In the bar: a labelled switch where there is room, else an icon with
+    // that label as its tooltip.
+    final toggle = find.text('Include recurring expenses').evaluate().isEmpty
+        ? find.byTooltip('Include recurring expenses')
+        : find.text('Include recurring expenses');
+    await tester.tap(toggle);
     await tester.pumpAndSettle();
     chart = tester.widget<CashFlowChart>(find.byType(CashFlowChart));
     expect(chart.diagram.sources.map((n) => n.value).toList(), [4500]);
@@ -486,6 +492,44 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(CategoryExpensesScreen), findsNothing);
     expect(find.byType(CashFlowChart), findsOneWidget);
+  });
+
+  testWidgets('Statistics shows the month-over-month history once fetched',
+      (tester) async {
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+    await tester.tap(find.byType(MonthBurndownChart), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('History'));
+    await tester.pumpAndSettle();
+
+    final chart = find.byType(HistoryChart);
+    expect(chart, findsOneWidget);
+    expect(find.byType(HistoryLegend), findsOneWidget);
+    int fetches() =>
+        server.requests.where((r) => r.url.path == '/api/statistics/').length;
+    expect(fetches(), 1);
+
+    // Oldest first, matched to the app's months: the previous month is empty,
+    // the current one has 5000 of income and 120 of expenses.
+    final history = tester.widget<HistoryChart>(chart).history;
+    expect(history.points.map((p) => p.balance).toList(), [0, 4880]);
+    expect(history.points.map((p) => p.month?.id).toList(), [10, 11]);
+
+    // One column per month at a fixed width, the axis beside the plot.
+    final plot = find.byKey(const ValueKey('history-plot'));
+    expect(tester.getSize(plot).width, 2 * HistoryChart.monthWidth);
+    expect(
+      tester.getSize(chart).width - tester.getSize(plot).width,
+      greaterThanOrEqualTo(HistoryChart.axisWidth),
+    );
+
+    // Switching away and back shows the same history without a new fetch.
+    await tester.tap(find.text('Burndown'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('History'));
+    await tester.pumpAndSettle();
+    expect(fetches(), 1);
   });
 
   testWidgets('pull-to-refresh reloads the month', (tester) async {

@@ -149,5 +149,7 @@
     "leftover": "Zostaje",
     "includeRecurringExpenses": "Uwzględnij comiesięczne wydatki",
     "noFlowData": "Brak danych w tym miesiącu",
-    "noFlowDataHint": "Dodaj przychody lub wydatki, aby zobaczyć przepływ."
+    "noFlowDataHint": "Dodaj przychody lub wydatki, aby zobaczyć przepływ.",
+    "history": "Historia",
+    "noHistory": "Nie ma jeszcze miesięcy, więc i historii."
 }

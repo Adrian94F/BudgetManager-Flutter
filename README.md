@@ -12,13 +12,16 @@ offers the same features with SwiftUI.
   allowance, spent today, days left; burndown chart with the ideal line to
   the savings target, weekends and today shaded; tap it for the Statistics
   screen.
-- Statistics: a Burndown | Cash flow switch. The full burndown with daily
+- Statistics: a Burndown | Cash flow | History switch. The full burndown with daily
   and recurring bars, or the month's cash flow as a Sankey diagram (salary
   and other income into the budget, out to the categories and the
   leftover), with the recurring expenses in or out; tap a category to see
   its expenses (back returns to the diagram), pinch to stretch the expenses column until every category
   has its label and scroll it, while incomes and the budget stay put and
-  bands reach only the categories on screen.
+  bands reach only the categories on screen. History: incomes and expenses
+  as lines and the balance as bars month over month, a fixed width per
+  month, scrolling sideways with the Y axis fixed and following the months
+  in view.
 - Expenses grouped by day with search, a collapsed section for future
   expenses, swipe to copy or delete, suggested categories when adding.
 - Category × day table with drill-down into the filtered list.
