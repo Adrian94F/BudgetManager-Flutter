@@ -16,8 +16,9 @@ offers the same features with SwiftUI.
   expenses, swipe to copy or delete, suggested categories when adding.
 - Category × day table with drill-down into the filtered list.
 - Incomes grouped by day, with the salary flag.
-- Months: step back and forward with the chevrons beside the title or a
-  swipe on the summary, pick from a sheet grouped by year, edit dates and planned
+- Months: swipe the summary sideways to move a month (the screen follows
+  the finger and a chevron shows at the edge), pick from a sheet grouped by
+  year, edit dates and planned
   savings, delete an empty month, create the next one.
 - Settings: theme, dynamic colour (Android 12+), server URL, categories
   (add, rename, drag to reorder, delete), change password.

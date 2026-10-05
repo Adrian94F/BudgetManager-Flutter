@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
 import '../api/api.dart';
@@ -18,12 +17,13 @@ import 'summary.dart';
 import 'widgets/error_views.dart';
 import 'widgets/fab_menu.dart';
 import 'widgets/month_app_bar.dart';
+import 'widgets/month_swipe.dart';
 import 'widgets/month_switcher.dart';
 import 'widgets/rail_action.dart';
 
-/// The signed-in shell: a collapsing top bar with the month's title and the
-/// chevrons that step a month, the month picker and Settings, and three
-/// tabs below (Summary, Expenses as a list or a table, Incomes).
+/// The signed-in shell: a collapsing top bar with the month's title, the
+/// month picker and Settings, and three tabs below (Summary, Expenses as a
+/// list or a table, Incomes).
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -55,6 +55,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Month? _shownMonth;
   var _switchDirection = MonthSwitchDirection.none;
 
+  /// How far the month is pulled sideways while the user drags it on the
+  /// Summary; the title in the bar follows it.
+  final _monthShift = ValueNotifier<double>(0);
+
   /// Drives the header and the tab's list together (see `NestedScrollView`).
   final _scrollController = ScrollController();
   final _refreshKey = GlobalKey<RefreshIndicatorState>();
@@ -78,6 +82,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _scrollController.dispose();
+    _monthShift.dispose();
     super.dispose();
   }
 
@@ -161,11 +166,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _months.selectMonth(monthId);
   }
 
-  /// A step to [target] for the chevrons beside the title; null (no such
-  /// month) disables the chevron.
-  VoidCallback? _stepTo(Month? target) =>
-      target == null ? null : () => _selectMonth(target.id);
-
   /// Notes the month about to be shown and which way in time it lies from
   /// the previous one, for [MonthSwitcher]. Called from build, with the
   /// data the controller holds now; a rebuild with the same month changes
@@ -213,19 +213,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
-  /// A horizontal fling on the Summary moves one month: left for the next,
-  /// right for the previous one, as on a calendar.
-  void _onSummarySwipe(DragEndDetails details) {
-    final velocity = details.primaryVelocity ?? 0;
-    const threshold = 250.0;
-    final target = velocity <= -threshold
-        ? _months.nextMonth
-        : velocity >= threshold
-            ? _months.previousMonth
-            : null;
-    if (target == null) return;
-    HapticFeedback.selectionClick();
-    _selectMonth(target.id);
+  /// The swipe on the Summary: one month back or forward, as on a calendar.
+  void _onMonthSwipe(MonthSwitchDirection direction) {
+    final target = direction == MonthSwitchDirection.backward
+        ? _months.previousMonth
+        : _months.nextMonth;
+    if (target != null) _selectMonth(target.id);
   }
 
   void _createMonth() {
@@ -328,8 +321,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             subtitle: month?.rangeTitle(locale),
             monthKey: month?.id,
             switchDirection: _switchDirection,
-            onPreviousMonth: _stepTo(months.previousMonth),
-            onNextMonth: _stepTo(months.nextMonth),
+            titleShift: _monthShift,
             onTitleTap: month == null ? null : () => _showMonthPicker(data),
             leading: _filter.isActive
                 ? IconButton(
@@ -398,9 +390,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<_Tab> _buildTabs(MonthData data, {required bool showSwitch}) {
     return [
       _Tab(
-        GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onHorizontalDragEnd: _onSummarySwipe,
+        // The month follows the finger and a chevron shows at the edge; the
+        // release moves (see MonthSwipeDetector).
+        MonthSwipeDetector(
+          canGoBackward: _months.previousMonth != null,
+          canGoForward: _months.nextMonth != null,
+          onMove: _onMonthSwipe,
+          shift: _monthShift,
           child: SummaryScreen(
             onShowExpenses: () => _showExpenses(_ExpensesView.list),
             onShowIncomes: () => _selectTab(_incomesTab),

@@ -159,34 +159,6 @@ void main() {
     expect(server.requests.last.url.queryParameters['month_id'], '11');
   });
 
-  testWidgets('steps through the months with the chevrons beside the title',
-      (tester) async {
-    final server = FakeServer();
-    await pumpApp(tester, server, loggedIn: true);
-    final previous = server.months.firstWhere((m) => m['id'] == 10);
-    final previousTitle = DateFormat.MMMM('en')
-        .format(Dates.parseApi(previous['start_date'] as String));
-    IconButton chevron(String tooltip) =>
-        tester.widget<IconButton>(find.ancestor(
-            of: find.byTooltip(tooltip), matching: find.byType(IconButton)));
-
-    // The newest month is on screen: nothing to step forward to.
-    expect(chevron('Next month').onPressed, isNull);
-    expect(chevron('Previous month').onPressed, isNotNull);
-
-    await tester.tap(find.byTooltip('Previous month'));
-    await tester.pumpAndSettle();
-    expect(server.requests.last.url.queryParameters['month_id'], '10');
-    expect(find.text(previousTitle), findsOneWidget);
-    // The oldest month now: only forward is left.
-    expect(chevron('Previous month').onPressed, isNull);
-    expect(chevron('Next month').onPressed, isNotNull);
-
-    await tester.tap(find.byTooltip('Next month'));
-    await tester.pumpAndSettle();
-    expect(server.requests.last.url.queryParameters['month_id'], '11');
-  });
-
   testWidgets(
       'the title and the content slide in from the side the month lies on',
       (tester) async {
@@ -198,7 +170,7 @@ void main() {
     final currentTitle = titleOf(11);
     final previousTitle = titleOf(10);
 
-    await tester.tap(find.byTooltip('Previous month'));
+    await tester.fling(find.text('BALANCE'), const Offset(400, 0), 1200);
     // Let the load land, then stop part-way through the transition.
     for (var i = 0; i < 5 && find.text(previousTitle).evaluate().isEmpty; i++) {
       await tester.pump();
@@ -216,6 +188,96 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(currentTitle), findsNothing);
     expect(find.text('BALANCE'), findsOneWidget);
+  });
+
+  testWidgets(
+    'a slow drag pulls the month along, shows the chevron and moves past the threshold',
+    (tester) async {
+      final server = FakeServer();
+      await pumpApp(tester, server, loggedIn: true);
+      final previous = server.months.firstWhere((m) => m['id'] == 10);
+      final previousTitle = DateFormat.MMMM(
+        'en',
+      ).format(Dates.parseApi(previous['start_date'] as String));
+      final balance = find.text('BALANCE');
+      final restingLeft = tester.getTopLeft(balance).dx;
+      final loadsBefore = server.monthLoads;
+
+      // Slowly, well under the flick speed: 2 px a frame. The recognizer
+      // swallows the first 18 px (touch slop) before the drag counts.
+      final gesture = await tester.startGesture(tester.getCenter(balance));
+      Future<void> dragBy(int px) async {
+        for (var i = 0; i < px ~/ 2; i++) {
+          await gesture.moveBy(const Offset(2, 0));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+      }
+
+      await dragBy(50);
+      // The content follows a little and the chevron peeks in at the left.
+      expect(tester.getTopLeft(balance).dx, greaterThan(restingLeft + 5));
+      expect(tester.getTopLeft(balance).dx, lessThan(restingLeft + 40));
+      expect(find.byIcon(Icons.chevron_left_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
+      expect(server.monthLoads, loadsBefore);
+
+      // Past the threshold a release moves, and everything settles back.
+      await dragBy(70);
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(server.requests.last.url.queryParameters['month_id'], '10');
+      expect(find.text(previousTitle), findsOneWidget);
+      expect(find.byIcon(Icons.chevron_left_rounded), findsNothing);
+      expect(tester.getTopLeft(find.text('BALANCE')).dx,
+          closeTo(restingLeft, 0.01));
+    },
+  );
+
+  testWidgets('a short drag eases back without changing the month', (
+    tester,
+  ) async {
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+    final balance = find.text('BALANCE');
+    final restingLeft = tester.getTopLeft(balance).dx;
+    final loadsBefore = server.monthLoads;
+
+    final gesture = await tester.startGesture(tester.getCenter(balance));
+    for (var i = 0; i < 25; i++) {
+      await gesture.moveBy(const Offset(2, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(tester.getTopLeft(balance).dx, greaterThan(restingLeft + 5));
+    expect(find.byIcon(Icons.chevron_left_rounded), findsOneWidget);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(server.monthLoads, loadsBefore);
+    expect(tester.getTopLeft(balance).dx, closeTo(restingLeft, 0.01));
+    expect(find.byIcon(Icons.chevron_left_rounded), findsNothing);
+  });
+
+  testWidgets('nothing moves when there is no month in that direction', (
+    tester,
+  ) async {
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+    final balance = find.text('BALANCE');
+    final restingLeft = tester.getTopLeft(balance).dx;
+    final loadsBefore = server.monthLoads;
+
+    // The newest month is on screen: a swipe to the left has nowhere to go.
+    final gesture = await tester.startGesture(tester.getCenter(balance));
+    for (var i = 0; i < 15; i++) {
+      await gesture.moveBy(const Offset(-2, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(tester.getTopLeft(balance).dx, closeTo(restingLeft, 0.01));
+    expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(server.monthLoads, loadsBefore);
   });
 
   testWidgets('pull-to-refresh reloads the month', (tester) async {
@@ -270,12 +332,6 @@ void main() {
     final range = server.currentMonth['start_date'] as String;
     expect(find.textContaining(Dates.parseApi(range).day.toString()),
         findsWidgets);
-    // The chevrons that step a month sit right after the name.
-    expect(
-        find.descendant(
-            of: find.byType(SliverAppBar),
-            matching: find.byTooltip('Previous month')),
-        findsOneWidget);
 
     // Month picker and Settings live in the rail, not in the bar.
     final rail = find.byType(NavigationRail);
