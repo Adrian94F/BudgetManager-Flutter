@@ -3,6 +3,7 @@ import 'package:budget_manager/views/month_picker_sheet.dart';
 import 'package:budget_manager/views/widgets/info_card.dart';
 import 'package:budget_manager/views/widgets/month_burndown_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 
@@ -36,6 +37,59 @@ void main() {
     final expensesCard = find.widgetWithText(InfoCard, 'EXPENSES');
     final amount = find.descendant(of: expensesCard, matching: find.byType(FittedBox));
     expect(tester.getTopRight(amount).dx, closeTo(tester.getTopRight(expensesCard).dx - 20, 1));
+  });
+
+  testWidgets('the table collapses the header and the list brings it back', (tester) async {
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+    double headerHeight() => (tester.renderObject(find.byType(SliverAppBar)) as RenderSliver).geometry!.paintExtent;
+    final rail = find.byType(NavigationRail);
+
+    await tester.tap(find.descendant(of: rail, matching: find.text('Expenses')));
+    await tester.pumpAndSettle();
+    expect(headerHeight(), greaterThan(140));
+    // A wide window keeps the List / Table switch in the bar.
+    expect(find.descendant(of: find.byType(SliverAppBar), matching: find.text('Table')), findsOneWidget);
+
+    await tester.tap(find.text('Table'));
+    await tester.pumpAndSettle();
+    expect(headerHeight(), lessThan(70));
+
+    await tester.tap(find.text('List'));
+    await tester.pumpAndSettle();
+    expect(headerHeight(), greaterThan(140));
+
+    // A header the user had already collapsed stays collapsed.
+    await tester.drag(find.text('Weekly shop'), const Offset(0, -300));
+    await tester.pumpAndSettle();
+    expect(headerHeight(), lessThan(70));
+    await tester.tap(find.text('Table'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('List'));
+    await tester.pumpAndSettle();
+    expect(headerHeight(), lessThan(70));
+  });
+
+  testWidgets('on a phone the switch sits below the bar and stays visible when the table collapses it', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final server = FakeServer();
+    await pumpApp(tester, server, loggedIn: true);
+    double headerHeight() => (tester.renderObject(find.byType(SliverAppBar)) as RenderSliver).geometry!.paintExtent;
+
+    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Expenses')));
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: find.byType(SliverAppBar), matching: find.text('Table')), findsNothing);
+    expect(find.text('Table'), findsOneWidget);
+
+    await tester.tap(find.text('Table'));
+    await tester.pumpAndSettle();
+    expect(headerHeight(), lessThan(70));
+    // The body keeps clear of the toolbar, so the switch stays in view.
+    expect(tester.getTopLeft(find.text('Table')).dy, greaterThan(56));
+    expect(find.text('List'), findsOneWidget);
   });
 
   testWidgets('switches months through the picker', (tester) async {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
@@ -52,6 +53,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final _scrollController = ScrollController();
   final _refreshKey = GlobalKey<RefreshIndicatorState>();
 
+  /// Where the header stood before the table collapsed it; restored when
+  /// another view takes over.
+  double _headerOffsetBeforeTable = 0;
+
   MonthController get _months => AppScope.of(context).months;
 
   @override
@@ -93,17 +98,44 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  bool get _isTableShown => _currentIndex == _expensesTab && _expensesView == _ExpensesView.table;
+
+  /// Applies a change of tab or view and keeps the header in step with it.
+  void _updateView(VoidCallback change) {
+    final wasTable = _isTableShown;
+    setState(change);
+    _syncHeaderWithTable(wasTable: wasTable);
+  }
+
+  /// The table has its own scroll controllers and never moves the header,
+  /// so the header collapses while the table shows (more rows on screen) and
+  /// comes back to where it stood once another view takes over.
+  void _syncHeaderWithTable({required bool wasTable}) {
+    final isTable = _isTableShown;
+    if (isTable == wasTable || !_scrollController.hasClients) return;
+    if (isTable) {
+      _headerOffsetBeforeTable = _scrollController.offset;
+      _animateHeader(_scrollController.position.maxScrollExtent);
+    } else {
+      _animateHeader(_headerOffsetBeforeTable);
+    }
+  }
+
+  void _animateHeader(double offset) {
+    _scrollController.animateTo(offset, duration: const Duration(milliseconds: 250), curve: Curves.easeOutCubic);
+  }
+
   /// From a table cell: the list narrowed to that day and/or category.
   /// Back returns to the table.
   void _openFilteredExpensesList(ExpensesFilter filter) {
-    setState(() {
+    _updateView(() {
       _filter = filter;
       _expensesView = _ExpensesView.list;
     });
   }
 
   void _clearFilter() {
-    setState(() {
+    _updateView(() {
       _filter = const ExpensesFilter();
       _expensesView = _ExpensesView.table;
     });
@@ -120,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _selectTab(int index) {
-    setState(() {
+    _updateView(() {
       _filter = const ExpensesFilter();
       _currentIndex = index;
     });
@@ -133,7 +165,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _selectTab(index);
       return;
     }
-    if (_scrollController.hasClients) {
+    // The table keeps the header collapsed and scrolls on its own.
+    if (_scrollController.hasClients && !_isTableShown) {
       // The nested controller brings both the header and the list to the top.
       await _scrollController.animateTo(0, duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
     }
@@ -141,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _showExpenses(_ExpensesView view) {
-    setState(() {
+    _updateView(() {
       _filter = const ExpensesFilter();
       _currentIndex = _expensesTab;
       _expensesView = view;
@@ -216,51 +249,70 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final l10n = AppLocalizations.of(context)!;
     final locale = Localizations.localeOf(context).toString();
     final month = data.month;
-    final tabs = month == null ? null : _buildTabs(data);
-    final content = tabs != null
-        ? tabs[_currentIndex].screen
-        : NoMonthView(message: data.message, onCreate: _createMonth);
-    final fab = tabs?[_currentIndex].fab;
-    final showSearch = month != null &&
-        _currentIndex == _expensesTab &&
-        _expensesView == _ExpensesView.list &&
-        !_filter.isActive;
     // Medium width and up gets a rail, which also takes the month picker and
     // Settings; a compact height (a phone in landscape) gets a one-line bar
     // instead of the large collapsing title.
     final useRail = constraints.maxWidth >= 600;
     final compactHeader = constraints.maxHeight < 480;
+    final onExpenses = month != null && _currentIndex == _expensesTab && !_filter.isActive;
+    // The List / Table switch sits in the bar when the window is wide enough
+    // for it next to the title; on a phone it stays below the bar.
+    final switchInBar = onExpenses && useRail;
+    final showSearch = onExpenses && _expensesView == _ExpensesView.list;
+    final tabs = month == null ? null : _buildTabs(data, showSwitch: !switchInBar);
+    final content = tabs != null
+        ? tabs[_currentIndex].screen
+        : NoMonthView(message: data.message, onCreate: _createMonth);
+    final fab = tabs?[_currentIndex].fab;
+    final actionsWidth = (switchInBar ? 220.0 : 0.0) + (showSearch ? 48.0 : 0.0) + (useRail ? 0.0 : 96.0) + 4.0;
 
     // The header collapses as the tab's list scrolls under it; a tab with its
     // own scroll controllers (the table) simply keeps the header expanded.
     // The refresh indicator sits in the body: the pull happens on the tab's
     // list, whose notifications an indicator around the whole view would
     // not see (it only listens at depth 0).
+    // The absorber takes the pinned toolbar out of the outer scroll range, so
+    // a collapsed header stops at the toolbar instead of sliding the body
+    // under it; _OverlapPadding keeps the body's top below the toolbar.
     final body = NestedScrollView(
       controller: _scrollController,
       headerSliverBuilder: (context, _) => [
-        MonthSliverAppBar(
-          title: month?.title(locale) ?? 'Budget Manager',
-          subtitle: month?.rangeTitle(locale),
-          onTitleTap: month == null ? null : () => _showMonthPicker(data),
-          leading: _filter.isActive
-              ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _clearFilter)
-              : null,
-          actions: [
-            if (showSearch) ExpenseSearchButton(data: data),
-            if (!useRail) ...[
-              _monthPickerButton(l10n, data),
-              _settingsButton(l10n),
+        SliverOverlapAbsorber(
+          handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+          sliver: MonthSliverAppBar(
+            title: month?.title(locale) ?? 'Budget Manager',
+            subtitle: month?.rangeTitle(locale),
+            onTitleTap: month == null ? null : () => _showMonthPicker(data),
+            leading: _filter.isActive
+                ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _clearFilter)
+                : null,
+            actions: [
+              if (switchInBar)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: _ExpensesViewSwitch(view: _expensesView, onChanged: _showExpenses, dense: true),
+                ),
+              if (showSearch) ExpenseSearchButton(data: data),
+              if (!useRail) ...[
+                _monthPickerButton(l10n, data),
+                _settingsButton(l10n),
+              ],
+              const SizedBox(width: 4),
             ],
-            const SizedBox(width: 4),
-          ],
-          showProgress: months.isRefreshing,
-          compact: compactHeader,
+            actionsWidth: actionsWidth,
+            showProgress: months.isRefreshing,
+            compact: compactHeader,
+          ),
         ),
         if (months.error != null)
           SliverToBoxAdapter(child: ErrorBanner(error: months.error!, onRetry: months.refresh)),
       ],
-      body: RefreshIndicator(key: _refreshKey, onRefresh: _refreshHard, child: content),
+      body: Builder(
+        builder: (context) => _OverlapPadding(
+          handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+          child: RefreshIndicator(key: _refreshKey, onRefresh: _refreshHard, child: content),
+        ),
+      ),
     );
 
     if (useRail) {
@@ -278,7 +330,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  List<_Tab> _buildTabs(MonthData data) {
+  List<_Tab> _buildTabs(MonthData data, {required bool showSwitch}) {
     return [
       _Tab(
         GestureDetector(
@@ -296,6 +348,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           data: data,
           view: _expensesView,
           filter: _filter,
+          showSwitch: showSwitch,
           onViewChanged: _showExpenses,
           onOpenFiltered: _openFilteredExpensesList,
           onClearFilter: _clearFilter,
@@ -407,6 +460,7 @@ class _ExpensesTab extends StatelessWidget {
     required this.data,
     required this.view,
     required this.filter,
+    required this.showSwitch,
     required this.onViewChanged,
     required this.onOpenFiltered,
     required this.onClearFilter,
@@ -415,37 +469,23 @@ class _ExpensesTab extends StatelessWidget {
   final MonthData data;
   final _ExpensesView view;
   final ExpensesFilter filter;
+
+  /// False when the shell shows the List / Table switch in the bar instead.
+  final bool showSwitch;
   final ValueChanged<_ExpensesView> onViewChanged;
   final ValueChanged<ExpensesFilter> onOpenFiltered;
   final VoidCallback onClearFilter;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     return Column(
       children: [
-        if (!filter.isActive)
+        if (!filter.isActive && showSwitch)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             child: SizedBox(
               width: double.infinity,
-              child: SegmentedButton<_ExpensesView>(
-                showSelectedIcon: false,
-                segments: [
-                  ButtonSegment(
-                    value: _ExpensesView.list,
-                    icon: const Icon(Icons.view_list_outlined),
-                    label: Text(l10n.expensesListShort),
-                  ),
-                  ButtonSegment(
-                    value: _ExpensesView.table,
-                    icon: const Icon(Icons.grid_on_outlined),
-                    label: Text(l10n.expensesTableShort),
-                  ),
-                ],
-                selected: {view},
-                onSelectionChanged: (selection) => onViewChanged(selection.first),
-              ),
+              child: _ExpensesViewSwitch(view: view, onChanged: onViewChanged),
             ),
           ),
         Expanded(
@@ -455,5 +495,95 @@ class _ExpensesTab extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// The List / Table switch of the Expenses tab: full width below the bar on
+/// a phone, a dense control inside the bar when the window is wide.
+class _ExpensesViewSwitch extends StatelessWidget {
+  const _ExpensesViewSwitch({required this.view, required this.onChanged, this.dense = false});
+
+  final _ExpensesView view;
+  final ValueChanged<_ExpensesView> onChanged;
+  final bool dense;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return SegmentedButton<_ExpensesView>(
+      showSelectedIcon: false,
+      style: dense ? const ButtonStyle(visualDensity: VisualDensity.compact) : null,
+      segments: [
+        ButtonSegment(
+          value: _ExpensesView.list,
+          icon: const Icon(Icons.view_list_outlined),
+          label: Text(l10n.expensesListShort),
+        ),
+        ButtonSegment(
+          value: _ExpensesView.table,
+          icon: const Icon(Icons.grid_on_outlined),
+          label: Text(l10n.expensesTableShort),
+        ),
+      ],
+      selected: {view},
+      onSelectionChanged: (selection) => onChanged(selection.first),
+    );
+  }
+}
+
+/// Keeps the body's top clear of the pinned toolbar. The absorber around
+/// the header takes the toolbar's extent out of the outer scroll range,
+/// which lays the body out under it; this pads the body by that extent, as
+/// a `SliverOverlapInjector` does for a sliver body.
+class _OverlapPadding extends SingleChildRenderObjectWidget {
+  const _OverlapPadding({required this.handle, required super.child});
+
+  final SliverOverlapAbsorberHandle handle;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderOverlapPadding(handle);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderOverlapPadding renderObject) => renderObject.handle = handle;
+}
+
+class _RenderOverlapPadding extends RenderShiftedBox {
+  _RenderOverlapPadding(this._handle) : super(null);
+
+  SliverOverlapAbsorberHandle _handle;
+
+  set handle(SliverOverlapAbsorberHandle value) {
+    if (value == _handle) return;
+    if (attached) _handle.removeListener(markNeedsLayout);
+    _handle = value;
+    if (attached) _handle.addListener(markNeedsLayout);
+    markNeedsLayout();
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _handle.addListener(markNeedsLayout);
+  }
+
+  @override
+  void detach() {
+    _handle.removeListener(markNeedsLayout);
+    super.detach();
+  }
+
+  @override
+  void performLayout() {
+    // The header lays out before the body within the same frame, so the
+    // absorbed extent is current here.
+    final top = _handle.layoutExtent ?? 0.0;
+    final child = this.child;
+    if (child == null) {
+      size = constraints.constrain(Size(0, top));
+      return;
+    }
+    child.layout(constraints.deflate(EdgeInsets.only(top: top)), parentUsesSize: true);
+    (child.parentData! as BoxParentData).offset = Offset(0, top);
+    size = constraints.constrain(Size(child.size.width, child.size.height + top));
   }
 }

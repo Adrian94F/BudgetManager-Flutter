@@ -14,6 +14,7 @@ class MonthSliverAppBar extends StatelessWidget {
     this.onTitleTap,
     this.leading,
     this.actions = const [],
+    this.actionsWidth,
     this.showProgress = false,
     this.compact = false,
   });
@@ -23,6 +24,10 @@ class MonthSliverAppBar extends StatelessWidget {
   final VoidCallback? onTitleTap;
   final Widget? leading;
   final List<Widget> actions;
+
+  /// Width the collapsed title keeps clear for [actions]; 48 dp per action
+  /// when not given (right for icon buttons only).
+  final double? actionsWidth;
 
   /// Shows a thin progress line under the bar while the month reloads.
   final bool showProgress;
@@ -62,7 +67,7 @@ class MonthSliverAppBar extends StatelessWidget {
         subtitle: subtitle,
         onTap: onTitleTap,
         hasLeading: leading != null,
-        trailingWidth: 48.0 * actions.length,
+        trailingWidth: actionsWidth ?? 48.0 * actions.length,
       ),
       bottom: progress,
     );
