@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
@@ -7,6 +6,7 @@ import '../api/api.dart';
 import '../app/app_scope.dart';
 import '../domain/domain.dart';
 import '../models/models.dart';
+import 'widgets/amount_field.dart';
 import 'widgets/error_views.dart';
 
 /// Full-screen dialog to add or edit an income. Opened with [income] it
@@ -36,7 +36,7 @@ class IncomeFormScreen extends StatefulWidget {
 }
 
 class _IncomeFormScreenState extends State<IncomeFormScreen> {
-  late final TextEditingController _amountController;
+  late double _amount;
   late final TextEditingController _commentController;
   late DateTime _date;
   late bool _isSalary;
@@ -50,8 +50,7 @@ class _IncomeFormScreenState extends State<IncomeFormScreen> {
     super.initState();
     final month = AppScope.of(context).months.month!;
     final source = widget.income ?? widget.template;
-    _amountController = TextEditingController(
-        text: source == null ? '' : source.value.toStringAsFixed(2));
+    _amount = source?.value ?? 0;
     _commentController = TextEditingController(text: source?.comment ?? '');
     _date = widget.income?.date ??
         widget.template?.date ??
@@ -62,7 +61,6 @@ class _IncomeFormScreenState extends State<IncomeFormScreen> {
 
   @override
   void dispose() {
-    _amountController.dispose();
     _commentController.dispose();
     super.dispose();
   }
@@ -80,9 +78,8 @@ class _IncomeFormScreenState extends State<IncomeFormScreen> {
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context)!;
     final months = AppScope.of(context).months;
-    final value =
-        double.tryParse(_amountController.text.replaceAll(',', '.').trim());
-    if (value == null || value < 0) {
+    final value = _amount;
+    if (value <= 0) {
       setState(() => _error = l10n.invalidAmount);
       return;
     }
@@ -112,7 +109,6 @@ class _IncomeFormScreenState extends State<IncomeFormScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final locale = Localizations.localeOf(context).toString();
-    final theme = Theme.of(context);
     final border =
         OutlineInputBorder(borderRadius: BorderRadius.circular(12.0));
 
@@ -140,21 +136,17 @@ class _IncomeFormScreenState extends State<IncomeFormScreen> {
             FormErrorBox(message: _error!),
             const SizedBox(height: 16),
           ],
-          TextField(
-            controller: _amountController,
-            autofocus: !_isEditing,
+          // Focus starts here: type the digits, press the action key, done.
+          // Editing selects the old amount, so the first digit replaces it.
+          AmountField(
+            initialValue: _amount,
+            onChanged: (value) => _amount = value,
+            onSubmitted: _saving ? null : _save,
+            label: l10n.amount,
+            autofocus: true,
+            selectAllOnFocus: _isEditing,
             enabled: !_saving,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))
-            ],
-            textInputAction: TextInputAction.next,
-            style: theme.textTheme.titleLarge,
-            decoration: InputDecoration(
-              labelText: l10n.amount,
-              prefixIcon: const Icon(Icons.payments_outlined),
-              border: border,
-            ),
+            border: border,
           ),
           const SizedBox(height: 16),
           TextField(

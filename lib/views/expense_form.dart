@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:budget_manager/l10n/app_localizations.dart';
 
@@ -8,6 +7,7 @@ import '../app/app_scope.dart';
 import '../domain/domain.dart';
 import '../models/models.dart';
 import 'widgets/category_style.dart';
+import 'widgets/amount_field.dart';
 import 'widgets/error_views.dart';
 
 /// Full-screen dialog to add or edit an expense. Opened with [expense] it
@@ -54,7 +54,7 @@ class ExpenseFormScreen extends StatefulWidget {
 }
 
 class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
-  late final TextEditingController _amountController;
+  late double _amount;
   late final TextEditingController _commentController;
   late DateTime _date;
   int? _categoryId;
@@ -71,8 +71,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     final data = AppScope.of(context).months.data!;
     final month = data.month!;
     final source = widget.expense ?? widget.template;
-    _amountController = TextEditingController(
-        text: source == null ? '' : source.value.toStringAsFixed(2));
+    _amount = source?.value ?? 0;
     _commentController = TextEditingController(text: source?.comment ?? '');
     _date = widget.expense?.date ??
         widget.template?.date ??
@@ -95,7 +94,6 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
 
   @override
   void dispose() {
-    _amountController.dispose();
     _commentController.dispose();
     super.dispose();
   }
@@ -113,9 +111,8 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context)!;
     final months = AppScope.of(context).months;
-    final value =
-        double.tryParse(_amountController.text.replaceAll(',', '.').trim());
-    if (value == null || value < 0) {
+    final value = _amount;
+    if (value <= 0) {
       setState(() => _error = l10n.invalidAmount);
       return;
     }
@@ -181,21 +178,17 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             FormErrorBox(message: _error!),
             const SizedBox(height: 16),
           ],
-          TextField(
-            controller: _amountController,
-            autofocus: !_isEditing,
+          // Focus starts here: type the digits, press the action key, done.
+          // Editing selects the old amount, so the first digit replaces it.
+          AmountField(
+            initialValue: _amount,
+            onChanged: (value) => _amount = value,
+            onSubmitted: _saving ? null : _save,
+            label: l10n.amount,
+            autofocus: true,
+            selectAllOnFocus: _isEditing,
             enabled: !_saving,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))
-            ],
-            textInputAction: TextInputAction.next,
-            style: theme.textTheme.titleLarge,
-            decoration: InputDecoration(
-              labelText: l10n.amount,
-              prefixIcon: const Icon(Icons.payments_outlined),
-              border: border,
-            ),
+            border: border,
           ),
           const SizedBox(height: 16),
           TextField(
@@ -228,6 +221,9 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                           Icon(CategoryStyle.iconFor(category.name), size: 18),
                       label: Text(category.name),
                       selected: _categoryId == id,
+                      // The filled chip marks the choice on its own; the
+                      // checkmark would also grey out the icon behind it.
+                      showCheckmark: false,
                       onSelected: _saving
                           ? null
                           : (_) => setState(() => _categoryId = id),

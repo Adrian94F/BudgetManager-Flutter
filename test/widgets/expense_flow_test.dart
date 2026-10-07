@@ -23,7 +23,17 @@ void main() {
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
     expect(find.text('Add expense'), findsOneWidget);
-    await tester.enterText(textFieldLabelled('Amount'), '42.50');
+    // The amount field starts focused and takes digits like a cash register.
+    expect(
+        tester
+            .widget<EditableText>(find.descendant(
+                of: textFieldLabelled('Amount'),
+                matching: find.byType(EditableText)))
+            .focusNode
+            .hasPrimaryFocus,
+        isTrue);
+    await tester.enterText(textFieldLabelled('Amount'), '4250');
+    expect(find.text('42.50'), findsOneWidget);
     await tester.enterText(textFieldLabelled('Comment'), 'Lunch');
     await tester.tap(find.text('Add'));
     await tester.pumpAndSettle();
@@ -44,7 +54,9 @@ void main() {
     await tester.tap(find.text('Lunch'));
     await tester.pumpAndSettle();
     expect(find.text('Expense details'), findsOneWidget);
-    await tester.enterText(textFieldLabelled('Amount'), '45');
+    expect(find.text('42.50'), findsOneWidget);
+    await tester.enterText(textFieldLabelled('Amount'), '4500');
+    expect(find.text('45.00'), findsOneWidget);
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
