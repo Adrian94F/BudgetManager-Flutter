@@ -394,9 +394,10 @@ void main() {
 
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Edit details'));
+    await tester.tap(find.text('Month details'));
     await tester.pumpAndSettle();
-    expect(find.text('Edit month'), findsOneWidget);
+    // The menu item and the screen share the name; the menu is gone now.
+    expect(find.text('Month details'), findsOneWidget);
 
     final field = find.ancestor(
         of: find.byIcon(Icons.savings_outlined),
@@ -429,7 +430,7 @@ void main() {
         .single;
     // Sent as an integer, which the server requires.
     expect(saved.body, '{"planned_savings":100}');
-    expect(find.text('Edit month'), findsNothing);
+    expect(find.text('Month details'), findsNothing);
   });
 
   testWidgets('the cash flow hides the categories unticked in its filter',
@@ -719,7 +720,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.menu_rounded));
     await tester.pumpAndSettle();
     expect(find.text('Add expense'), findsOneWidget);
-    expect(find.text('Create new'), findsOneWidget);
+    expect(find.text('Create new month'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

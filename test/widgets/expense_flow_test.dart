@@ -213,7 +213,7 @@ void main() {
     await tester.tap(find.text('Yesterday'));
     await tester.enterText(textFieldLabelled('Amount'), '1250');
     await tester.enterText(textFieldLabelled('Comment'), 'Coffee');
-    await tester.tap(find.text('Recurrent expense'));
+    await tester.tap(find.text('Recurring expense'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Save and add another'));
     await tester.pumpAndSettle();
