@@ -1,21 +1,62 @@
 import 'package:flutter/material.dart';
 
+/// A grid with a fixed header row, fixed leading and trailing columns and
+/// fixed footer rows around cells that scroll both ways, as the iOS table
+/// does. The header and footers follow the cells sideways, the two columns
+/// follow them up and down. Styling is the [cellBuilder]'s; this widget only
+/// lays the cells out at the given sizes.
 class CustomDataTable<T> extends StatefulWidget {
+  /// The leading column, one cell per row.
   final List<T> fixedColCells;
+
+  /// The trailing column, one cell per row.
   final List<T> fixedRightColCells;
+
+  /// The header row, one cell per column.
   final List<T> fixedRowCells;
-  final List<T> fixedBottomRowCells;
+
+  /// The footer rows, each with one cell per column.
+  final List<List<T>> fixedBottomRowsCells;
+
+  /// The header's corners above the leading and the trailing column.
+  final T headerLeadingCell;
+  final T headerTrailingCell;
+
+  /// The footers' corners, one per footer row.
+  final List<T> footerLeadingCells;
+  final List<T> footerTrailingCells;
+
   final List<List<T>> rowsCells;
-  final Widget Function(T? data) cellBuilder;
+  final Widget Function(T data) cellBuilder;
+
+  final double fixedColWidth;
+  final double cellWidth;
+  final double fixedRightColWidth;
+  final double cellHeight;
+  final double headerHeight;
+
+  /// A column to open on: scrolled to two columns from the leading edge,
+  /// as far as the content allows, so the days before it stay in sight.
+  final int? initialColumn;
 
   const CustomDataTable({
     super.key,
     required this.fixedColCells,
     required this.fixedRightColCells,
     required this.fixedRowCells,
-    required this.fixedBottomRowCells,
+    required this.fixedBottomRowsCells,
+    required this.headerLeadingCell,
+    required this.headerTrailingCell,
+    required this.footerLeadingCells,
+    required this.footerTrailingCells,
     required this.rowsCells,
     required this.cellBuilder,
+    this.fixedColWidth = 130,
+    this.cellWidth = 50,
+    this.fixedRightColWidth = 60,
+    this.cellHeight = 32,
+    this.headerHeight = 38,
+    this.initialColumn,
   });
 
   @override
@@ -24,266 +65,144 @@ class CustomDataTable<T> extends StatefulWidget {
 
 class CustomDataTableState<T> extends State<CustomDataTable<T>> {
   final _columnController = ScrollController();
+  final _rightColumnController = ScrollController();
   final _rowController = ScrollController();
   final _bottomRowController = ScrollController();
   final _subTableYController = ScrollController();
-  final _subTableXController = ScrollController();
 
-  static const double _hiddenCellWidth = 0;
-  static const double _cellHeight = 30.0;
-  static const double _fixedRowHeight = 60.0;
-  static const double _cellMargin = 0.0;
+  /// The cells' horizontal scroll; exposed so tests can read the offset.
+  final subTableXController = ScrollController();
 
-  double _cellWidth = 40.0;
-  double _fixedColWidth = 150.0;
-  bool _showSums = true;
+  Widget _cell(double width, double height, T data) =>
+      SizedBox(width: width, height: height, child: widget.cellBuilder(data));
 
-  Widget _buildChild(double width, T? data) => SizedBox(
-      width: width, height: _cellHeight, child: widget.cellBuilder.call(data));
-
-  Widget _buildFixedCol() => Material(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: widget.fixedColCells.map((cell) {
-            return Container(
-              width: _fixedColWidth + (_cellMargin * 2),
-              height: _cellHeight,
-              padding: const EdgeInsets.symmetric(horizontal: _cellMargin),
-              child: _buildChild(_fixedColWidth, cell),
-            );
-          }).toList(),
-        ),
+  Widget _column(List<T> cells, double width) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final cell in cells) _cell(width, widget.cellHeight, cell)
+        ],
       );
 
-  Widget _buildFixedRightCol() => Material(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: widget.fixedRightColCells.map((cell) {
-            final cellWidth = _showSums ? _cellWidth : _hiddenCellWidth;
-            return Container(
-              width: cellWidth + (_cellMargin * 2),
-              height: _cellHeight,
-              padding: const EdgeInsets.symmetric(horizontal: _cellMargin),
-              child: _buildChild(cellWidth, cell),
-            );
-          }).toList(),
-        ),
+  Widget _row(List<T> cells, double height) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final cell in cells) _cell(widget.cellWidth, height, cell)
+        ],
       );
 
-  Widget _buildFixedRow() => Material(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: widget.fixedRowCells.map((cell) {
-            return Container(
-              width: _cellWidth + (_cellMargin * 2),
-              height: _fixedRowHeight,
-              padding: const EdgeInsets.symmetric(horizontal: _cellMargin),
-              child: _buildChild(_cellWidth, cell),
-            );
-          }).toList(),
-        ),
+  /// A strip that follows the cells: scrolled by [controller], never by hand.
+  Widget _follower(ScrollController controller, Axis axis, Widget child) =>
+      SingleChildScrollView(
+        controller: controller,
+        scrollDirection: axis,
+        physics: const NeverScrollableScrollPhysics(),
+        child: child,
       );
 
-  Widget _buildFixedBottomRow() => Material(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: widget.fixedBottomRowCells.map((cell) {
-            return Container(
-              width: _cellWidth + (_cellMargin * 2),
-              height: _showSums ? _cellHeight : 0.0,
-              padding: const EdgeInsets.symmetric(horizontal: _cellMargin),
-              child: _buildChild(_cellWidth, cell),
-            );
-          }).toList(),
-        ),
-      );
-
-  Widget _buildSubTable() => Material(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: widget.rowsCells.map((row) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: row.map((cell) {
-                return Container(
-                  width: _cellWidth + (_cellMargin * 2),
-                  height: _cellHeight,
-                  padding: const EdgeInsets.symmetric(horizontal: _cellMargin),
-                  child: _buildChild(_cellWidth, cell),
-                );
-              }).toList(),
-            );
-          }).toList(),
-        ),
-      );
-
-  Widget _buildCornerSumCell({
-    bool wide = false,
-    bool high = false,
-    bool showButton = false,
-    required BuildContext context,
-    Widget? child,
-  }) {
-    final innerWidth =
-        wide ? _fixedColWidth : (_showSums ? _cellWidth : _hiddenCellWidth);
-    return Material(
-      child: Container(
-        width: innerWidth + _cellMargin * 2,
-        height: _showSums || showButton
-            ? (high ? _fixedRowHeight : _cellHeight)
-            : 0.0,
-        padding: const EdgeInsets.symmetric(horizontal: _cellMargin),
-        child: SizedBox(
-          width: innerWidth,
-          height: _cellHeight,
-          child: Center(
-            child: showButton
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    spacing: 6,
-                    children: [
-                      Text(
-                        "Σ",
-                        style: TextStyle(
-                          fontSize: 28,
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Switch(
-                        thumbIcon: WidgetStateProperty<Icon>.fromMap(
-                          <WidgetStatesConstraint, Icon>{
-                            WidgetState.selected: const Icon(Icons.visibility),
-                            WidgetState.any: const Icon(Icons.close),
-                          },
-                        ),
-                        onChanged: (value) {
-                          setState(() {
-                            _showSums = value;
-                          });
-                        },
-                        value: _showSums,
-                      )
-                    ],
-                  )
-                : child,
-          ),
-        ),
-      ),
-    );
+  void _follow(ScrollController controller, double pixels) {
+    if (controller.hasClients) controller.jumpTo(pixels);
   }
 
   @override
   void initState() {
     super.initState();
-    _subTableXController.addListener(() {
-      _rowController.jumpTo(_subTableXController.position.pixels);
-      _bottomRowController.jumpTo(_subTableXController.position.pixels);
+    subTableXController.addListener(() {
+      final x = subTableXController.position.pixels;
+      _follow(_rowController, x);
+      _follow(_bottomRowController, x);
     });
     _subTableYController.addListener(() {
-      _columnController.jumpTo(_subTableYController.position.pixels);
+      final y = _subTableYController.position.pixels;
+      _follow(_columnController, y);
+      _follow(_rightColumnController, y);
     });
+    // After the first layout, when the viewport and so the extent are known.
+    if (widget.initialColumn != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToInitial());
+    }
+  }
+
+  void _scrollToInitial() {
+    if (!mounted || !subTableXController.hasClients) return;
+    final position = subTableXController.position;
+    final x = ((widget.initialColumn! - 2) * widget.cellWidth)
+        .clamp(0.0, position.maxScrollExtent);
+    subTableXController.jumpTo(x);
   }
 
   @override
   void dispose() {
     _columnController.dispose();
+    _rightColumnController.dispose();
     _rowController.dispose();
     _bottomRowController.dispose();
     _subTableYController.dispose();
-    _subTableXController.dispose();
+    subTableXController.dispose();
     super.dispose();
-  }
-
-  void _setColumnsWidth(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    _fixedColWidth = screenWidth / 3.0;
-    _cellWidth = (screenWidth - _fixedColWidth) / 8.0;
-    if (MediaQuery.of(context).orientation == Orientation.landscape) {
-      _fixedColWidth /= 2.0;
-      _cellWidth /= 2.0;
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    _setColumnsWidth(context);
+    final w = widget;
     return Column(
       children: <Widget>[
         Row(
           children: <Widget>[
-            _buildCornerSumCell(
-                context: context, wide: true, showButton: true, high: true),
-            Flexible(
-              child: SingleChildScrollView(
-                controller: _rowController,
-                scrollDirection: Axis.horizontal,
-                physics: const NeverScrollableScrollPhysics(),
-                child: _buildFixedRow(),
-              ),
+            _cell(w.fixedColWidth, w.headerHeight, w.headerLeadingCell),
+            Expanded(
+              child: _follower(_rowController, Axis.horizontal,
+                  _row(w.fixedRowCells, w.headerHeight)),
             ),
-            _buildCornerSumCell(
-              context: context,
-              child: const Text(
-                "Σ",
-                style: TextStyle(
-                  fontSize: 26,
-                ),
-              ),
-            ),
+            _cell(w.fixedRightColWidth, w.headerHeight, w.headerTrailingCell),
           ],
         ),
         Expanded(
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              SingleChildScrollView(
-                controller: _columnController,
-                scrollDirection: Axis.vertical,
-                physics: const NeverScrollableScrollPhysics(),
-                child: _buildFixedCol(),
-              ),
-              Flexible(
+              _follower(_columnController, Axis.vertical,
+                  _column(w.fixedColCells, w.fixedColWidth)),
+              Expanded(
                 child: SingleChildScrollView(
-                  controller: _subTableXController,
+                  controller: subTableXController,
                   scrollDirection: Axis.horizontal,
                   child: SingleChildScrollView(
                     controller: _subTableYController,
-                    scrollDirection: Axis.vertical,
-                    child: _buildSubTable(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final row in w.rowsCells) _row(row, w.cellHeight)
+                      ],
+                    ),
                   ),
                 ),
               ),
-              SingleChildScrollView(
-                controller: _columnController,
-                scrollDirection: Axis.vertical,
-                physics: const NeverScrollableScrollPhysics(),
-                child: _buildFixedRightCol(),
-              )
+              _follower(_rightColumnController, Axis.vertical,
+                  _column(w.fixedRightColCells, w.fixedRightColWidth)),
             ],
           ),
         ),
         Row(
           children: <Widget>[
-            _buildCornerSumCell(
-              context: context,
-              wide: true,
-              child: const Text("Σ"),
-            ),
-            Flexible(
-              child: SingleChildScrollView(
-                controller: _bottomRowController,
-                scrollDirection: Axis.horizontal,
-                physics: const NeverScrollableScrollPhysics(),
-                child: _buildFixedBottomRow(),
+            _column(w.footerLeadingCells, w.fixedColWidth),
+            Expanded(
+              child: _follower(
+                _bottomRowController,
+                Axis.horizontal,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final row in w.fixedBottomRowsCells)
+                      _row(row, w.cellHeight)
+                  ],
+                ),
               ),
             ),
-            _buildCornerSumCell(context: context),
+            _column(w.footerTrailingCells, w.fixedRightColWidth),
           ],
         ),
       ],

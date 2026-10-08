@@ -40,6 +40,8 @@
   "comment": "Comment",
   "category": "Category",
   "categories": "Categories",
+  "sum": "Sum",
+  "sumDaily": "Sum (daily)",
   "quickSelectCategory": "Quick select category",
   "login": "Login",
   "loginFailed": "Login failed.",

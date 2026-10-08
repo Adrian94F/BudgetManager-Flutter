@@ -40,6 +40,8 @@
     "comment": "Komentarz",
     "category": "Kategoria",
     "categories": "Kategorie",
+    "sum": "Suma",
+    "sumDaily": "Suma (dzienna)",
     "quickSelectCategory": "Sugerowane kategorie",
     "login": "Zaloguj się",
     "loginFailed": "Logowanie nie powiodło się",
