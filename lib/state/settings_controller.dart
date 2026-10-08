@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../api/api.dart';
 
-/// App settings kept on the device: theme, dynamic colour, language and
-/// whether the cash flow diagram includes the recurring expenses.
+/// App settings kept on the device: theme, dynamic colour, language,
+/// whether the cash flow diagram includes the recurring expenses and which
+/// categories it hides.
 class SettingsController extends ChangeNotifier {
   SettingsController(this._session);
 
@@ -16,6 +17,7 @@ class SettingsController extends ChangeNotifier {
   bool _useDynamicColor = false;
   Locale? _locale;
   bool _includeRecurringInFlow = true;
+  Set<int> _hiddenFlowCategoryIds = const {};
 
   ThemeMode get themeMode => _themeMode;
   bool get useDynamicColor => _useDynamicColor;
@@ -28,11 +30,18 @@ class SettingsController extends ChangeNotifier {
   /// page's "Include monthly expenses" switch).
   bool get includeRecurringInFlow => _includeRecurringInFlow;
 
+  /// The categories the cash flow diagram leaves out (the web page's
+  /// "Categories" filter). Kept by id across months, as on the web, so a
+  /// category hidden once stays hidden wherever it has spending.
+  Set<int> get hiddenFlowCategoryIds => _hiddenFlowCategoryIds;
+
   Future<void> load() async {
     _themeMode = parseThemeMode(await _session.themeMode());
     _useDynamicColor = await _session.dynamicColor();
     _locale = parseLocale(await _session.locale());
     _includeRecurringInFlow = await _session.flowIncludesRecurring();
+    _hiddenFlowCategoryIds =
+        Set.unmodifiable(await _session.flowHiddenCategories());
     notifyListeners();
   }
 
@@ -67,6 +76,26 @@ class SettingsController extends ChangeNotifier {
     _includeRecurringInFlow = enabled;
     notifyListeners();
     await _session.setFlowIncludesRecurring(enabled);
+  }
+
+  /// Hides the category [id] from the cash flow diagram, or shows it again.
+  Future<void> setFlowCategoryHidden(int id, bool hidden) {
+    final ids = {..._hiddenFlowCategoryIds};
+    if (hidden) {
+      ids.add(id);
+    } else {
+      ids.remove(id);
+    }
+    return _setHiddenFlowCategories(ids);
+  }
+
+  /// Shows every category in the cash flow diagram again ("Select all").
+  Future<void> showAllFlowCategories() => _setHiddenFlowCategories({});
+
+  Future<void> _setHiddenFlowCategories(Set<int> ids) async {
+    _hiddenFlowCategoryIds = Set.unmodifiable(ids);
+    notifyListeners();
+    await _session.setFlowHiddenCategories(ids);
   }
 
   static ThemeMode parseThemeMode(String? name) => switch (name) {

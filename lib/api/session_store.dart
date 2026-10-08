@@ -16,6 +16,7 @@ class SessionStore {
   static const dynamicColorKey = 'dynamic_color';
   static const localeKey = 'locale';
   static const flowRecurringKey = 'flow_include_recurring';
+  static const flowHiddenCategoriesKey = 'flow_hidden_categories';
 
   Future<String?> accessToken() => _store.read(accessTokenKey);
 
@@ -81,4 +82,19 @@ class SessionStore {
 
   Future<void> setFlowIncludesRecurring(bool enabled) =>
       _store.write(flowRecurringKey, enabled.toString());
+
+  /// The ids of the categories left out of the cash flow diagram, kept as a
+  /// comma-separated list like the web's `bm_flow_hidden_cats` cookie; an
+  /// id that does not parse is skipped.
+  Future<Set<int>> flowHiddenCategories() async {
+    final value = await _store.read(flowHiddenCategoriesKey) ?? '';
+    return {
+      for (final part in value.split(','))
+        if (int.tryParse(part.trim()) case final id?) id,
+    };
+  }
+
+  Future<void> setFlowHiddenCategories(Set<int> ids) => ids.isEmpty
+      ? _store.delete(flowHiddenCategoriesKey)
+      : _store.write(flowHiddenCategoriesKey, (ids.toList()..sort()).join(','));
 }

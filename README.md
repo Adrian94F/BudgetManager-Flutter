@@ -15,7 +15,9 @@ offers the same features with SwiftUI.
 - Statistics: a Burndown | Cash flow | History switch. The full burndown with daily
   and recurring bars, or the month's cash flow as a Sankey diagram (salary
   and other income into the budget, out to the categories and the
-  leftover), with the recurring expenses in or out; tap a category to see
+  leftover), with the recurring expenses in or out and a category filter
+  (untick categories to leave their bands out; incomes and the leftover
+  stay as they are, as on the web); tap a category to see
   its expenses (back returns to the diagram), pinch to stretch the expenses column until every category
   has its label and scroll it, while incomes and the budget stay put and
   bands reach only the categories on screen. History: incomes and expenses
@@ -23,15 +25,20 @@ offers the same features with SwiftUI.
   month, scrolling sideways with the Y axis fixed and following the months
   in view.
 - Expenses grouped by day with search, a collapsed section for future
-  expenses, swipe to copy or delete, suggested categories when adding.
+  expenses, swipe to copy or delete (with Undo), suggested categories when
+  adding.
+- Expense and income forms: cash-register amount entry, Today / Yesterday
+  chips for the date, and "Save and add another" when adding, which keeps
+  the date (and the expense's category) for the next entry.
 - Category × day table with drill-down into the filtered list.
 - Incomes grouped by day, with the salary flag.
 - Months: swipe the summary sideways to move a month (the screen follows
   the finger and a chevron shows at the edge), pick from a sheet grouped by
-  year, edit dates and planned
-  savings, delete an empty month, create the next one.
-- Settings: theme, dynamic colour (Android 12+), server URL, categories
-  (add, rename, drag to reorder, delete), change password.
+  year, edit dates and planned savings (whole amounts, as the server
+  requires), delete an empty month, create the next one.
+- Settings: App settings (theme, dynamic colour on Android 12+, language),
+  Budget settings (currency, categories: add, rename, drag to reorder,
+  delete), change password, log out.
 - English and Polish.
 
 ## Structure
@@ -53,16 +60,27 @@ the server's tests.
 
 ## Development
 
+Needs Flutter 3.47 or newer (`pubspec.lock` requires it; CI pins 3.47.5 in
+`.github/workflows/flutter.yml`).
+
 ```sh
 flutter pub get
 flutter gen-l10n
+dart format lib test
 flutter analyze
 flutter test
 flutter run
 ```
 
-The app signs in against `https://budget.frydmanski.cc` by default; another
-server can be typed on the login page or in App settings.
+The server URL is fixed: `ApiClient.baseUrl` in `lib/api/api_client.dart`
+(`https://budget.frydmanski.cc`). The app has no setting for it, neither in
+App settings nor on the login page; the login page's Register link opens
+`<baseUrl>/register`. To work against a local server, change that constant
+temporarily (for example to `http://10.0.2.2:8000` for the Android emulator,
+which reaches the host's `localhost` there) and do not commit the change.
+Android blocks cleartext HTTP by default, so a plain `http://` server also
+needs `<application android:usesCleartextTraffic="true"/>` in
+`android/app/src/debug/AndroidManifest.xml`.
 
 ## Release build
 

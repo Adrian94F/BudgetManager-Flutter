@@ -53,6 +53,48 @@ class BudgetColors extends ThemeExtension<BudgetColors> {
   }
 }
 
+/// The burndown's status colours, fixed hex values shared with the iOS app
+/// and the web so the same month reads the same everywhere, whatever the
+/// accent or dynamic colour: red when the balance is below zero, amber when
+/// the current month is under its savings target, green when a closed (or
+/// future) month kept money. The current month on track uses the app's own
+/// primary colour, which is not part of this palette. The plan and target
+/// lines are a neutral [reference] gray in both brightnesses.
+class BurndownPalette {
+  const BurndownPalette._({
+    required this.overBudget,
+    required this.belowTarget,
+    required this.saved,
+  });
+
+  /// Latest balance below zero, in any month.
+  final Color overBudget;
+
+  /// The current month's balance under the planned savings target.
+  final Color belowTarget;
+
+  /// A closed or future month that did not go below zero.
+  final Color saved;
+
+  /// The dashed plan (ideal) line and the savings target line.
+  static const reference = Color(0xFF9CA3AF);
+
+  static const light = BurndownPalette._(
+    overBudget: Color(0xFFE11D48),
+    belowTarget: Color(0xFFD97706),
+    saved: Color(0xFF059669),
+  );
+
+  static const dark = BurndownPalette._(
+    overBudget: Color(0xFFFB7185),
+    belowTarget: Color(0xFFFBBF24),
+    saved: Color(0xFF34D399),
+  );
+
+  static BurndownPalette of(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.light ? light : dark;
+}
+
 /// Button shape that tightens while pressed, as Material 3 Expressive
 /// buttons do; `Material` animates the change.
 WidgetStateProperty<OutlinedBorder?> _pressableShape(double radius) =>

@@ -7,6 +7,8 @@ import '../app/app_scope.dart';
 import '../domain/domain.dart';
 import '../models/models.dart';
 import '../state/month_controller.dart';
+import '../state/settings_controller.dart';
+import '../tools/formatters.dart';
 import 'category_expenses.dart';
 import 'widgets/cash_flow_chart.dart';
 import 'widgets/error_views.dart';
@@ -21,7 +23,8 @@ enum StatisticsView { burndown, cashFlow, history }
 /// switch at the top (the Expenses tab picks its list or table the same
 /// way). Opened from the chart card on the Summary, so it starts on the
 /// burndown. A category tapped in the cash flow opens its expenses above
-/// this screen, so back returns to the diagram.
+/// this screen, so back returns to the diagram; the funnel next to the
+/// recurring expenses toggle picks the categories the diagram shows.
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
 
@@ -41,6 +44,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
+  void _showCategoryFilter(CashFlow flow, SettingsController settings) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _FlowCategoriesSheet(flow: flow, settings: settings),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final services = AppScope.of(context);
@@ -50,26 +62,34 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       listenable: Listenable.merge([months, settings]),
       builder: (context, _) {
         final flow = months.cashFlow;
-        final recurringToggle =
-            _view == StatisticsView.cashFlow && flow.recurringExpenses > 0;
-        // The toggle fits the bar, with its text, only on a wide window,
-        // centred between the back arrow and the view switch; a phone in
-        // portrait shows it in a row above the diagram instead.
-        final toggleInBar =
-            recurringToggle && MediaQuery.sizeOf(context).width >= 700;
+        final onFlow = _view == StatisticsView.cashFlow;
+        final recurringToggle = onFlow && flow.recurringExpenses > 0;
+        final categoryFilter = onFlow && flow.categories.isNotEmpty;
+        final hidden = settings.hiddenFlowCategoryIds;
+        // The controls fit the bar, the toggle with its text, only on a
+        // wide window, centred between the back arrow and the view switch;
+        // a phone in portrait shows them in a row above the diagram instead.
+        final controlsInBar = (recurringToggle || categoryFilter) &&
+            MediaQuery.sizeOf(context).width >= 700;
+        Widget controls(AlignmentGeometry alignment) => _FlowControls(
+              alignment: alignment,
+              includeRecurring:
+                  recurringToggle ? settings.includeRecurringInFlow : null,
+              onIncludeRecurringChanged: settings.setIncludeRecurringInFlow,
+              filterActive:
+                  flow.categories.any((c) => hidden.contains(c.category.id)),
+              onFilter: categoryFilter
+                  ? () => _showCategoryFilter(flow, settings)
+                  : null,
+            );
         return Scaffold(
           appBar: AppBar(
             // The bar holds the controls, so the charts get the height: the
             // view switch at the end and, on the cash flow of a wide window,
-            // the recurring expenses toggle in the middle.
+            // the recurring expenses toggle and the category filter in the
+            // middle.
             centerTitle: true,
-            title: toggleInBar
-                ? _RecurringToggle(
-                    value: settings.includeRecurringInFlow,
-                    onChanged: settings.setIncludeRecurringInFlow,
-                    alignment: AlignmentDirectional.center,
-                  )
-                : null,
+            title: controlsInBar ? controls(AlignmentDirectional.center) : null,
             actions: [
               Padding(
                 padding: const EdgeInsetsDirectional.only(end: 8),
@@ -92,9 +112,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   StatisticsView.cashFlow => _CashFlowView(
                       flow: flow,
                       includeRecurring: settings.includeRecurringInFlow,
-                      onIncludeRecurringChanged: recurringToggle && !toggleInBar
-                          ? settings.setIncludeRecurringInFlow
-                          : null,
+                      hiddenCategoryIds: hidden,
+                      controls:
+                          (recurringToggle || categoryFilter) && !controlsInBar
+                              ? controls(AlignmentDirectional.centerEnd)
+                              : null,
                       onCategoryTap: _showCategory,
                     ),
                   StatisticsView.history => _HistoryView(months: months),
@@ -158,19 +180,65 @@ class _ViewSwitch extends StatelessWidget {
   }
 }
 
-/// Whether the cash flow has the recurring expenses in, as a control in the
-/// bar: its text with a switch where the bar has the room, otherwise a
-/// toggle icon button named by its tooltip.
-class _RecurringToggle extends StatelessWidget {
-  const _RecurringToggle({
-    required this.value,
-    required this.onChanged,
+/// The cash flow's controls, in the bar or in a row above the diagram: the
+/// recurring expenses toggle when the month has recurring expenses
+/// ([includeRecurring] set) and, next to it, the category filter when there
+/// are categories to filter ([onFilter] set). The filter icon is filled
+/// while it hides any of this month's categories.
+class _FlowControls extends StatelessWidget {
+  const _FlowControls({
     required this.alignment,
+    required this.includeRecurring,
+    required this.onIncludeRecurringChanged,
+    required this.filterActive,
+    required this.onFilter,
   });
+
+  final AlignmentGeometry alignment;
+  final bool? includeRecurring;
+  final ValueChanged<bool> onIncludeRecurringChanged;
+  final bool filterActive;
+  final VoidCallback? onFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final include = includeRecurring;
+    final onFilter = this.onFilter;
+    return Align(
+      alignment: alignment,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (include != null)
+            Flexible(
+              child: _RecurringToggle(
+                value: include,
+                onChanged: onIncludeRecurringChanged,
+              ),
+            ),
+          if (onFilter != null)
+            IconButton(
+              isSelected: filterActive,
+              icon: const Icon(Icons.filter_alt_outlined),
+              selectedIcon: const Icon(Icons.filter_alt),
+              tooltip: l10n.flowCategoriesFilter,
+              onPressed: onFilter,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Whether the cash flow has the recurring expenses in: its text with a
+/// switch where there is the room, otherwise a toggle icon button named by
+/// its tooltip. As wide as its content, so [_FlowControls] places it.
+class _RecurringToggle extends StatelessWidget {
+  const _RecurringToggle({required this.value, required this.onChanged});
 
   final bool value;
   final ValueChanged<bool> onChanged;
-  final AlignmentGeometry alignment;
 
   @override
   Widget build(BuildContext context) {
@@ -179,7 +247,7 @@ class _RecurringToggle extends StatelessWidget {
       builder: (context, constraints) {
         if (constraints.maxWidth < 260) {
           return Align(
-            alignment: alignment,
+            widthFactor: 1,
             child: IconButton(
               isSelected: value,
               icon: const Icon(Icons.event_repeat_outlined),
@@ -190,7 +258,7 @@ class _RecurringToggle extends StatelessWidget {
           );
         }
         return Align(
-          alignment: alignment,
+          widthFactor: 1,
           child: MergeSemantics(
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
@@ -251,21 +319,23 @@ class _BurndownView extends StatelessWidget {
   }
 }
 
-/// The cash flow diagram, with the recurring expenses toggle in a row above
-/// it when the bar has no room for it ([onIncludeRecurringChanged] set).
+/// The cash flow diagram, with its controls in a row above it when the bar
+/// has no room for them ([controls] set).
 class _CashFlowView extends StatelessWidget {
   const _CashFlowView({
     required this.flow,
     required this.includeRecurring,
-    required this.onIncludeRecurringChanged,
+    required this.hiddenCategoryIds,
+    required this.controls,
     required this.onCategoryTap,
   });
 
   final CashFlow flow;
   final bool includeRecurring;
+  final Set<int> hiddenCategoryIds;
 
-  /// Shows the toggle above the diagram; null when the bar has it.
-  final ValueChanged<bool>? onIncludeRecurringChanged;
+  /// Shown above the diagram; null when the bar has them.
+  final Widget? controls;
   final ValueChanged<Category> onCategoryTap;
 
   @override
@@ -283,26 +353,135 @@ class _CashFlowView extends StatelessWidget {
       // A pinch stretches the expenses column, so more labels fit, and one
       // finger scrolls it; incomes and the budget stay put.
       child: CashFlowChart(
-        diagram: flow.diagram(includeRecurring: includeRecurring),
+        diagram: flow.diagram(
+          includeRecurring: includeRecurring,
+          hiddenCategoryIds: hiddenCategoryIds,
+        ),
         includeRecurring: includeRecurring,
         onCategoryTap: onCategoryTap,
       ),
     );
-    final onChanged = onIncludeRecurringChanged;
-    if (onChanged == null) return chart;
+    final controls = this.controls;
+    if (controls == null) return chart;
     return Column(
       children: [
         // Under the view switch, which sits at the bar's end.
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
-          child: _RecurringToggle(
-            value: includeRecurring,
-            onChanged: onChanged,
-            alignment: AlignmentDirectional.centerEnd,
-          ),
+          child: controls,
         ),
         Expanded(child: chart),
       ],
+    );
+  }
+}
+
+/// The web page's "Categories" filter as a bottom sheet: the month's
+/// categories with spending, each with a checkbox and its daily and monthly
+/// (recurring) sums, "Select all" and "Done". A change shows in the diagram
+/// behind the sheet at once and is kept in [settings].
+class _FlowCategoriesSheet extends StatelessWidget {
+  const _FlowCategoriesSheet({required this.flow, required this.settings});
+
+  final CashFlow flow;
+  final SettingsController settings;
+
+  /// Room for a whole amount with its currency in each sum column.
+  static const _amountWidth = 88.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodyMedium
+        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final header = theme.textTheme.labelMedium
+        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    String money(double amount) =>
+        Formatters.moneyOf(context, amount, decimalDigits: 0);
+    Widget amount(String text, TextStyle? style) => SizedBox(
+          width: _amountWidth,
+          child: Text(text, style: style, textAlign: TextAlign.end),
+        );
+    return ListenableBuilder(
+      listenable: settings,
+      builder: (context, _) {
+        final hidden = settings.hiddenFlowCategoryIds;
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * 0.8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                  child:
+                      Text(l10n.categories, style: theme.textTheme.titleLarge),
+                ),
+                // The column headings line up with the sums below them.
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(72, 4, 24, 4),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(l10n.category, style: header)),
+                      amount(l10n.flowDaily, header),
+                      amount(l10n.flowMonthly, header),
+                    ],
+                  ),
+                ),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      for (final c in flow.categories)
+                        CheckboxListTile(
+                          controlAffinity: ListTileControlAffinity.leading,
+                          contentPadding: const EdgeInsetsDirectional.only(
+                              start: 16, end: 24),
+                          value: !hidden.contains(c.category.id),
+                          onChanged: (shown) => settings.setFlowCategoryHidden(
+                              c.category.id, shown == false),
+                          title: Row(
+                            children: [
+                              Expanded(
+                                child: Text(c.category.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis),
+                              ),
+                              amount(money(c.daily), muted),
+                              amount(money(c.monthly), muted),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: Row(
+                    children: [
+                      OutlinedButton(
+                        onPressed: hidden.isEmpty
+                            ? null
+                            : settings.showAllFlowCategories,
+                        child: Text(l10n.selectAll),
+                      ),
+                      const Spacer(),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(l10n.done),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

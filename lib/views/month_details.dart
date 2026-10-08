@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -91,12 +93,14 @@ class _MonthDetailsScreenState extends State<MonthDetailsScreen> {
     return data.incomes.isEmpty && data.expenses.isEmpty;
   }
 
-  double? _parseSavings() =>
-      double.tryParse(_savingsController.text.replaceAll(',', '.').trim());
+  /// The planned savings are whole amounts: the server refuses a fraction
+  /// ("planned_savings must be a whole amount."), so the field takes digits
+  /// only and the value is read as an integer.
+  int? _parseSavings() => int.tryParse(_savingsController.text.trim());
 
   void _adjustSavings(int delta) {
     final current = _parseSavings() ?? 0;
-    final next = (current + delta).clamp(0, double.maxFinite).round();
+    final next = math.max(current + delta, 0);
     setState(() => _savingsController.text = next.toString());
   }
 
@@ -137,7 +141,9 @@ class _MonthDetailsScreenState extends State<MonthDetailsScreen> {
       if (_isEditing) {
         await months.updateMonth(
             id: widget.month!.id, start: _start, end: _end);
-        if (savings != _initialSavings) {
+        // Compared with what the field started from, so an untouched
+        // (possibly fractional, older) target is not rewritten.
+        if (savings != _initialSavings.round()) {
           await months.savePlannedSavings(savings!);
         }
       } else {
@@ -260,11 +266,8 @@ class _MonthDetailsScreenState extends State<MonthDetailsScreen> {
                     controller: _savingsController,
                     enabled: !_busy,
                     textAlign: TextAlign.center,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))
-                    ],
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     style: theme.textTheme.titleLarge,
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.savings_outlined),

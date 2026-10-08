@@ -210,7 +210,9 @@ class MonthController extends ChangeNotifier {
     await load();
   }
 
-  Future<void> savePlannedSavings(double value) async {
+  /// Sets the planned savings target, a whole amount (the server refuses
+  /// fractions).
+  Future<void> savePlannedSavings(int value) async {
     await _api.savePlannedSavings(value);
     await refresh();
   }

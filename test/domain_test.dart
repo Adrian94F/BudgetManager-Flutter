@@ -111,6 +111,51 @@ void main() {
       expect(diagram.budget.value, 802);
     });
 
+    test(
+        'hidden categories lose their bands; incomes and the leftover stay, as on the web',
+        () {
+      final flow = CashFlow.compute(threeDayMonth());
+      final diagram =
+          flow.diagram(includeRecurring: true, hiddenCategoryIds: {rent.id});
+
+      expect(diagram.sources.single.value, 2137);
+      expect(diagram.sinks.map((n) => n.kind).toList(),
+          [CashFlowNodeKind.category, CashFlowNodeKind.leftover]);
+      expect(diagram.sinks.first.category, food);
+      // The leftover is not topped up with the hidden 666: the budget keeps
+      // the size of the incomes and part of it flows nowhere.
+      expect(diagram.sinks.map((n) => n.value).toList(), [136, 1335]);
+      expect(diagram.budget.value, 2137);
+    });
+
+    test('hiding works the same without the recurring expenses', () {
+      final diagram = CashFlow.compute(threeDayMonth())
+          .diagram(includeRecurring: false, hiddenCategoryIds: {food.id});
+
+      expect(diagram.sources.single.value, 2137 - 666);
+      expect(diagram.sinks.single.kind, CashFlowNodeKind.leftover);
+      expect(diagram.sinks.single.value, 1335);
+      expect(diagram.budget.value, 1471);
+    });
+
+    test('hiding every category of a month in the red leaves the incomes', () {
+      final data = threeDayMonth().copyWith(incomes: [
+        Income(id: 1, value: 500, date: DateTime(2026, 1, 1), isSalary: true),
+      ]);
+      final diagram = CashFlow.compute(data).diagram(
+          includeRecurring: true, hiddenCategoryIds: {food.id, rent.id});
+
+      expect(diagram.sinks, isEmpty);
+      expect(diagram.budget.value, 500);
+      expect(diagram.isEmpty, isFalse);
+    });
+
+    test('an id that is not in the month hides nothing', () {
+      final diagram = CashFlow.compute(threeDayMonth())
+          .diagram(includeRecurring: true, hiddenCategoryIds: {99});
+      expect(diagram.sinks.map((n) => n.value).toList(), [666, 136, 1335]);
+    });
+
     test('an empty month has an empty flow', () {
       final flow =
           CashFlow.compute(threeDayMonth().copyWith(incomes: [], expenses: []));

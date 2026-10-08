@@ -9,18 +9,20 @@ import '../../app/theme.dart';
 import '../../domain/domain.dart';
 import '../../tools/formatters.dart';
 
-/// Line colour of the balance, as in the iOS app: error below zero,
-/// tertiary when the current month is under its savings target, primary
-/// otherwise; a closed month is green when money was left and red when not.
+/// Line colour of the balance, the same rule (and, but for the current
+/// month on track, the same colours) as in the iOS app and on the web:
+/// below zero is red in any month; the current month is amber while under
+/// its savings target and the app's primary colour otherwise; a closed or
+/// future month that kept money is green. See [BurndownPalette].
 Color burndownBalanceColor(
-    BurndownSeries series, ColorScheme scheme, BudgetColors budget) {
+    BurndownSeries series, ColorScheme scheme, BurndownPalette palette) {
   final latest = series.latestBalance;
+  if (latest < 0) return palette.overBudget;
   if (series.isActual) {
-    if (latest < 0) return scheme.error;
-    if (latest < series.plannedSavingsTarget) return scheme.tertiary;
+    if (latest < series.plannedSavingsTarget) return palette.belowTarget;
     return scheme.primary;
   }
-  return latest < 0 ? scheme.error : budget.success;
+  return palette.saved;
 }
 
 /// The month's burndown, painted directly: the remaining balance per day
@@ -72,9 +74,10 @@ class _MonthBurndownChartState extends State<MonthBurndownChart> {
       simplified: widget.isSimplified,
       selectedIndex: widget.isSimplified ? null : _selectedIndex,
       palette: _Palette(
-        balance: burndownBalanceColor(series, scheme, BudgetColors.of(context)),
-        ideal: scheme.outline,
-        target: scheme.tertiary,
+        balance:
+            burndownBalanceColor(series, scheme, BurndownPalette.of(context)),
+        ideal: BurndownPalette.reference,
+        target: BurndownPalette.reference,
         daily: scheme.primary.withValues(alpha: 0.45),
         monthly: scheme.tertiary.withValues(alpha: 0.45),
         grid: scheme.outlineVariant,
@@ -516,7 +519,7 @@ class BurndownLegend extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final balanceColor =
-        burndownBalanceColor(series, scheme, BudgetColors.of(context));
+        burndownBalanceColor(series, scheme, BurndownPalette.of(context));
     Widget item(Color color, String text, {bool dashed = false}) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -536,7 +539,7 @@ class BurndownLegend extends StatelessWidget {
       alignment: WrapAlignment.center,
       children: [
         item(balanceColor, labels.balance),
-        item(scheme.outline, labels.plan, dashed: true),
+        item(BurndownPalette.reference, labels.plan, dashed: true),
         item(scheme.primary.withValues(alpha: 0.45), labels.daily),
         item(scheme.tertiary.withValues(alpha: 0.45), labels.recurring),
       ],

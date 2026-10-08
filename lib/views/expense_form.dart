@@ -9,11 +9,13 @@ import '../models/models.dart';
 import 'widgets/category_style.dart';
 import 'widgets/amount_field.dart';
 import 'widgets/error_views.dart';
+import 'widgets/quick_date_chips.dart';
 
 /// Full-screen dialog to add or edit an expense. Opened with [expense] it
 /// edits that expense; with [template] it prefills a copy; otherwise it
 /// creates a new expense dated inside the month and suggests the most used
-/// categories.
+/// categories. A new expense can also be saved with "Save and add another",
+/// which keeps the dialog open for the next one.
 class ExpenseFormScreen extends StatefulWidget {
   const ExpenseFormScreen({
     super.key,
@@ -60,6 +62,11 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   int? _categoryId;
   late bool _isMonthly;
   late final List<int> _suggestedCategoryIds;
+  final _amountFocus = FocusNode();
+
+  /// Bumped for each expense "Save and add another" saves, so the amount
+  /// field starts over empty.
+  int _entry = 0;
   bool _saving = false;
   String? _error;
 
@@ -95,6 +102,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   @override
   void dispose() {
     _commentController.dispose();
+    _amountFocus.dispose();
     super.dispose();
   }
 
@@ -108,7 +116,12 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     if (picked != null) setState(() => _date = picked);
   }
 
-  Future<void> _save() async {
+  /// Saves the expense and closes the dialog, or with [addAnother] keeps it
+  /// open for the next expense, as the web's "Save and add another": the
+  /// date and the category stay (a run of entries is mostly the same day,
+  /// often the same shop), the amount, the comment and the recurring flag
+  /// start over, and the amount field has the focus again.
+  Future<void> _save({bool addAnother = false}) async {
     final l10n = AppLocalizations.of(context)!;
     final months = AppScope.of(context).months;
     final value = _amount;
@@ -134,7 +147,28 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
         comment: _commentController.text.trim(),
         isMonthly: _isMonthly,
       );
-      if (mounted) Navigator.pop(context, true);
+      if (!mounted) return;
+      if (!addAnother) {
+        Navigator.pop(context, true);
+        return;
+      }
+      setState(() {
+        _saving = false;
+        _amount = 0;
+        _commentController.clear();
+        _isMonthly = false;
+        _entry++;
+      });
+      // After the rebuild: the field is enabled again only then, and a
+      // disabled field cannot take the focus.
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _amountFocus.requestFocus());
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text(l10n.expenseAdded),
+          duration: const Duration(seconds: 2),
+        ));
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -181,6 +215,8 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
           // Focus starts here: type the digits, press the action key, done.
           // Editing selects the old amount, so the first digit replaces it.
           AmountField(
+            key: ValueKey(_entry),
+            focusNode: _amountFocus,
             initialValue: _amount,
             onChanged: (value) => _amount = value,
             onSubmitted: _saving ? null : _save,
@@ -203,6 +239,12 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
               suffixIcon: const Icon(Icons.arrow_drop_down),
               border: border,
             ),
+          ),
+          const SizedBox(height: 8),
+          QuickDateChips(
+            selected: _date,
+            enabled: !_saving,
+            onSelected: (day) => setState(() => _date = day),
           ),
           const SizedBox(height: 24),
           if (_suggestedCategoryIds.isNotEmpty) ...[
@@ -276,6 +318,14 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             title: Text(l10n.recurrentExpense),
             contentPadding: EdgeInsets.zero,
           ),
+          if (!_isEditing) ...[
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: _saving ? null : () => _save(addAnother: true),
+              icon: const Icon(Icons.playlist_add_rounded),
+              label: Text(l10n.saveAndAddAnother),
+            ),
+          ],
         ],
       ),
     );

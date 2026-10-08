@@ -8,9 +8,12 @@ import '../domain/domain.dart';
 import '../models/models.dart';
 import 'widgets/amount_field.dart';
 import 'widgets/error_views.dart';
+import 'widgets/quick_date_chips.dart';
 
 /// Full-screen dialog to add or edit an income. Opened with [income] it
-/// edits that income; with [template] it prefills a copy.
+/// edits that income; with [template] it prefills a copy. A new income can
+/// also be saved with "Save and add another", which keeps the dialog open
+/// for the next one.
 class IncomeFormScreen extends StatefulWidget {
   const IncomeFormScreen(
       {super.key, this.income, this.template, this.initialDate});
@@ -40,6 +43,11 @@ class _IncomeFormScreenState extends State<IncomeFormScreen> {
   late final TextEditingController _commentController;
   late DateTime _date;
   late bool _isSalary;
+  final _amountFocus = FocusNode();
+
+  /// Bumped for each income "Save and add another" saves, so the amount
+  /// field starts over empty.
+  int _entry = 0;
   bool _saving = false;
   String? _error;
 
@@ -62,6 +70,7 @@ class _IncomeFormScreenState extends State<IncomeFormScreen> {
   @override
   void dispose() {
     _commentController.dispose();
+    _amountFocus.dispose();
     super.dispose();
   }
 
@@ -75,7 +84,11 @@ class _IncomeFormScreenState extends State<IncomeFormScreen> {
     if (picked != null) setState(() => _date = picked);
   }
 
-  Future<void> _save() async {
+  /// Saves the income and closes the dialog, or with [addAnother] keeps it
+  /// open for the next income, as the web's "Save and add another": the
+  /// date stays, the amount, the comment and the salary flag start over,
+  /// and the amount field has the focus again.
+  Future<void> _save({bool addAnother = false}) async {
     final l10n = AppLocalizations.of(context)!;
     final months = AppScope.of(context).months;
     final value = _amount;
@@ -95,7 +108,28 @@ class _IncomeFormScreenState extends State<IncomeFormScreen> {
         comment: _commentController.text.trim(),
         isSalary: _isSalary,
       );
-      if (mounted) Navigator.pop(context, true);
+      if (!mounted) return;
+      if (!addAnother) {
+        Navigator.pop(context, true);
+        return;
+      }
+      setState(() {
+        _saving = false;
+        _amount = 0;
+        _commentController.clear();
+        _isSalary = false;
+        _entry++;
+      });
+      // After the rebuild: the field is enabled again only then, and a
+      // disabled field cannot take the focus.
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _amountFocus.requestFocus());
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text(l10n.incomeAdded),
+          duration: const Duration(seconds: 2),
+        ));
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -139,6 +173,8 @@ class _IncomeFormScreenState extends State<IncomeFormScreen> {
           // Focus starts here: type the digits, press the action key, done.
           // Editing selects the old amount, so the first digit replaces it.
           AmountField(
+            key: ValueKey(_entry),
+            focusNode: _amountFocus,
             initialValue: _amount,
             onChanged: (value) => _amount = value,
             onSubmitted: _saving ? null : _save,
@@ -162,6 +198,12 @@ class _IncomeFormScreenState extends State<IncomeFormScreen> {
               border: border,
             ),
           ),
+          const SizedBox(height: 8),
+          QuickDateChips(
+            selected: _date,
+            enabled: !_saving,
+            onSelected: (day) => setState(() => _date = day),
+          ),
           const SizedBox(height: 16),
           TextField(
             controller: _commentController,
@@ -184,6 +226,14 @@ class _IncomeFormScreenState extends State<IncomeFormScreen> {
             title: Text(l10n.salary),
             contentPadding: EdgeInsets.zero,
           ),
+          if (!_isEditing) ...[
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: _saving ? null : () => _save(addAnother: true),
+              icon: const Icon(Icons.playlist_add_rounded),
+              label: Text(l10n.saveAndAddAnother),
+            ),
+          ],
         ],
       ),
     );

@@ -59,6 +59,7 @@ class AmountField extends StatefulWidget {
     this.enabled = true,
     this.selectAllOnFocus = false,
     this.border,
+    this.focusNode,
   });
 
   final double initialValue;
@@ -73,13 +74,17 @@ class AmountField extends StatefulWidget {
   final bool selectAllOnFocus;
   final InputBorder? border;
 
+  /// Lets the form put the focus back here, as "Save and add another" does
+  /// for the next entry; the field makes its own when none is given.
+  final FocusNode? focusNode;
+
   @override
   State<AmountField> createState() => _AmountFieldState();
 }
 
 class _AmountFieldState extends State<AmountField> {
   final _controller = TextEditingController();
-  final _focusNode = FocusNode();
+  late final FocusNode _focusNode = widget.focusNode ?? FocusNode();
   late CashRegisterFormatter _formatter;
   late int _cents = (widget.initialValue * 100).round();
   String? _locale;
@@ -104,7 +109,7 @@ class _AmountFieldState extends State<AmountField> {
   @override
   void dispose() {
     _focusNode.removeListener(_onFocus);
-    _focusNode.dispose();
+    if (widget.focusNode == null) _focusNode.dispose();
     _controller.dispose();
     super.dispose();
   }

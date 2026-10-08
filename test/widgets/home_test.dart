@@ -387,6 +387,118 @@ void main() {
     expect(await services.session.flowIncludesRecurring(), isFalse);
   });
 
+  testWidgets('planned savings take whole amounts only', (tester) async {
+    final server = FakeServer();
+    server.plannedSavings = 300;
+    await pumpApp(tester, server, loggedIn: true);
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit details'));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit month'), findsOneWidget);
+
+    final field = find.ancestor(
+        of: find.byIcon(Icons.savings_outlined),
+        matching: find.byType(TextField));
+    String text() => tester.widget<TextField>(field).controller!.text;
+    expect(text(), '300');
+
+    // Separators and anything else but digits are dropped as typed.
+    await tester.enterText(field, '12,5');
+    expect(text(), '125');
+    await tester.tap(find.byTooltip('+100'));
+    await tester.pump();
+    expect(text(), '225');
+    await tester.tap(find.byTooltip('-100'));
+    await tester.tap(find.byTooltip('-100'));
+    await tester.pump();
+    expect(text(), '25');
+    // Never below zero.
+    await tester.tap(find.byTooltip('-100'));
+    await tester.pump();
+    expect(text(), '0');
+    await tester.tap(find.byTooltip('+100'));
+    await tester.pump();
+
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    final saved = server.requests
+        .where(
+            (r) => r.method == 'POST' && r.url.path == '/api/planned-savings/')
+        .single;
+    // Sent as an integer, which the server requires.
+    expect(saved.body, '{"planned_savings":100}');
+    expect(find.text('Edit month'), findsNothing);
+  });
+
+  testWidgets('the cash flow hides the categories unticked in its filter',
+      (tester) async {
+    final server = FakeServer();
+    server.expenses[11]!.add({
+      'id': 2,
+      'value': 500.0,
+      'date': server.currentMonth['start_date'],
+      'comment': 'Bus pass',
+      'category': 2,
+      'is_monthly': true,
+    });
+    final services = await pumpApp(tester, server, loggedIn: true);
+    List<double> sinks() => tester
+        .widget<CashFlowChart>(find.byType(CashFlowChart))
+        .diagram
+        .sinks
+        .map((n) => n.value)
+        .toList();
+
+    await tester.tap(find.byType(MonthBurndownChart), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cash flow'));
+    await tester.pumpAndSettle();
+    expect(sinks(), [500, 120, 4380]);
+
+    await tester.tap(find.byTooltip('Choose categories'));
+    await tester.pumpAndSettle();
+    // Every category with spending, ticked, with its daily and monthly sums.
+    final transport = find.ancestor(
+        of: find.text('Transport'), matching: find.byType(CheckboxListTile));
+    final groceries = find.ancestor(
+        of: find.text('Groceries'), matching: find.byType(CheckboxListTile));
+    expect(tester.widget<CheckboxListTile>(transport).value, isTrue);
+    expect(tester.widget<CheckboxListTile>(groceries).value, isTrue);
+    expect(find.descendant(of: transport, matching: find.textContaining('500')),
+        findsOneWidget);
+    expect(find.descendant(of: groceries, matching: find.textContaining('120')),
+        findsOneWidget);
+
+    // Unticking drops the category's band at once; the leftover stays.
+    await tester.tap(transport);
+    await tester.pumpAndSettle();
+    expect(tester.widget<CheckboxListTile>(transport).value, isFalse);
+    expect(sinks(), [120, 4380]);
+    expect(await services.session.flowHiddenCategories(), {2});
+
+    // Select all brings everything back, Done closes the sheet.
+    await tester.tap(find.text('Select all'));
+    await tester.pumpAndSettle();
+    expect(sinks(), [500, 120, 4380]);
+    expect(await services.session.flowHiddenCategories(), isEmpty);
+
+    await tester.tap(transport);
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CheckboxListTile), findsNothing);
+    expect(sinks(), [120, 4380]);
+    // The filter icon shows that something is hidden.
+    expect(
+        tester
+            .widget<IconButton>(find.ancestor(
+                of: find.byIcon(Icons.filter_alt),
+                matching: find.byType(IconButton)))
+            .isSelected,
+        isTrue);
+  });
+
   testWidgets(
       'a pinch stretches the expenses column, one finger scrolls it, the rest stays',
       (tester) async {

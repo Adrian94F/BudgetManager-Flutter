@@ -107,7 +107,8 @@ class ApiClient {
   Future<void> deleteMonth(int id) =>
       _send('DELETE', 'month/', body: {'id': id});
 
-  Future<void> savePlannedSavings(double value) =>
+  /// [value] is whole: the server answers 400 to a fractional target.
+  Future<void> savePlannedSavings(int value) =>
       _send('POST', 'planned-savings/', body: {'planned_savings': value});
 
   // MARK: - Incomes

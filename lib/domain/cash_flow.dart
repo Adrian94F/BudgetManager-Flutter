@@ -61,7 +61,10 @@ class CashFlowDiagram {
 /// whatever is left. The [diagram] can leave the recurring expenses out:
 /// they then come straight off the salary, the budget is the daily budget
 /// and the categories show their daily part only. The leftover is the same
-/// either way.
+/// either way. Categories can also be hidden, as with the web page's
+/// "Categories" filter: their bands are simply left out, while the incomes
+/// and the leftover stay as they are, so the budget node keeps its size and
+/// the hidden spending shows as the part of it that flows nowhere.
 class CashFlow {
   const CashFlow({
     required this.salary,
@@ -120,8 +123,14 @@ class CashFlow {
   }
 
   /// The diagram with the recurring expenses in, or with them taken off the
-  /// salary and out of the categories.
-  CashFlowDiagram diagram({required bool includeRecurring}) {
+  /// salary and out of the categories, without the categories whose ids are
+  /// in [hiddenCategoryIds]. Hiding changes neither the sources nor the
+  /// leftover (the web computes both from all expenses and only drops the
+  /// hidden categories' links), so nothing is redistributed.
+  CashFlowDiagram diagram({
+    required bool includeRecurring,
+    Set<int> hiddenCategoryIds = const {},
+  }) {
     final salaryValue =
         includeRecurring ? salary : math.max(salary - recurringExpenses, 0.0);
     final sources = [
@@ -131,7 +140,8 @@ class CashFlow {
     ];
     final sinks = [
       for (final c in categories)
-        if ((includeRecurring ? c.total : c.daily) > 0)
+        if (!hiddenCategoryIds.contains(c.category.id) &&
+            (includeRecurring ? c.total : c.daily) > 0)
           CashFlowNode(
             CashFlowNodeKind.category,
             includeRecurring ? c.total : c.daily,
