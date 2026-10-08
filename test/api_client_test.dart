@@ -276,6 +276,24 @@ void main() {
       expect(ApiException.extractMessage(null), isNull);
     });
 
+    test('keep the reason code the server adds', () async {
+      final api = client((_) async => http.Response(
+          jsonEncode({
+            'detail': "A category with expenses can't be deleted.",
+            'code': 'category_has_expenses',
+          }),
+          400));
+
+      try {
+        await api.deleteCategory(1);
+        fail('expected an ApiException');
+      } on ApiException catch (e) {
+        expect(e.statusCode, 400);
+        expect(e.code, 'category_has_expenses');
+        expect(e.message, "A category with expenses can't be deleted.");
+      }
+    });
+
     test('fall back to the status code for unreadable bodies', () async {
       final api = client(
           (_) async => http.Response('<html>Server Error (500)</html>', 500));

@@ -28,11 +28,16 @@ class ApiException implements Exception {
   final String message;
   final Map<String, String> fieldErrors;
 
+  /// A machine-readable reason the server adds where the app shows its own
+  /// wording, e.g. `category_has_expenses`.
+  final String? code;
+
   const ApiException({
     required this.kind,
     this.statusCode,
     required this.message,
     this.fieldErrors = const {},
+    this.code,
   });
 
   ApiException.network(String detail)
@@ -57,6 +62,9 @@ class ApiException implements Exception {
       statusCode: status,
       message: extractMessage(decoded) ?? 'HTTP $status',
       fieldErrors: extractFieldErrors(decoded),
+      code: decoded is Map && decoded['code'] is String
+          ? decoded['code'] as String
+          : null,
     );
   }
 

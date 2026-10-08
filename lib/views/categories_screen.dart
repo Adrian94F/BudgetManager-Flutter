@@ -7,8 +7,8 @@ import '../models/models.dart';
 import 'widgets/category_style.dart';
 import 'widgets/error_views.dart';
 
-/// Add, rename, reorder and delete expense categories. Deleting a category
-/// also deletes every expense in it, in all months, so it asks first.
+/// Add, rename, reorder and delete expense categories. Deleting asks first;
+/// the server refuses a category that still has expenses.
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key});
 
@@ -50,9 +50,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   void _showError(ApiException e) {
     final l10n = AppLocalizations.of(context)!;
-    final message = e.message.toLowerCase().contains('unique')
-        ? l10n.categoryExists
-        : describeApiError(e, l10n);
+    // The server keeps a category that still has expenses.
+    final message = e.code == 'category_has_expenses'
+        ? l10n.categoryHasExpenses
+        : e.message.toLowerCase().contains('unique')
+            ? l10n.categoryExists
+            : describeApiError(e, l10n);
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
   }
