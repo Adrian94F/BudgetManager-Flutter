@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../api/api.dart';
 import '../app/app_scope.dart';
 import '../state/auth_controller.dart';
+import 'widgets/app_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -89,13 +90,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Icon(Icons.account_balance_wallet_rounded,
-                          size: 56, color: colors.primary),
+                      const Center(child: AppLogo()),
                       const SizedBox(height: 12),
                       Text(
                         'Budget Manager',
                         style: textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold, color: colors.primary),
+                            fontWeight: FontWeight.bold,
+                            color: colors.onSurface),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 32),
